@@ -49,6 +49,12 @@ func usar(_jugador: Node) -> void:
 		Juego.avisar("Esa poción no se puede empaquetar.")
 		return
 	var n: int = mini(5, Juego.cuenta(id))
+	# Solo se empaqueta lo que cabe: antes, si la mochila estaba llena, las pociones se perdían.
+	while n > 0 and not Juego.cabe(paquete, n):
+		n -= 1
+	if n <= 0:
+		Juego.avisar("No te caben los paquetes. Haz sitio en el inventario.")
+		return
 	Juego.quitar(id, n)
 	var sobra: int = Juego.anadir(paquete, n)
 	_ocupada = 2.0

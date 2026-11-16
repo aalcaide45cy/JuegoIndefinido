@@ -363,6 +363,7 @@ class VentanaCaldero extends Ventana:
 	var _preparar: Button
 	var _botones_receta: Dictionary = {}
 	var _cocinando: bool = false
+	var _pocion_al_fuego: String = ""   # Qué se está removiendo ahora mismo.
 
 	func construir() -> void:
 		_slots.resize(GameData.INGREDIENTES_POR_POCION)
@@ -423,6 +424,11 @@ class VentanaCaldero extends Ventana:
 
 	# Al cerrar, lo que quede en las casillas vuelve al inventario.
 	func cerrar() -> void:
+		# Si cierras a medio remover no pierdes las hierbas: sale una poción (como con 0 aciertos).
+		if _cocinando and _pocion_al_fuego != "":
+			Juego.anadir("pocion_" + _pocion_al_fuego, 1)
+			Juego.avisar("Dejas la mezcla a medias: sale 1 x %s." % GameData.POCIONES[_pocion_al_fuego]["nombre"])
+			_cocinando = false
 		_devolver_todo()
 		super()
 
@@ -477,6 +483,8 @@ class VentanaCaldero extends Ventana:
 		Juego.cambio.emit()
 
 	func _hacer() -> void:
+		if _cocinando:
+			return   # Ya hay una mezcla al fuego: no se gastan más hierbas hasta terminarla.
 		var ids: Array = []
 		for c in _slots:
 			if c == null:
@@ -493,6 +501,7 @@ class VentanaCaldero extends Ventana:
 			return
 		# Receta buena: antes de sacar la poción hay que remover a tiempo (minijuego).
 		_cocinando = true
+		_pocion_al_fuego = id_pocion
 		var barra: BarraRemover = BarraRemover.new()
 		barra.terminado.connect(_terminar_cocinado.bind(id_pocion))
 		add_child(barra)
@@ -500,6 +509,7 @@ class VentanaCaldero extends Ventana:
 
 	func _terminar_cocinado(aciertos: int, id_pocion: String) -> void:
 		_cocinando = false
+		_pocion_al_fuego = ""
 		# 0 aciertos: 1 poción (no se pierde nada); 1-2: 2 pociones; 3: 3 pociones y más XP.
 		var cantidad: int = 1 if aciertos == 0 else (2 if aciertos < 3 else 3)
 		var objeto: String = "pocion_" + id_pocion

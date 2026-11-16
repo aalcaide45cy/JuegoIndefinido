@@ -50,10 +50,11 @@ func _decorar() -> void:
 		_grifo.queue_free()
 		_grifo = null
 	if nivel >= 2:
-		_anillo = Construir.cilindro(self, Vector3(0, 0.24, 0), 0.235, 0.05,
+		# (Más ancho que el borde de la maceta: con 0.235 quedaba escondido dentro del barro.)
+		_anillo = Construir.cilindro(self, Vector3(0, 0.27, 0), 0.275, 0.05,
 				Color(0.85, 0.85, 0.9) if nivel == 2 else Color(0.95, 0.78, 0.25), false, 0.2)
 	if riego:
-		_grifo = Construir.cilindro(self, Vector3(0.22, 0.2, 0), 0.025, 0.4, Color(0.3, 0.6, 0.9), false, 0.3)
+		_grifo = Construir.cilindro(self, Vector3(0.31, 0.2, 0), 0.025, 0.4, Color(0.3, 0.6, 0.9), false, 0.3)   # Por fuera de la maceta.
 
 
 func _factor_velocidad() -> float:
