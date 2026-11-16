@@ -12,6 +12,7 @@ class_name Guardado
 extends RefCounted
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 
 const RUTA: String = "user://partida.json"
 const VERSION: int = 1
@@ -72,26 +73,36 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 		return false
 
 	Juego.reiniciar()
-	Juego.dinero = int(datos.get("dinero", Juego.dinero))
-	Juego.vida = float(datos.get("vida", Juego.vida))
-	Juego.hora = float(datos.get("hora", Juego.hora))
-	Juego.dia = int(datos.get("dia", 1))
+	# Todo se comprueba al leer: un archivo tocado a mano o roto no debe dejar
+	# dinero negativo, vida a cero o montones más grandes de lo permitido.
+	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))
+	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
+	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
+	Juego.dia = maxi(1, int(datos.get("dia", 1)))
 	Juego.duracion_dia_min = clampf(float(datos.get("duracion_dia_min", Juego.DURACION_DIA_POR_DEFECTO)), 1.0, 1000.0)
-	Juego.nivel = int(datos.get("nivel", 1))
-	Juego.xp = int(datos.get("xp", 0))
+	Juego.nivel = maxi(1, int(datos.get("nivel", 1)))
+	Juego.xp = clampi(int(datos.get("xp", 0)), 0, Juego.xp_necesaria() - 1)
 	for id_casa in datos.get("viviendas", []):
 		Juego.viviendas[str(id_casa)] = true
 	if bool(datos.get("casa_alquilada", false)):   # Partidas de la versión anterior.
 		Juego.viviendas["plaza"] = true
 	Juego.ha_ganado = bool(datos.get("ha_ganado", false))
 	for id_hab in datos.get("habilidades", []):
-		Juego.habilidades[str(id_hab)] = true
+		if DatosHabilidades.LISTA.has(str(id_hab)):
+			Juego.habilidades[str(id_hab)] = true
 	_leer_lista(datos.get("inventario", []), Juego.inventario)
 	_leer_lista(datos.get("estanteria", []), Juego.estanteria)
 	Juego.seleccion = clampi(int(datos.get("seleccion", 0)), 0, Juego.TAM_BARRA - 1)
 
+	# Las macetas que hay ahora se vacían antes: si no, al cargar una partida
+	# antigua se quedarían las plantas de la partida actual.
+	for nodo in arbol.get_nodes_in_group("macetas"):
+		var actual: Maceta3D = nodo as Maceta3D
+		if actual != null:
+			actual.importar({})
 	for d in datos.get("macetas", []):
-		_restaurar_maceta(arbol, d)
+		if d is Dictionary:
+			_restaurar_maceta(arbol, d)
 
 	var p: Array = datos.get("jugador", [])
 	if p.size() == 3:
@@ -109,11 +120,13 @@ static func _leer_lista(guardada: Array, destino: Array) -> void:
 		if not c is Dictionary or not c.has("id") or not DatosObjetos.LISTA.has(str(c["id"])):
 			destino[i] = null
 			continue
-		var casilla: Dictionary = {"id": str(c["id"]), "cantidad": maxi(1, int(c.get("cantidad", 1)))}
-		if c.has("agua"):
-			casilla["agua"] = int(c["agua"])
-		if c.has("balas"):
-			casilla["balas"] = int(c["balas"])
+		var id: String = str(c["id"])
+		var datos_obj: Dictionary = DatosObjetos.datos(id)
+		var casilla: Dictionary = {"id": id, "cantidad": clampi(int(c.get("cantidad", 1)), 1, DatosObjetos.pila(id))}
+		if datos_obj.has("agua_max"):
+			casilla["agua"] = clampi(int(c.get("agua", datos_obj["agua_max"])), 0, int(datos_obj["agua_max"]))
+		if c.has("balas") and datos_obj.has("cargador"):
+			casilla["balas"] = clampi(int(c["balas"]), 0, int(datos_obj["cargador"]))
 		destino[i] = casilla
 
 

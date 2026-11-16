@@ -33,6 +33,11 @@ class Cama extends Interactuable:
 		jugador.hud.fundido(func() -> void:
 			for maceta in get_tree().get_nodes_in_group("macetas"):
 				maceta.adelantar(HORAS_DE_SUENO)
+			# El reloj también avanza lo mismo que han crecido las plantas.
+			Juego.hora += HORAS_DE_SUENO * 24.0 / (maxf(1.0, Juego.duracion_dia_min) * 60.0)
+			if Juego.hora >= 24.0:
+				Juego.hora -= 24.0
+				Juego.dia += 1
 			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido mientras tanto."), 1.2)
 
 

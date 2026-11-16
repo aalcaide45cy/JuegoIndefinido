@@ -59,6 +59,7 @@ func _ready() -> void:
 	add_child(_luna)
 	actualizar()
 	_ventanas_encendidas = -1   # Las casas aún no existen: se comprobará en el primer fotograma.
+	_ventanas_encendidas_forzar = true   # Y las farolas tampoco: se ajustan también entonces.
 
 
 # -1 = sin comprobar. Se reinicia al arrancar porque las casas (y sus ventanas) se
@@ -68,8 +69,42 @@ var _encendido_previo: float = -1.0
 var _ventanas_encendidas_forzar: bool = true
 
 
-func _process(_delta: float) -> void:
-	actualizar()
+# Cada cuánto se recalculan cielo y luces: no hace falta en cada fotograma
+# (la hora avanza despacio y cambiar el cielo obliga a redibujarlo).
+const PASO_HORA: float = 0.01          # Horas de juego (unos 36 s de juego).
+const INTERVALO_LUCES: float = 0.25    # Segundos reales entre repasos de luces cercanas.
+# Una luz se apaga si la cámara está más lejos que su alcance + esto (en metros).
+const DISTANCIA_LUCES: float = 30.0
+
+var _hora_previa: float = -100.0
+var _t_luces: float = 0.0
+
+
+func _process(delta: float) -> void:
+	if absf(Juego.hora - _hora_previa) >= PASO_HORA or _ventanas_encendidas == -1:
+		_hora_previa = Juego.hora
+		actualizar()
+	_t_luces -= delta
+	if _t_luces <= 0.0:
+		_t_luces = INTERVALO_LUCES
+		_luces_cercanas()
+
+
+# Solo se dibujan las luces cercanas a la cámara y, las de noche, cuando están
+# encendidas. Con el renderizador Compatibilidad cada luz visible obliga a
+# dibujar otra vez los objetos que toca, así que esto ahorra mucho.
+func _luces_cercanas() -> void:
+	var camara: Camera3D = get_viewport().get_camera_3d()
+	if camara == null:
+		return
+	var ojo: Vector3 = camara.global_position
+	for nodo in get_tree().get_nodes_in_group("luces_lod"):
+		var foco: OmniLight3D = nodo as OmniLight3D
+		if foco == null:
+			continue
+		var cerca: bool = foco.global_position.distance_to(ojo) < foco.omni_range + DISTANCIA_LUCES
+		var encendida: bool = foco.light_energy > 0.01 or not foco.is_in_group("luces_noche")
+		foco.visible = cerca and encendida
 
 
 func actualizar() -> void:

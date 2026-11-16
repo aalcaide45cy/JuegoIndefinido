@@ -26,7 +26,7 @@ func _ready() -> void:
 		Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Cauldron", Vector3.ZERO, 0.0,
 				Vector3.ONE * 1.15, false)
 	_liquido = Construir.cilindro(self, Vector3(0, 0.86, 0), 0.58, 0.03, Color(0.25, 0.35, 0.45), false, 1.5)
-	_material_liquido = (_liquido as MeshInstance3D).mesh.material
+	_material_liquido = Construir.material_propio(_liquido)   # Propio: cambia de color.
 	# Brasas debajo y su luz verdosa.
 	for i in 3:
 		var brasa: Node3D = Construir.caja(self, Vector3.ZERO, Vector3(0.25, 0.08, 0.08),
