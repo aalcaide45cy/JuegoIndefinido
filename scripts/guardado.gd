@@ -46,6 +46,10 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"habilidades": Juego.habilidades.keys(),
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
+		"reputacion": Juego.reputacion,
+		"encargos": Juego.encargos,
+		"pedidos_material": Juego.pedidos_material,
+		"avisos": Juego.avisos,
 		"seleccion": Juego.seleccion,
 		"inventario": Juego.inventario,
 		"estanteria": Juego.estanteria,
@@ -87,6 +91,21 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	if bool(datos.get("casa_alquilada", false)):   # Partidas de la versión anterior.
 		Juego.viviendas["plaza"] = true
 	Juego.ha_ganado = bool(datos.get("ha_ganado", false))
+	Juego.reputacion = clampi(int(datos.get("reputacion", 0)), -50, 100)
+	for e in datos.get("encargos", []):
+		if e is Dictionary and GameData.POCIONES.has(str(e.get("pocion", ""))) and e.get("pos", []) is Array \
+				and e["pos"].size() == 3 and str(e.get("estado", "")) in ["oferta", "aceptado"]:
+			Juego.encargos.append({"id": int(e.get("id", 0)), "cliente": str(e.get("cliente", "Cliente")),
+					"pocion": str(e["pocion"]), "cantidad": clampi(int(e.get("cantidad", 1)), 1, 20),
+					"pago": maxi(0, int(e.get("pago", 0))), "estado": str(e["estado"]),
+					"t": maxf(1.0, float(e.get("t", 60.0))), "lugar": str(e.get("lugar", "")),
+					"pos": [float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2])]})
+	for pm in datos.get("pedidos_material", []):
+		if pm is Dictionary and DatosObjetos.LISTA.has(str(pm.get("id", ""))):
+			Juego.pedidos_material.append({"id": str(pm["id"]), "cantidad": clampi(int(pm.get("cantidad", 1)), 1, 20),
+					"t": maxf(1.0, float(pm.get("t", 10.0)))})
+	for a in datos.get("avisos", []):
+		Juego.avisos.append(str(a))
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
 			Juego.habilidades[str(id_hab)] = true

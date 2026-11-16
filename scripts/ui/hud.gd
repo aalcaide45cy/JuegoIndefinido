@@ -166,7 +166,7 @@ func _ready() -> void:
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · TAB inventario · F1 admin · V cámara · Esc pausa"
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · TAB inventario · F1 admin · V cámara · Esc pausa"
 	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
@@ -199,6 +199,12 @@ func _input(evento: InputEvent) -> void:
 			_menu.cerrar()
 		elif _menu == null:
 			_abrir_menu(Ventanas.Inventario.new())
+		get_viewport().set_input_as_handled()
+	elif evento.is_action_pressed("telefono"):
+		if _menu is Telefono:
+			_menu.cerrar()
+		elif _menu == null:
+			_abrir_menu(Telefono.new())
 		get_viewport().set_input_as_handled()
 	elif evento.is_action_pressed("mapa_grande"):
 		if _menu is MapaGrande:

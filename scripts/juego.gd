@@ -41,6 +41,10 @@ var interiores: int = 0              # Cuántos edificios con interior pisas aho
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
 var xp: int = 0                      # Experiencia hacia el siguiente nivel.
+var reputacion: int = 0              # -50..100: sube al entregar encargos, baja si dejas plantado.
+var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
+var pedidos_material: Array = []     # Pedidos de materiales en camino.
+var avisos: Array = []               # Últimos avisos del móvil (más nuevo primero).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
 var inventario: Array = []
@@ -72,6 +76,10 @@ func reiniciar() -> void:
 	nivel = 1
 	xp = 0
 	habilidades.clear()
+	reputacion = 0
+	encargos.clear()
+	pedidos_material.clear()
+	avisos.clear()
 	inventario.clear()
 	inventario.resize(TAM_INVENTARIO)
 	estanteria.clear()
@@ -465,6 +473,15 @@ func avisar(texto: String) -> void:
 	mensaje.emit(texto)
 
 
+# Aviso del móvil: sale en pantalla y queda guardado en la pestaña "Avisos".
+func nuevo_aviso(texto: String) -> void:
+	avisos.push_front("Día %d, %s  ·  %s" % [dia, texto_hora(), texto])
+	if avisos.size() > 25:
+		avisos.resize(25)
+	avisar(texto)
+	cambio.emit()
+
+
 # ------------------------------ Controles -------------------------------------
 # Usamos "physical_keycode": la tecla por su posición en el teclado.
 
@@ -473,6 +490,7 @@ func _crear_controles() -> void:
 	_accion("atras", [KEY_S, KEY_DOWN])
 	_accion("izquierda", [KEY_A, KEY_LEFT])
 	_accion("derecha", [KEY_D, KEY_RIGHT])
+	_accion("telefono", [KEY_P])   # Sacar el móvil.
 	_accion("mapa_grande", [KEY_N])   # Mapa de la ciudad a pantalla completa.
 	_accion("mapa", [KEY_M])   # Cambia el zoom del minimapa.
 	_accion("correr", [KEY_SHIFT])

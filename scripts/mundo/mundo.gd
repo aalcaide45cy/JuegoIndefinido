@@ -39,6 +39,7 @@ func _ready() -> void:
 	jugador.hud = hud
 	add_child(jugador)
 	hud.jugador = jugador
+	add_child(Encargos.new())
 	Sonido.ambiente(self)
 	_polvo_en_el_aire(jugador)
 
