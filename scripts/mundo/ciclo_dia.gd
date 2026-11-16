@@ -56,6 +56,12 @@ func _ready() -> void:
 	_luna.rotation = Vector3(deg_to_rad(-50), deg_to_rad(30), 0)
 	add_child(_luna)
 	actualizar()
+	_ventanas_encendidas = -1   # Las casas aún no existen: se comprobará en el primer fotograma.
+
+
+# -1 = sin comprobar. Se reinicia al arrancar porque las casas (y sus ventanas) se
+# crean después de que el ciclo calcule la primera vez.
+var _ventanas_encendidas: int = -1
 
 
 func _process(_delta: float) -> void:
@@ -91,6 +97,12 @@ func actualizar() -> void:
 
 	# Luces de la ciudad: encendidas de noche, apagadas de día.
 	var encendido: float = 1.0 - smoothstep(0.0, 0.35, altura)
+	# Ventanas con luz: se encienden y apagan de golpe, solo cuando cambia el estado.
+	var ventanas_encendidas: int = 1 if encendido > 0.5 else 0
+	if ventanas_encendidas != _ventanas_encendidas and is_inside_tree():
+		_ventanas_encendidas = ventanas_encendidas
+		for ventana in get_tree().get_nodes_in_group("ventanas_noche"):
+			(ventana as Node3D).visible = ventanas_encendidas == 1
 	for luz in get_tree().get_nodes_in_group("luces_noche"):
 		var foco: Light3D = luz as Light3D
 		if foco != null:

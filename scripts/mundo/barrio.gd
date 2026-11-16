@@ -62,6 +62,14 @@ func _pared_modular(lado: Node3D, largo: float, piso_desde: int, pisos: int,
 			var x: float = -largo / 2.0 + (i + 0.5) * (largo / n)
 			Assets.colocar_solido(lado, nombre, Vector3(x, piso * ALTO_PISO, 0.0), 0.0,
 					Vector3(estirar, 1.0, 1.0), false)
+			# Algunas ventanas tienen luz de noche: un cuadro cálido tras el hueco
+			# (ciclo_dia.gd lo enciende al anochecer y lo apaga de día).
+			if "Window" in nombre and rng.randf() < 0.3:
+				var ancho_v: float = 0.45 if "Thin" in nombre else 0.9
+				var vela: MeshInstance3D = Construir.caja(lado, Vector3(x, piso * ALTO_PISO + 1.5, -0.15),
+						Vector3(ancho_v, 1.0, 0.03), Color(1.0, 0.72, 0.38), false, 1.4) as MeshInstance3D
+				vela.visible = false
+				vela.add_to_group("ventanas_noche")
 
 
 # Reviste un edificio con paredes modulares por sus 4 lados. "salida" aleja las
