@@ -669,6 +669,17 @@ class Admin extends Ventana:
 				Juego.dinero = maxi(0, Juego.dinero + cantidad)
 				Juego.cambio.emit()))
 
+		# Policía.
+		var policia: CheckButton = CheckButton.new()
+		policia.text = "Policía activa"
+		policia.button_pressed = Juego.policia_activa
+		policia.focus_mode = Control.FOCUS_NONE
+		policia.toggled.connect(func(v: bool) -> void:
+			Juego.policia_activa = v
+			if not v:
+				Juego.alerta = 0.0)
+		caja.add_child(policia)
+
 		# Vida.
 		subtitulo(caja, "Vida")
 		var fila_vida: HBoxContainer = HBoxContainer.new()

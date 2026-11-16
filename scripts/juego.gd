@@ -37,6 +37,7 @@ var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
 var alerta: float = 0.0              # 0-100: cuánto te buscan los guardias (100 = te están viendo).
 var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pantalla).
+var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1

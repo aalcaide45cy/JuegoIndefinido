@@ -66,7 +66,7 @@ func _poner_activo(activo: bool) -> void:
 func _physics_process(delta: float) -> void:
 	if _muerto:
 		return
-	var noche: bool = Juego.es_de_noche()
+	var noche: bool = Juego.es_de_noche() and Juego.policia_activa
 	if noche != visible:
 		_poner_activo(noche)
 		_persiguiendo = false
