@@ -202,6 +202,10 @@ func abrir_tienda(id_tienda: String, nombre: String) -> void:
 	_abrir_menu(tienda)
 
 
+func abrir_caldero() -> void:
+	_abrir_menu(Ventanas.Caldero.new())
+
+
 func abrir_estanteria() -> void:
 	_abrir_menu(Ventanas.Estanteria.new())
 

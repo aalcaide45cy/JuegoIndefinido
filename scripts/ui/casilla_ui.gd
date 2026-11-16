@@ -88,9 +88,13 @@ func _get_drag_data(_pos: Vector2) -> Variant:
 	if not arrastrable or lista[indice] == null:
 		return null
 	var vista: Control = Control.new()
-	var dibujo: CasillaUI = CasillaUI.new(lista, indice, size.x)
-	dibujo.modulate.a = 0.8
-	dibujo.position = -size / 2.0
+	# El dibujo que acompaña al ratón es grande (al menos 88 px) para verlo bien.
+	var lado: float = maxf(size.x * 1.7, 88.0)
+	var dibujo: CasillaUI = CasillaUI.new(lista, indice, lado)
+	dibujo.size = Vector2(lado, lado)
+	dibujo.modulate.a = 0.92
+	dibujo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dibujo.position = -Vector2(lado, lado) / 2.0
 	vista.add_child(dibujo)
 	set_drag_preview(vista)
 	return {"lista": lista, "indice": indice}

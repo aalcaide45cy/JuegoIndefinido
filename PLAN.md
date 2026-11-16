@@ -54,6 +54,14 @@ Adelanto de la fase 2 (misma rama): la plaza ya tiene **ferretería** (oeste) y
 - Llevar a cabo todo el plan y que el juego sea **bonito**: ahora se ve básico
   (fase de calidad visual, abajo).
 
+## Regla de diseño: cada estación de trabajo tiene su menú
+
+Alfonso prefiere ventanas visuales a pulsar E muchas veces. El caldero ya
+tiene la suya (`Ventanas.Caldero`: elegir receta, arrastrar hierbas, preparar).
+Toda estación nueva (mesa de crafteo, banco de armas, instructor...) seguirá
+el mismo patrón: ventana con recetas a un lado, casillas donde se sueltan los
+ingredientes y tu inventario al otro. Al arrastrar, el icono se ve grande.
+
 ## Fase 2: la ciudad
 
 - Ciudad grande, construida barrio a barrio (cada uno en su script de

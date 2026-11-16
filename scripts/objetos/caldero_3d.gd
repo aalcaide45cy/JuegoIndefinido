@@ -1,9 +1,8 @@
 # caldero_3d.gd
 # -----------------------------------------------------------------------------
-# El caldero de tu casa. Pulsa E para echar la hierba que tienes en la
-# mano (elígela en la barra rápida con 1-9). Cuando hay GameData.INGREDIENTES_POR_POCION hierbas
-# dentro, se mezclan solas: si coinciden con una receta sale una poción; si
-# no, sale un bodrio y se pierde.
+# El caldero de tu casa. Pulsa E y se abre su ventana (Ventanas.Caldero):
+# eliges una receta, arrastras las hierbas a las casillas y preparas. Si la
+# mezcla no coincide con ninguna receta, sale un bodrio y se pierde.
 # -----------------------------------------------------------------------------
 class_name Caldero3D
 extends Interactuable
@@ -39,54 +38,12 @@ func _process(_delta: float) -> void:
 	_liquido.position.y = 0.86 + 0.01 * sin(t * 3.0)
 
 
-# Devuelve el id de hierba ("bruma") de lo que llevas en la mano, o "" si no es una hierba.
-func _hierba_en_mano() -> String:
-	var id: String = Juego.id_en_mano()
-	if id.begins_with("hierba_"):
-		return id.trim_prefix("hierba_")
-	return ""
-
-
 func texto_accion() -> String:
-	var id_hierba: String = _hierba_en_mano()
-	if id_hierba == "":
-		return "Caldero (lleva una hierba en la mano: teclas 1-9)"
-	return "Echar %s  (%d/%d en el caldero)" % [GameData.HIERBAS[id_hierba]["nombre"],
-			ingredientes.size(), GameData.INGREDIENTES_POR_POCION]
+	return "Usar el caldero (preparar pociones)"
 
 
-func usar(_jugador: Node) -> void:
-	var id_hierba: String = _hierba_en_mano()
-	if id_hierba == "":
-		Juego.avisar("Coge una hierba cosechada en la barra rápida (teclas 1-9) y pulsa E.")
-		return
-	Juego.quitar("hierba_" + id_hierba)
-	ingredientes.append(id_hierba)
-	_actualizar_color()
-	if ingredientes.size() >= GameData.INGREDIENTES_POR_POCION:
-		_mezclar()
-	else:
-		Juego.avisar("Echas %s al caldero. Falta %d ingrediente más." % [
-				GameData.HIERBAS[id_hierba]["nombre"],
-				GameData.INGREDIENTES_POR_POCION - ingredientes.size()])
-
-
-func _mezclar() -> void:
-	var id_pocion: String = GameData.buscar_pocion(ingredientes)
-	if id_pocion == "":
-		Juego.avisar("El caldero escupe un humo gris. Has hecho un bodrio y se ha perdido.")
-	else:
-		var id_objeto: String = "pocion_" + id_pocion
-		if Juego.cabe(id_objeto):
-			Juego.anadir(id_objeto)
-			Juego.avisar("¡Has preparado %s! Véndela en la ventanilla." %
-					GameData.POCIONES[id_pocion]["nombre"])
-		else:
-			Juego.avisar("Has preparado %s, pero no te cabe y se derrama." %
-					GameData.POCIONES[id_pocion]["nombre"])
-	ingredientes.clear()
-	_actualizar_color()
-	Juego.cambio.emit()
+func usar(jugador: Node) -> void:
+	jugador.hud.abrir_caldero()
 
 
 # El líquido toma la mezcla de colores de lo que hay dentro.

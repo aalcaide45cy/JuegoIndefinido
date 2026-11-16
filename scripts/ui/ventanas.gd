@@ -318,6 +318,197 @@ class IconoObjeto extends Control:
 
 
 # ==============================================================================
+# Una casilla donde se sueltan ingredientes: solo acepta hierbas, de una en
+# una. Un clic la vacía y devuelve la hierba al inventario.
+class CasillaIngrediente extends CasillaUI:
+	signal vaciada
+
+	func _get_drag_data(_pos: Vector2) -> Variant:
+		return null
+
+	func _can_drop_data(_pos: Vector2, datos: Variant) -> bool:
+		if not datos is Dictionary or not datos.has("lista"):
+			return false
+		var origen = datos["lista"][datos["indice"]]
+		return origen != null and str(origen["id"]).begins_with("hierba_")
+
+	func _drop_data(_pos: Vector2, datos: Variant) -> void:
+		var origen: Array = datos["lista"]
+		var i: int = datos["indice"]
+		var c = origen[i]
+		if lista[indice] != null:
+			if not Juego.cabe(lista[indice]["id"], lista[indice]["cantidad"]):
+				Juego.avisar("No te cabe lo que ya había en la casilla.")
+				return
+			Juego.anadir(lista[indice]["id"], lista[indice]["cantidad"])
+		lista[indice] = {"id": c["id"], "cantidad": 1}
+		c["cantidad"] -= 1
+		if c["cantidad"] <= 0:
+			origen[i] = null
+		Juego.cambio.emit()
+
+	func _gui_input(evento: InputEvent) -> void:
+		var boton: InputEventMouseButton = evento as InputEventMouseButton
+		if boton != null and boton.pressed and lista[indice] != null:
+			vaciada.emit()
+
+
+# ==============================================================================
+# La ventana del caldero: eliges una receta, arrastras hierbas y preparas.
+class Caldero extends Ventana:
+	var _slots: Array = []
+	var _receta: String = ""
+	var _resultado: Label
+	var _detalle: Label
+	var _preparar: Button
+	var _botones_receta: Dictionary = {}
+
+	func construir() -> void:
+		_slots.resize(GameData.INGREDIENTES_POR_POCION)
+		var panel: PanelContainer = Hud.crear_panel()
+		Hud.centrar(panel, Vector2(1120, 620))
+		add_child(panel)
+		var raiz: VBoxContainer = VBoxContainer.new()
+		raiz.add_theme_constant_override("separation", 10)
+		panel.add_child(raiz)
+		cabecera(raiz, "Caldero")
+		var columnas: HBoxContainer = HBoxContainer.new()
+		columnas.add_theme_constant_override("separation", 24)
+		raiz.add_child(columnas)
+
+		# Izquierda: recetas, casillas de ingredientes y botón de preparar.
+		var izquierda: VBoxContainer = VBoxContainer.new()
+		izquierda.custom_minimum_size = Vector2(480, 0)
+		izquierda.add_theme_constant_override("separation", 8)
+		columnas.add_child(izquierda)
+		subtitulo(izquierda, "1. Elige una receta (o experimenta sin elegir)")
+		for id_pocion in GameData.POCIONES:
+			var boton: Button = Hud.crear_boton(GameData.POCIONES[id_pocion]["nombre"], _elegir.bind(id_pocion))
+			boton.toggle_mode = true
+			boton.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			izquierda.add_child(boton)
+			_botones_receta[id_pocion] = boton
+		_detalle = Hud.crear_label(15, Color(0.8, 0.85, 0.75))
+		_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detalle.custom_minimum_size = Vector2(460, 60)
+		izquierda.add_child(_detalle)
+		subtitulo(izquierda, "2. Arrastra las hierbas aquí (clic en una casilla para quitarla)")
+		var fila: HBoxContainer = HBoxContainer.new()
+		fila.add_theme_constant_override("separation", 10)
+		izquierda.add_child(fila)
+		for i in _slots.size():
+			var slot: CasillaIngrediente = CasillaIngrediente.new(_slots, i, 76.0)
+			slot.vaciada.connect(_quitar.bind(i))
+			fila.add_child(slot)
+		var botones: HBoxContainer = HBoxContainer.new()
+		botones.add_theme_constant_override("separation", 10)
+		izquierda.add_child(botones)
+		botones.add_child(Hud.crear_boton("Colocar los de la receta", _autorrellenar))
+		_preparar = Ventanas.boton_grande("3. Preparar", _hacer)
+		_preparar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		botones.add_child(_preparar)
+		_resultado = Hud.crear_label(16, Color(1, 0.92, 0.6))
+		_resultado.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_resultado.custom_minimum_size = Vector2(460, 50)
+		izquierda.add_child(_resultado)
+
+		# Derecha: tu inventario (Mayús + clic manda la hierba al caldero).
+		var derecha: VBoxContainer = VBoxContainer.new()
+		columnas.add_child(derecha)
+		Ventanas.montar_inventario(self, derecha, 50.0, _envio)
+
+		Juego.cambio.connect(_refrescar)
+		_refrescar()
+
+	# Al cerrar, lo que quede en las casillas vuelve al inventario.
+	func cerrar() -> void:
+		_devolver_todo()
+		super()
+
+	func _devolver_todo() -> void:
+		for i in _slots.size():
+			_quitar(i)
+
+	func _quitar(i: int) -> void:
+		var c = _slots[i]
+		if c == null:
+			return
+		_slots[i] = null
+		Juego.anadir(c["id"], c["cantidad"])
+
+	func _elegir(id_pocion: String) -> void:
+		_receta = id_pocion
+		for id in _botones_receta:
+			_botones_receta[id].set_pressed_no_signal(id == id_pocion)
+		_refrescar()
+
+	# Mueve una hierba del inventario a la primera casilla libre.
+	func _envio(casilla: CasillaUI) -> void:
+		var c = Juego.inventario[casilla.indice]
+		if c == null or not str(c["id"]).begins_with("hierba_"):
+			return
+		for i in _slots.size():
+			if _slots[i] == null:
+				_slots[i] = {"id": c["id"], "cantidad": 1}
+				c["cantidad"] -= 1
+				if c["cantidad"] <= 0:
+					Juego.inventario[casilla.indice] = null
+				Juego.cambio.emit()
+				return
+
+	# Vacía las casillas y pone justo las hierbas de la receta elegida.
+	func _autorrellenar() -> void:
+		if _receta == "":
+			_resultado.text = "Elige primero una receta."
+			return
+		_devolver_todo()
+		for id_hierba in GameData.POCIONES[_receta]["receta"]:
+			var id: String = "hierba_" + id_hierba
+			var hueco: int = _slots.find(null)
+			if hueco == -1 or not Juego.tiene(id):
+				_resultado.text = "Te faltan hierbas para esa receta."
+				break
+			Juego.quitar(id)
+			_slots[hueco] = {"id": id, "cantidad": 1}
+		Juego.cambio.emit()
+
+	func _hacer() -> void:
+		var ids: Array = []
+		for c in _slots:
+			if c == null:
+				return
+			ids.append(str(c["id"]).trim_prefix("hierba_"))
+		var id_pocion: String = GameData.buscar_pocion(ids)
+		for i in _slots.size():
+			_slots[i] = null
+		if id_pocion == "":
+			_resultado.text = "El caldero escupe un humo gris. Has hecho un bodrio y se ha perdido."
+		else:
+			var objeto: String = "pocion_" + id_pocion
+			if Juego.cabe(objeto):
+				Juego.anadir(objeto)
+				_resultado.text = "¡Has preparado %s! %s" % [GameData.POCIONES[id_pocion]["nombre"],
+						"Véndela en la ventanilla."]
+			else:
+				_resultado.text = "Has preparado %s, pero no te cabe y se derrama." % \
+						GameData.POCIONES[id_pocion]["nombre"]
+		Juego.cambio.emit()
+
+	func _refrescar() -> void:
+		if _receta == "":
+			_detalle.text = "Sin receta elegida: mezcla lo que quieras y descubre qué sale."
+		else:
+			var datos: Dictionary = GameData.POCIONES[_receta]
+			_detalle.text = "%s\nIngredientes: %s\nValor: %d $\n%s" % [datos["nombre"],
+					GameData.texto_receta(_receta), datos["precio"], datos["efecto"]]
+		var llena: bool = true
+		for c in _slots:
+			if c == null:
+				llena = false
+		_preparar.disabled = not llena
+
+
+# ==============================================================================
 class Estanteria extends Ventana:
 	var _estado: Label
 
