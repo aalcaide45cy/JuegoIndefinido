@@ -554,9 +554,10 @@ class Admin extends Ventana:
 	var _objetos: OptionButton
 	var _cantidad: SpinBox
 	var _casillas_habilidad: Dictionary = {}
+	var _texto_duracion: Label
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(640, 600))
+		var caja: VBoxContainer = panel_centrado(Vector2(640, 660))
 		cabecera(caja, "Panel de administrador (F1)")
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 		caja.add_child(_estado)
@@ -578,6 +579,19 @@ class Admin extends Ventana:
 			velocidades.add_child(Hud.crear_boton(par[0], func() -> void:
 				Juego.hora = par[1]
 				_hora.set_value_no_signal(par[1])))
+
+		# Duración de un día entero, en minutos reales.
+		_texto_duracion = subtitulo(caja, "")
+		var duracion: HSlider = HSlider.new()
+		duracion.min_value = 2.0
+		duracion.max_value = 240.0
+		duracion.step = 1.0
+		duracion.value = Juego.duracion_dia_min
+		duracion.value_changed.connect(func(v: float) -> void:
+			Juego.duracion_dia_min = v
+			_actualizar_duracion())
+		caja.add_child(duracion)
+		_actualizar_duracion()
 
 		# Dinero.
 		subtitulo(caja, "Dinero")
@@ -655,6 +669,10 @@ class Admin extends Ventana:
 
 	func _refrescar() -> void:
 		_estado.text = "%s    ·    Día %d, %s" % [Ventanas.texto_estado(), Juego.dia, Juego.texto_hora()]
+
+	func _actualizar_duracion() -> void:
+		_texto_duracion.text = "Duración de un día entero: %d minutos reales (normal: %d)" % [
+				int(Juego.duracion_dia_min), int(Juego.DURACION_DIA_POR_DEFECTO)]
 
 	func _velocidad(v: float) -> void:
 		Juego.velocidad_tiempo = v

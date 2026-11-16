@@ -71,16 +71,18 @@ func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float,
 	var g: float = 0.2   # Grosor de las paredes.
 	var h: float = ALTO_PLANTA_BAJA
 	# Suelo de madera (un pelín por encima de la calle para que no parpadee).
-	Construir.caja(casa, Vector3(0, 0.015, -fondo / 2.0), Vector3(ancho, 0.03, fondo), Color(0.24, 0.17, 0.11))
+	# (Los bloques de dentro se encogen para no compartir plano con la fachada
+	# ni con las paredes: si dos caras están en el mismo sitio, parpadean.)
+	Construir.caja(casa, Vector3(0, 0.015, -fondo / 2.0), Vector3(ancho - 2.0 * g, 0.03, fondo - 2.0 * g), Color(0.24, 0.17, 0.11))
 	# Paredes de dentro: fondo y laterales.
 	Construir.caja(casa, Vector3(0, h / 2.0, -fondo + g / 2.0), Vector3(ancho, h, g), color_interior)
-	Construir.caja(casa, Vector3(-ancho / 2.0 + g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo), color_interior)
-	Construir.caja(casa, Vector3(ancho / 2.0 - g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo), color_interior)
+	Construir.caja(casa, Vector3(-ancho / 2.0 + g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo - 2.0 * g), color_interior)
+	Construir.caja(casa, Vector3(ancho / 2.0 - g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo - 2.0 * g), color_interior)
 	# Fachada con huecos.
 	Construir.pared_con_huecos(casa, -g / 2.0, ancho, h, g, huecos, color)
 	# Techo de la planta baja y pisos de arriba (macizos).
 	Construir.caja(casa, Vector3(0, h + (alto - h) / 2.0, -fondo / 2.0), Vector3(ancho, alto - h, fondo), color)
-	Construir.caja(casa, Vector3(0, h - 0.05, -fondo / 2.0), Vector3(ancho, 0.1, fondo), color_interior.darkened(0.5), false)
+	Construir.caja(casa, Vector3(0, h - 0.06, -fondo / 2.0), Vector3(ancho - 2.0 * g, 0.1, fondo - 2.0 * g), color_interior.darkened(0.5), false)
 	Construir.caja(casa, Vector3(0, alto + 0.15, -fondo / 2.0 + 0.15),
 			Vector3(ancho + 0.3, 0.3, fondo + 0.3), color.darkened(0.4), false)
 	# Ventanas de los pisos de arriba, a oscuras.

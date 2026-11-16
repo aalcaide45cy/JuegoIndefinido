@@ -39,6 +39,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"vida": Juego.vida,
 		"hora": Juego.hora,
 		"dia": Juego.dia,
+		"duracion_dia_min": Juego.duracion_dia_min,
 		"nivel": Juego.nivel,
 		"habilidades": Juego.habilidades.keys(),
 		"casa_alquilada": Juego.casa_alquilada,
@@ -74,6 +75,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	Juego.vida = float(datos.get("vida", Juego.vida))
 	Juego.hora = float(datos.get("hora", Juego.hora))
 	Juego.dia = int(datos.get("dia", 1))
+	Juego.duracion_dia_min = clampf(float(datos.get("duracion_dia_min", Juego.DURACION_DIA_POR_DEFECTO)), 1.0, 1000.0)
 	Juego.nivel = int(datos.get("nivel", 1))
 	Juego.casa_alquilada = bool(datos.get("casa_alquilada", false))
 	Juego.ha_ganado = bool(datos.get("ha_ganado", false))

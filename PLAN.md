@@ -41,6 +41,10 @@ Incluye:
 - Plantar, caldero, ventanilla y muebles adaptados al inventario nuevo. El
   caldero usa la hierba que llevas en la mano.
 
+Ajustes tras la primera prueba: un día dura 60 minutos reales por defecto (se
+cambia en F1) y se quitaron los parpadeos de las fachadas (cajas que
+compartían plano con las paredes).
+
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
 Adelanto de la fase 2 (misma rama): la plaza ya tiene **ferretería** (oeste) y

@@ -94,7 +94,7 @@ func _herboristeria() -> void:
 	var tendero: Tendero = Tendero.new()
 	tendero.position = Vector3(0, 1.0, -5.2)
 	tienda.add_child(tendero)
-	Construir.texto(tienda, Vector3(0, 1.25, -4.84), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
+	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
 
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 7
@@ -140,7 +140,7 @@ func _tienda_extra(pos: Vector3, angulo: float, titulo: String, id_tienda: Strin
 	vendedor.texto_hablar = texto_hablar
 	vendedor.position = Vector3(0, 1.0, -5.2)
 	tienda.add_child(vendedor)
-	Construir.texto(tienda, Vector3(0, 1.25, -4.84), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
+	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
 	# Estantes con el género: una cajita de color por cada objeto que vende.
 	var ids: Array = Juego.DatosObjetos.de_tienda(id_tienda)
 	for fila in 3:
@@ -231,5 +231,5 @@ func _fuente() -> void:
 	Construir.cilindro(self, Vector3(0, 1.5, 0), 0.35, 1.6, Color(0.32, 0.32, 0.34), true)
 	# Una estatua decapitada: el último alquimista de la ciudad.
 	Construir.caja(self, Vector3(0, 2.8, 0), Vector3(0.7, 1.0, 0.4), Color(0.36, 0.36, 0.38), false)
-	Construir.texto(self, Vector3(0, 0.45, 2.62), "Aquí ardió el último alquimista. Que sirva de lección.",
+	Construir.texto(self, Vector3(0, 0.45, 2.68), "Aquí ardió el último alquimista. Que sirva de lección.",
 			40, Color(0.7, 0.7, 0.7))

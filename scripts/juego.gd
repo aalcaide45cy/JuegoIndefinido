@@ -25,13 +25,14 @@ const TAM_BARRA: int = 9
 const TAM_INVENTARIO: int = 63    # 9 de la barra + 54 de la mochila.
 const TAM_ESTANTERIA: int = 36
 const VIDA_MAX: float = 100.0
-# Velocidad normal del tiempo: 1 hora del juego = 60 segundos reales.
-const HORAS_POR_SEGUNDO: float = 1.0 / 60.0
+# Cuánto dura un día entero del juego, en minutos reales (se cambia en F1).
+const DURACION_DIA_POR_DEFECTO: float = 60.0
 
 var dinero: int = 0
 var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
+var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
 var casa_alquilada: bool = false
@@ -58,6 +59,8 @@ func reiniciar() -> void:
 	vida = VIDA_MAX
 	hora = 20.0
 	dia = 1
+	duracion_dia_min = DURACION_DIA_POR_DEFECTO
+	velocidad_tiempo = 1.0
 	ha_ganado = false
 	casa_alquilada = false
 	nivel = 1
@@ -71,7 +74,7 @@ func reiniciar() -> void:
 
 
 func _process(delta: float) -> void:
-	hora += delta * HORAS_POR_SEGUNDO * velocidad_tiempo
+	hora += delta * 24.0 / (maxf(1.0, duracion_dia_min) * 60.0) * velocidad_tiempo
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
