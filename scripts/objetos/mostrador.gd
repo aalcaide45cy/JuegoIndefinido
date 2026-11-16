@@ -59,8 +59,43 @@ func _ready() -> void:
 	_cartel.visible = false
 
 
+# De dónde viene el cliente: camina pegado a la fachada (por la acera), no de
+# frente. De frente, en las calles de 8 m salía de dentro del edificio de enfrente.
+# Se elige el lado (izquierda o derecha) que esté libre de obstáculos.
+var _lado_paseo: float = 0.0
+
 func _inicio() -> Vector3:
-	return posicion_cliente + Vector3(0, 0, DISTANCIA_PASEO)
+	if _lado_paseo == 0.0:
+		_lado_paseo = _elegir_lado()
+	# Si ningún lado tiene los 14 m libres, aparece donde empieza el tramo despejado.
+	return posicion_cliente + Vector3(_lado_paseo * maxf(2.0, _tramo_libre), 0, 0)
+
+
+# Comprueba con una cápsula del tamaño de una persona qué lado de la acera está despejado.
+func _elegir_lado() -> float:
+	var espacio: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var capsula: CapsuleShape3D = CapsuleShape3D.new()
+	capsula.radius = 0.3
+	capsula.height = 1.5
+	var consulta: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
+	consulta.shape = capsula
+	var mejor: float = 1.0
+	var mejor_libre: float = -1.0
+	for lado in [1.0, -1.0]:
+		var libre: float = 0.0
+		while libre < DISTANCIA_PASEO:
+			var p: Vector3 = to_global(posicion_cliente + Vector3(lado * (libre + 0.5), 0, 0))
+			consulta.transform = Transform3D(Basis(), Vector3(p.x, p.y + 0.85, p.z))
+			if not espacio.intersect_shape(consulta, 1).is_empty():
+				break
+			libre += 0.5
+		if libre > mejor_libre:
+			mejor_libre = libre
+			mejor = lado
+	_tramo_libre = minf(mejor_libre, DISTANCIA_PASEO)
+	return mejor
+
+var _tramo_libre: float = DISTANCIA_PASEO
 
 
 # Mueve al cliente hacia "destino" (coordenadas locales). Devuelve true al llegar.
@@ -71,7 +106,8 @@ func _caminar(delta: float, destino: Vector3) -> bool:
 		return true
 	var paso: Vector3 = falta.normalized() * minf(falta.length(), VELOCIDAD_CLIENTE * delta)
 	_cliente.position += paso
-	_cliente.rotation.y = lerp_angle(_cliente.rotation.y, atan2(paso.x, paso.z), minf(1.0, delta * 8.0))
+	# El muñeco mira hacia -Z: para andar de frente hay que girarlo así (antes andaba de espaldas).
+	_cliente.rotation.y = lerp_angle(_cliente.rotation.y, atan2(-paso.x, -paso.z), minf(1.0, delta * 8.0))
 	Assets.poner_animacion(_persona, "Walk")
 	return false
 
