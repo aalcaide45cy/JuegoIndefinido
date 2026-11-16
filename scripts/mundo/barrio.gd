@@ -17,6 +17,15 @@ extends Node3D
 
 func _ready() -> void:
 	construir()
+	_optimizar()
+
+
+# Cada edificio (y cada adorno) del barrio se funde en una sola malla: mismo
+# aspecto, muchísimo menos trabajo para la tarjeta gráfica (ver Construir.fusionar).
+func _optimizar() -> void:
+	for hijo in get_children():
+		if hijo is Node3D and hijo.get_script() == null and not hijo is Light3D and not hijo is Label3D:
+			Construir.fusionar(hijo as Node3D)
 
 
 # Cada barrio escribe aquí sus edificios, farolas, puertas...
@@ -65,9 +74,11 @@ func _pared_modular(lado: Node3D, largo: float, piso_desde: int, pisos: int,
 			# Algunas ventanas tienen luz de noche: un cuadro cálido tras el hueco
 			# (ciclo_dia.gd lo enciende al anochecer y lo apaga de día).
 			if "Window" in nombre and rng.randf() < 0.3:
-				var ancho_v: float = 0.45 if "Thin" in nombre else 0.9
-				var vela: MeshInstance3D = Construir.caja(lado, Vector3(x, piso * ALTO_PISO + 1.5, -0.15),
-						Vector3(ancho_v, 1.0, 0.03), Color(1.0, 0.72, 0.38), false, 1.4) as MeshInstance3D
+				# El cuadro es más grande que el hueco (la pared tapa lo que sobra): así
+				# la ventana entera se ve encendida, mires desde donde mires.
+				var ancho_v: float = 0.9 if "Thin" in nombre else 1.7
+				var vela: MeshInstance3D = Construir.caja(lado, Vector3(x, piso * ALTO_PISO + 1.5, -0.12),
+						Vector3(ancho_v, 2.2, 0.03), Color(1.0, 0.72, 0.38), false, 1.4) as MeshInstance3D
 				vela.visible = false
 				vela.add_to_group("ventanas_noche")
 

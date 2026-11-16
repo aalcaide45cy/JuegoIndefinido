@@ -112,8 +112,13 @@ static func poner_animacion(personaje_nodo: Node3D, nombre: String) -> void:
 
 static func _filtrar_armas(nodo: Node, conservar: String) -> void:
 	for h in nodo.get_children():
-		if h is Node3D and ARMAS_PERSONAJE.has(String(h.name)):
-			(h as Node3D).visible = (String(h.name) == conservar)
+		# Algunos modelos traen el arma numerada ("Knife_1", "Knife_2"): se quita el
+		# número para reconocerla (si no, el tendero salía con dos cuchillos en la mano).
+		var nombre: String = String(h.name)
+		var base: String = nombre.rsplit("_", true, 1)[0] if nombre.get_slice_count("_") > 1 \
+				and nombre.rsplit("_", true, 1)[1].is_valid_int() else nombre
+		if h is Node3D and (ARMAS_PERSONAJE.has(nombre) or ARMAS_PERSONAJE.has(base)):
+			(h as Node3D).visible = (nombre == conservar)
 		_filtrar_armas(h, conservar)
 
 

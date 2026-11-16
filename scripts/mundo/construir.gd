@@ -186,6 +186,95 @@ static func ocultar_mallas(nodo: Node) -> void:
 		(malla as MeshInstance3D).visible = false
 
 
+# ------------------------------ Optimización ----------------------------------
+# Funde en una sola malla todas las piezas fijas que cuelgan de "raiz" (paredes,
+# tejado, estantes, adornos...). Un edificio hecho con 200 piezas le cuesta a la
+# tarjeta gráfica 200 "llamadas de dibujo"; fundido, solo una por material. Se ve
+# exactamente igual y los choques no cambian (los cuerpos sólidos se quedan).
+#
+# NO se funde lo que se mueve o cambia: cualquier cosa con script (puertas,
+# vendedores, macetas, muebles que se usan), personajes y modelos con animación.
+# Las ventanas que solo se ven de noche se funden aparte y siguen en su grupo.
+static func fusionar(raiz: Node3D) -> void:
+	var piezas: Array[MeshInstance3D] = []
+	_reunir_mallas(raiz, piezas)
+	if piezas.size() < 2:
+		return
+	var inversa: Transform3D = raiz.global_transform.affine_inverse()
+	var grupos: Dictionary = {}    # clave -> {"st": SurfaceTool, "mat": Material, "noche": bool}
+	for pieza in piezas:
+		var visible_del_todo: bool = pieza.visible
+		var noche: bool = pieza.is_in_group("ventanas_noche")
+		if visible_del_todo or noche:
+			var relativa: Transform3D = inversa * pieza.global_transform
+			for s in pieza.mesh.get_surface_count():
+				var mat: Material = pieza.get_active_material(s)
+				var formato: int = 0
+				if pieza.mesh is ArrayMesh:
+					formato = (pieza.mesh as ArrayMesh).surface_get_format(s)
+				var clave: String = "%s|%d|%s" % [_firma_material(mat), formato, noche]
+				if not grupos.has(clave):
+					var st: SurfaceTool = SurfaceTool.new()
+					grupos[clave] = {"st": st, "mat": mat, "noche": noche, "primera": true}
+				var g: Dictionary = grupos[clave]
+				(g["st"] as SurfaceTool).append_from(pieza.mesh, s, relativa)
+		# La pieza suelta ya no hace falta (su choque, si lo tiene, es otro nodo).
+		pieza.get_parent().remove_child(pieza)
+		pieza.queue_free()
+	var malla_dia: ArrayMesh = ArrayMesh.new()
+	var malla_noche: ArrayMesh = ArrayMesh.new()
+	for clave in grupos:
+		var g: Dictionary = grupos[clave]
+		var st: SurfaceTool = g["st"]
+		st.set_material(g["mat"])
+		st.commit(malla_noche if g["noche"] else malla_dia)
+	if malla_dia.get_surface_count() > 0:
+		var fundida: MeshInstance3D = MeshInstance3D.new()
+		fundida.name = "MallaFundida"
+		fundida.mesh = malla_dia
+		raiz.add_child(fundida)
+	if malla_noche.get_surface_count() > 0:
+		var luces: MeshInstance3D = MeshInstance3D.new()
+		luces.name = "VentanasFundidas"
+		luces.mesh = malla_noche
+		luces.visible = false
+		luces.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		luces.add_to_group("ventanas_noche")
+		raiz.add_child(luces)
+
+
+# Busca las mallas fijas bajo "nodo" sin entrar en lo que tiene vida propia.
+static func _reunir_mallas(nodo: Node, salida: Array[MeshInstance3D]) -> void:
+	for hijo in nodo.get_children():
+		if hijo.get_script() != null or hijo is CharacterBody3D or hijo is RigidBody3D \
+				or hijo is AnimationPlayer or hijo is Skeleton3D:
+			continue
+		if hijo.scene_file_path != "" and not hijo.find_children("*", "AnimationPlayer", true, false).is_empty():
+			continue   # Modelo descargado con animación: se deja como está.
+		if hijo is MeshInstance3D:
+			var m: MeshInstance3D = hijo as MeshInstance3D
+			if m.mesh != null and m.skin == null and m.get_child_count() == 0:
+				salida.append(m)
+				continue
+		_reunir_mallas(hijo, salida)
+
+
+# Dos materiales que se ven igual dan la misma firma, aunque sean copias distintas
+# (cada caja crea el suyo): así sus piezas acaban en la misma malla.
+static func _firma_material(mat: Material) -> String:
+	if mat == null:
+		return "nulo"
+	var m: BaseMaterial3D = mat as BaseMaterial3D
+	if m == null:
+		return str(mat.get_rid().get_id())
+	var t: Texture2D = m.albedo_texture
+	var n: Texture2D = m.normal_texture
+	return str([t.get_rid().get_id() if t != null else 0, n.get_rid().get_id() if n != null else 0,
+			m.albedo_color, m.transparency, m.cull_mode, m.shading_mode, m.roughness, m.metallic,
+			m.emission_enabled, m.emission, m.emission_energy_multiplier, m.uv1_triplanar, m.uv1_scale,
+			m.vertex_color_use_as_albedo, m.normal_enabled])
+
+
 # Una luz que ilumina alrededor (farolas, velas, el fuego del caldero).
 static func luz(padre: Node3D, pos: Vector3, color: Color, energia: float,
 		alcance: float) -> OmniLight3D:
