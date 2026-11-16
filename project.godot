@@ -6,10 +6,14 @@ config_version=5
 [application]
 
 config/name="Elixir Clandestino"
-config/description="Prototipo: cultiva hierbas, mezcla pociones prohibidas y véndelas."
-run/main_scene="res://scenes/main.tscn"
+config/description="Prototipo 3D: pasea por la ciudad, cultiva hierbas, mezcla pociones prohibidas y véndelas."
+run/main_scene="res://scenes/mundo.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Juego="*res://scripts/juego.gd"
 
 [display]
 
