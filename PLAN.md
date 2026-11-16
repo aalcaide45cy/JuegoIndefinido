@@ -182,3 +182,5 @@ Orden de fases (cada una se sube al PR y el PC la prueba):
 5. Campo, casas grandes o en el campo, tractores.
 6. Macetas mejorables (niveles), riego automático, abono y abono mejorado, máquinas de empaquetar, varios locales en alquiler.
 Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola escena; se hará con chunks cargados según distancia. Hoy rinde 220-430 FPS, hay margen pero no para 100x sin streaming.
+
+**Reordenado (consejo del hilo del PC):** tras estilo moderno y minijuegos: mejoras baratas (macetas por niveles, riego, abonos, locales en alquiler, empaquetadora) -> ciudad por chunks con mapa desde datos y red de calles como datos -> vehículos y tráfico -> concesionarios, alquiler y robo -> campo y tractores. Hecho ya: móvil con encargos, mejora de maceta (niveles 1-3), kit de riego y abono mejorado (se usan con E sobre la maceta con el objeto en la mano).

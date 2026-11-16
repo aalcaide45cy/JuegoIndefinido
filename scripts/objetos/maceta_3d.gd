@@ -17,6 +17,11 @@ var progreso: float = 0.0    # De 0.0 (recién plantada) a 1.0 (lista).
 var cosecha: int = 1         # Hierbas que dará al cosechar (según la calidad).
 var calidad: float = 0.0     # De 0 a 1, sale del minijuego.
 var velocidad: float = 1.0   # 1 = normal; con abono, más rápido.
+var nivel: int = 1           # 1-3: sube con "Mejora de maceta" (más rápida y más cosecha).
+var riego: bool = false      # Kit de riego instalado: +20% de velocidad.
+var abonada_extra: bool = false   # Ya recibió abono mejorado.
+var _anillo: Node3D
+var _grifo: Node3D
 
 var _tierra: Node3D
 var _planta: Node3D = null
@@ -33,6 +38,26 @@ func _ready() -> void:
 	Construir.cilindro(self, Vector3(0, 0.29, 0), 0.22, 0.02, Color(0.08, 0.06, 0.05))  # Hueco vacío.
 	_tierra = Construir.cilindro(self, Vector3(0, 0.27, 0), 0.23, 0.05, Color(0.17, 0.11, 0.08))
 	_tierra.visible = false
+	_decorar()
+
+
+# Aspecto de las mejoras: anillo plateado (nivel 2) o dorado (nivel 3) y un tubito azul de riego.
+func _decorar() -> void:
+	if _anillo != null:
+		_anillo.queue_free()
+		_anillo = null
+	if _grifo != null:
+		_grifo.queue_free()
+		_grifo = null
+	if nivel >= 2:
+		_anillo = Construir.cilindro(self, Vector3(0, 0.24, 0), 0.235, 0.05,
+				Color(0.85, 0.85, 0.9) if nivel == 2 else Color(0.95, 0.78, 0.25), false, 0.2)
+	if riego:
+		_grifo = Construir.cilindro(self, Vector3(0.22, 0.2, 0), 0.025, 0.4, Color(0.3, 0.6, 0.9), false, 0.3)
+
+
+func _factor_velocidad() -> float:
+	return (1.0 + 0.25 * (nivel - 1)) * (1.2 if riego else 1.0)
 
 
 func _process(delta: float) -> void:
@@ -59,7 +84,7 @@ func adelantar(segundos: float) -> void:
 func texto_accion() -> String:
 	match estado:
 		Estado.VACIA:
-			return "Plantar en la maceta"
+			return "Plantar en la maceta (nivel %d%s)" % [nivel, ", riego" if riego else ""]
 		Estado.CRECIENDO:
 			return "%s creciendo... %d%%" % [GameData.HIERBAS[tipo_hierba]["nombre"], int(progreso * 100)]
 		_:
@@ -67,6 +92,42 @@ func texto_accion() -> String:
 
 
 func usar(jugador: Node) -> void:
+	# Con una mejora en la mano, E la aplica en vez de la acción normal.
+	var mano: String = Juego.id_en_mano()
+	if mano == "mejora_maceta":
+		if nivel >= 3:
+			Juego.avisar("Esta maceta ya está al nivel máximo.")
+		else:
+			Juego.quitar(mano, 1)
+			var antes: float = _factor_velocidad()
+			nivel += 1
+			if estado == Estado.CRECIENDO:
+				velocidad *= _factor_velocidad() / antes
+				cosecha += 1
+			_decorar()
+			Juego.avisar("Maceta mejorada al nivel %d." % nivel)
+		return
+	if mano == "kit_riego":
+		if riego:
+			Juego.avisar("Esta maceta ya tiene riego automático.")
+		else:
+			Juego.quitar(mano, 1)
+			riego = true
+			if estado == Estado.CRECIENDO:
+				velocidad *= 1.2
+			_decorar()
+			Juego.avisar("Riego automático instalado.")
+		return
+	if mano == "abono_mejorado":
+		if estado != Estado.CRECIENDO or abonada_extra:
+			Juego.avisar("El abono mejorado se echa sobre una planta que esté creciendo (una vez).")
+		else:
+			Juego.quitar(mano, 1)
+			abonada_extra = true
+			velocidad *= 1.5
+			cosecha += 1
+			Juego.avisar("Abono mejorado aplicado: crece más rápido y dará una hierba más.")
+		return
 	match estado:
 		Estado.VACIA:
 			var falta: String = _que_falta()
@@ -110,7 +171,8 @@ func plantar(id_hierba: String, nota: float, con_abono: bool) -> void:
 	tipo_hierba = id_hierba
 	calidad = nota
 	progreso = 0.0
-	velocidad = 1.5 if con_abono else 1.0
+	velocidad = (1.5 if con_abono else 1.0) * _factor_velocidad()
+	abonada_extra = false
 	# Calidad baja: 1 hierba; media: 2; alta: 3. El abono suma una más.
 	cosecha = 1
 	if nota >= 0.45:
@@ -119,6 +181,7 @@ func plantar(id_hierba: String, nota: float, con_abono: bool) -> void:
 		cosecha = 3
 	if con_abono:
 		cosecha += 1
+	cosecha += nivel - 1
 	estado = Estado.CRECIENDO
 	_tierra.visible = true
 	_crear_planta(id_hierba)
@@ -128,18 +191,23 @@ func plantar(id_hierba: String, nota: float, con_abono: bool) -> void:
 # Datos para guardar la partida.
 func exportar() -> Dictionary:
 	return {"estado": int(estado), "tipo": tipo_hierba, "progreso": progreso,
-			"cosecha": cosecha, "calidad": calidad, "velocidad": velocidad}
+			"cosecha": cosecha, "calidad": calidad, "velocidad": velocidad,
+			"nivel": nivel, "riego": riego, "extra": abonada_extra}
 
 
 # Restaura una maceta guardada (lo inverso de exportar).
 func importar(d: Dictionary) -> void:
 	_vaciar()
+	nivel = clampi(int(d.get("nivel", 1)), 1, 3)
+	riego = bool(d.get("riego", false))
+	_decorar()
 	var guardado: int = int(d.get("estado", 0))
 	if guardado == int(Estado.VACIA) or not GameData.HIERBAS.has(str(d.get("tipo", ""))):
 		return
 	plantar(str(d["tipo"]), float(d.get("calidad", 0.5)), false)
 	velocidad = float(d.get("velocidad", 1.0))
-	cosecha = int(d.get("cosecha", 1))
+	cosecha = clampi(int(d.get("cosecha", 1)), 1, 20)
+	abonada_extra = bool(d.get("extra", false))
 	progreso = clampf(float(d.get("progreso", 0.0)), 0.0, 1.0)
 	if guardado == int(Estado.LISTA):
 		progreso = 1.0

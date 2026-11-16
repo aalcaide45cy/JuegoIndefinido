@@ -50,6 +50,24 @@ const LISTA: Dictionary = {
 		"color": Color(0.5, 0.45, 0.3), "forma": "saco",
 		"descripcion": "Opcional. La planta crece más rápido y da una hierba más.",
 	},
+	"abono_mejorado": {
+		"nombre": "Abono mejorado", "tipo": "material", "pila": 20, "precio": 40,
+		"tienda": "herbolario", "nivel": 3, "habilidad": "",
+		"color": Color(0.35, 0.65, 0.3), "forma": "saco",
+		"descripcion": "Con E sobre una planta creciendo: +50% de velocidad y una hierba más (una vez).",
+	},
+	"mejora_maceta": {
+		"nombre": "Mejora de maceta", "tipo": "material", "pila": 20, "precio": 90,
+		"tienda": "herbolario", "nivel": 2, "habilidad": "",
+		"color": Color(0.8, 0.8, 0.9), "forma": "saco",
+		"descripcion": "Con E sobre una maceta sube su nivel (máx. 3): crece más rápido y da más hierbas.",
+	},
+	"kit_riego": {
+		"nombre": "Kit de riego", "tipo": "material", "pila": 20, "precio": 120,
+		"tienda": "herbolario", "nivel": 2, "habilidad": "",
+		"color": Color(0.3, 0.6, 0.9), "forma": "jarra",
+		"descripcion": "Con E sobre una maceta instala riego automático: +20% de velocidad.",
+	},
 	"maceta": {
 		"nombre": "Maceta de barro", "tipo": "material", "pila": 20, "precio": 20,
 		"tienda": "herbolario", "nivel": 1, "habilidad": "",
