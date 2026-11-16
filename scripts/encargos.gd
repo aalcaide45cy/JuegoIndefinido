@@ -197,10 +197,16 @@ func entregar(id: int) -> String:
 		if int(e["id"]) != id or e["estado"] != "aceptado":
 			continue
 		var item: String = "pocion_" + str(e["pocion"])
+		var paquete: String = "paquete_" + str(e["pocion"])
 		var cant: int = int(e["cantidad"])
-		if not Juego.tiene(item, cant):
-			return "Te faltan pociones: necesitas %d x %s." % [cant, GameData.POCIONES[e["pocion"]]["nombre"]]
+		var bonus: float = 1.0
+		if Juego.tiene(paquete, cant):
+			item = paquete
+			bonus = 1.3   # Empaquetado: +30%.
+		elif not Juego.tiene(item, cant):
+			return "Te faltan pociones: necesitas %d x %s (mejor si van empaquetadas)." % [cant, GameData.POCIONES[e["pocion"]]["nombre"]]
 		Juego.quitar(item, cant)
+		e["pago"] = int(int(e["pago"]) * bonus)
 		Juego.cobrar(int(e["pago"]))
 		Juego.ganar_xp(15 * cant)
 		Juego.reputacion = mini(100, Juego.reputacion + 3)

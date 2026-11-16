@@ -102,6 +102,24 @@ const LISTA: Dictionary = {
 		"color": Color(0.62, 0.58, 0.7), "forma": "seta",
 		"descripcion": "Cosechado. Échalo al caldero.",
 	},
+	"paquete_humo": {
+		"nombre": "Paquete: Humo del Olvido", "tipo": "paquete", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.75, 0.6, 0.4), "forma": "saco",
+		"descripcion": "Poción empaquetada. Los clientes de los encargos pagan un 30% más.",
+	},
+	"paquete_sueno": {
+		"nombre": "Paquete: Elixir del Mal Sueño", "tipo": "paquete", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.75, 0.6, 0.4), "forma": "saco",
+		"descripcion": "Poción empaquetada. Los clientes de los encargos pagan un 30% más.",
+	},
+	"paquete_sombra": {
+		"nombre": "Paquete: Tónico de la Sombra Propia", "tipo": "paquete", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.75, 0.6, 0.4), "forma": "saco",
+		"descripcion": "Poción empaquetada. Los clientes de los encargos pagan un 30% más.",
+	},
 	"pocion_humo": {
 		"nombre": "Humo del Olvido", "tipo": "pocion", "pila": 20, "precio": 0,
 		"tienda": "", "nivel": 1, "habilidad": "",

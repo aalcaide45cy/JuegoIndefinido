@@ -135,7 +135,7 @@ func _pintar_encargos() -> void:
 		var pos: Array = e["pos"]
 		_texto(v, "%s" % e["cliente"], 18, ACENTO)
 		_texto(v, "Quiere: %d x %s" % [e["cantidad"], nombre_p])
-		_texto(v, "Pago: %d $   (tienes %d)" % [e["pago"], Juego.cuenta("pocion_" + str(e["pocion"]))])
+		_texto(v, "Pago: %d $   (tienes %d)" % [e["pago"], Juego.cuenta("pocion_" + str(e["pocion"])) + Juego.cuenta("paquete_" + str(e["pocion"]))])
 		if e["estado"] == "oferta":
 			var t: Label = _texto(v, "", 14, Color(1.0, 0.8, 0.4))
 			_temporizadores.append([t, int(e["id"]), "Responde en: "])

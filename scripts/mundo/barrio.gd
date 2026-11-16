@@ -582,6 +582,9 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	var caldero: Caldero3D = Caldero3D.new()
 	caldero.position = Vector3(3.3, 0, -4.2)
 	casa.add_child(caldero)
+	var empaquetadora: Empaquetadora = Empaquetadora.new()
+	empaquetadora.position = Vector3(1.4, 0, -7.2)
+	casa.add_child(empaquetadora)
 	var recetas: PackedStringArray = ["RECETARIO (no enseñar a la guardia)"]
 	for id_pocion in GameData.POCIONES:
 		recetas.append("%s = %s" % [GameData.POCIONES[id_pocion]["nombre"], GameData.texto_receta(id_pocion)])

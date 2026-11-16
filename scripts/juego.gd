@@ -105,7 +105,7 @@ func motivos_ilegales() -> PackedStringArray:
 		if casilla != null:
 			tipos[DatosObjetos.datos(casilla["id"])["tipo"]] = true
 	var lista: PackedStringArray = []
-	if tipos.has("pocion"):
+	if tipos.has("pocion") or tipos.has("paquete"):
 		lista.append("pociones prohibidas")
 	if tipos.has("hierba"):
 		lista.append("hierbas prohibidas")
@@ -123,7 +123,7 @@ func lleva_ilegal() -> bool:
 		if casilla == null:
 			continue
 		var tipo: String = DatosObjetos.datos(casilla["id"])["tipo"]
-		if tipo == "pocion" or tipo == "hierba" or tipo == "arma_fuego" or tipo == "explosivo":
+		if tipo == "pocion" or tipo == "paquete" or tipo == "hierba" or tipo == "arma_fuego" or tipo == "explosivo":
 			return true
 	return false
 
