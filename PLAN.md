@@ -41,8 +41,11 @@ Incluye:
 - Plantar, caldero, ventanilla y muebles adaptados al inventario nuevo. El
   caldero usa la hierba que llevas en la mano.
 
-Pendiente de la fase 1: probar en Godot y corregir lo que falle. El tendero
-solo existe en la herboristería; ferretería y armería llegan en la fase 2.
+Pendiente de la fase 1: probar en Godot y corregir lo que falle.
+
+Adelanto de la fase 2 (misma rama): la plaza ya tiene **ferretería** (oeste) y
+**armería** (sur) con interior y vendedor; lo que venden sale de
+`scripts/datos/objetos.gd` (campo `tienda`). Falta la ciudad grande por barrios.
 
 ## Peticiones nuevas de Alfonso (2026-11-16)
 

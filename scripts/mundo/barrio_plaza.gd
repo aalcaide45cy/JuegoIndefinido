@@ -14,6 +14,7 @@ const MITAD: float = 20.0   # La plaza va de -20 a 20 en X y en Z.
 const FONDO_CASAS: float = 8.0
 const ANCHO_HERBORISTERIA: float = 10.0
 const ANCHO_VIVIENDA: float = 10.0
+const ANCHO_TIENDA: float = 10.0
 
 
 func construir() -> void:
@@ -29,13 +30,23 @@ func construir() -> void:
 	var v: float = ANCHO_VIVIENDA / 2.0
 	fila_edificios(Vector3(0, 0, -MITAD), 0.0, -e, -h, FONDO_CASAS, rng)
 	fila_edificios(Vector3(0, 0, -MITAD), 0.0, h, e, FONDO_CASAS, rng)
-	fila_edificios(Vector3(0, 0, MITAD), PI, -e, e, FONDO_CASAS, rng)
+	var t: float = ANCHO_TIENDA / 2.0
+	# Sur: hueco para la armería. Oeste: hueco para la ferretería.
+	fila_edificios(Vector3(0, 0, MITAD), PI, -e, -t, FONDO_CASAS, rng)
+	fila_edificios(Vector3(0, 0, MITAD), PI, t, e, FONDO_CASAS, rng)
 	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, -MITAD, -v, FONDO_CASAS, rng)
 	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, v, MITAD, FONDO_CASAS, rng)
-	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, MITAD, FONDO_CASAS, rng)
+	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, -t, FONDO_CASAS, rng)
+	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, t, MITAD, FONDO_CASAS, rng)
 
 	_herboristeria()
 	_vivienda()
+	_tienda_extra(Vector3(-MITAD, 0, 0), PI / 2.0, "FERRETERÍA  Clavo y Martillo", "ferreteria",
+			"Ferretería Clavo y Martillo", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4),
+			Color(0.26, 0.24, 0.2), Color(0.38, 0.33, 0.27))
+	_tienda_extra(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
+			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4),
+			Color(0.24, 0.2, 0.2), Color(0.33, 0.28, 0.27))
 	_fuente()
 
 	farola(Vector3(-10, 0, -10))
@@ -44,7 +55,7 @@ func construir() -> void:
 	farola(Vector3(10, 0, 12))
 
 	# Cartel del Prefecto en la pared oeste: la magia está prohibida.
-	var cartel: Label3D = Construir.texto(self, Vector3(-MITAD + 0.12, 2.2, 4),
+	var cartel: Label3D = Construir.texto(self, Vector3(-MITAD + 0.12, 2.2, 12),
 			"POR DECRETO DEL PREFECTO\nQueda prohibida toda magia,\nalquimia y brebaje.\nSe pagan 50 $ por cada bruja.",
 			80, Color(0.85, 0.8, 0.65))
 	cartel.rotation.y = PI / 2.0
@@ -101,6 +112,45 @@ func _herboristeria() -> void:
 	for i in 5:
 		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 3.1, -3.0), 0.12, 0.5,
 				Color(0.3, 0.45, 0.25), false, 0.0, 0.02)
+
+
+# --------------- Otras tiendas (ferretería, armería...) ------------------------
+# Una tienda con interior: mostrador con vendedor al fondo y estantes con
+# género. "id_tienda" es el campo "tienda" de scripts/datos/objetos.gd, así
+# que lo que se vende sale de ese archivo.
+
+func _tienda_extra(pos: Vector3, angulo: float, titulo: String, id_tienda: String,
+		nombre: String, texto_hablar: String, color_cartel: Color,
+		color: Color, color_interior: Color) -> void:
+	var huecos: Array = [
+		{"x": 0.0, "ancho": 1.6, "abajo": 0.0, "arriba": 2.5},
+		{"x": -3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
+		{"x": 3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
+	]
+	var tienda: Node3D = edificio_visitable(pos, angulo, ANCHO_TIENDA, FONDO_CASAS, 9.0,
+			color, color_interior, huecos)
+	Construir.texto(tienda, Vector3(0, 3.05, 0.12), titulo, 90, color_cartel)
+	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
+	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.4, 8.0)
+	# Mostrador y vendedor.
+	Construir.caja(tienda, Vector3(0, 0.5, -5.2), Vector3(5.0, 1.0, 0.7), Color(0.3, 0.2, 0.13))
+	var vendedor: Tendero = Tendero.new()
+	vendedor.tienda = id_tienda
+	vendedor.nombre_tienda = nombre
+	vendedor.texto_hablar = texto_hablar
+	vendedor.position = Vector3(0, 1.0, -5.2)
+	tienda.add_child(vendedor)
+	Construir.texto(tienda, Vector3(0, 1.25, -4.84), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
+	# Estantes con el género: una cajita de color por cada objeto que vende.
+	var ids: Array = Juego.DatosObjetos.de_tienda(id_tienda)
+	for fila in 3:
+		var y: float = 0.6 + fila * 0.65
+		Construir.caja(tienda, Vector3(0, y, -7.6), Vector3(8.0, 0.05, 0.45), Color(0.25, 0.17, 0.11), false)
+		for i in 10:
+			var color_obj: Color = Color(0.4, 0.4, 0.4)
+			if not ids.is_empty():
+				color_obj = Juego.DatosObjetos.datos(ids[(fila * 10 + i) % ids.size()])["color"]
+			Construir.caja(tienda, Vector3(-3.6 + i * 0.8, y + 0.15, -7.6), Vector3(0.3, 0.25, 0.25), color_obj, false)
 
 
 # ------------------------------- Tu casa --------------------------------------
