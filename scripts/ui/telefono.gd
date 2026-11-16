@@ -70,7 +70,7 @@ func _process(_delta: float) -> void:
 	var firma: String = "%d|" % _pestana
 	for e in Juego.encargos:
 		firma += "%s%s," % [e["id"], e["estado"]]
-	firma += "|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size()]
+	firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
 	if firma != _firma:
 		_reconstruir()
 	for t in _temporizadores:
@@ -92,7 +92,7 @@ func _reconstruir() -> void:
 	_firma = "%d|" % _pestana
 	for e in Juego.encargos:
 		_firma += "%s%s," % [e["id"], e["estado"]]
-	_firma += "|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size()]
+	_firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
 	match _pestana:
 		0: _pintar_encargos()
 		1: _pintar_pedidos()
@@ -198,6 +198,11 @@ func _pintar_pedidos() -> void:
 		var b: Button = Hud.crear_boton("Pedir %d (%d $)" % [cant, int(d["precio"]) * cant + Encargos.TASA_ENVIO], _pedir.bind(id))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		fila.add_child(b)
+		# Bloqueado por nivel o habilidad, igual que en la tienda.
+		var motivo: String = Juego.motivo_no_compra(id)
+		if motivo != "":
+			b.disabled = true
+			_texto(v, "🔒 " + motivo, 13, Color(1, 0.45, 0.4))
 
 
 func _cambiar_cantidad(id: String, delta: int) -> void:

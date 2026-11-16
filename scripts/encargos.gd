@@ -222,6 +222,11 @@ func entregar(id: int) -> String:
 # Pedido de materiales desde el móvil: paga ahora y llega en unos segundos.
 func pedir_material(id: String, cantidad: int) -> String:
 	var d: Dictionary = DatosObjetos.datos(id)
+	# Mismas condiciones que en la tienda (nivel y habilidad): por el móvil no se
+	# puede pedir lo que el tendero aún no te vende.
+	var motivo: String = Juego.motivo_no_compra(id)
+	if motivo != "":
+		return "%s para pedir %s." % [motivo, d["nombre"]]
 	var coste: int = int(d["precio"]) * cantidad + TASA_ENVIO
 	if not Juego.gastar(coste):
 		return "No tienes %d $ (incluye %d $ de envío)." % [coste, TASA_ENVIO]
