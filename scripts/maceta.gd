@@ -20,7 +20,7 @@ signal pulsada(maceta: Maceta)
 enum Estado { VACIA, CRECIENDO, LISTA }
 
 var estado: Estado = Estado.VACIA
-var tipo_hierba: String = ""     # Qué hay plantado, por ejemplo "risuena".
+var tipo_hierba: String = ""     # Qué hay plantado, por ejemplo "bruma".
 var progreso: float = 0.0        # De 0.0 (recién plantada) a 1.0 (lista).
 
 var _raton_encima: bool = false  # Para iluminar la maceta al pasar el ratón.
@@ -89,7 +89,7 @@ func _draw() -> void:
 	var alto: float = size.y
 
 	# Fondo de la casilla (más claro si el ratón está encima).
-	var fondo: Color = Color(0.22, 0.17, 0.12) if not _raton_encima else Color(0.3, 0.24, 0.17)
+	var fondo: Color = Color(0.1, 0.1, 0.12) if not _raton_encima else Color(0.16, 0.16, 0.2)
 	draw_rect(Rect2(Vector2.ZERO, size), fondo)
 
 	# La maceta: un trapecio marrón (más ancho arriba que abajo).
@@ -101,7 +101,7 @@ func _draw() -> void:
 		Vector2(ancho * 0.7, abajo_y),
 		Vector2(ancho * 0.3, abajo_y),
 	]
-	draw_colored_polygon(puntos, Color(0.72, 0.4, 0.22))
+	draw_colored_polygon(puntos, Color(0.4, 0.27, 0.2))
 	# Tierra
 	draw_rect(Rect2(ancho * 0.22, arriba_y, ancho * 0.56, 8.0), Color(0.3, 0.2, 0.12))
 
@@ -117,18 +117,29 @@ func _draw() -> void:
 	var punta: Vector2 = base - Vector2(0, altura_tallo)
 	draw_line(base, punta, Color(0.25, 0.55, 0.2), 4.0)
 
-	if tipo_hierba == "seta":
-		# Una seta: sombrero redondo con puntos blancos.
+	if GameData.HIERBAS[tipo_hierba]["forma"] == "seta":
+		# Un hongo: sombrero (medio círculo) con manchas oscuras.
 		var radio: float = lerpf(6.0, 26.0, progreso)
 		draw_circle(punta, radio, color_planta)
-		draw_circle(punta + Vector2(-radio * 0.4, -radio * 0.2), radio * 0.18, Color.WHITE)
-		draw_circle(punta + Vector2(radio * 0.35, -radio * 0.35), radio * 0.15, Color.WHITE)
+		draw_rect(Rect2(punta.x - radio, punta.y, radio * 2.0, radio), fondo)
+		draw_line(punta, punta + Vector2(0, radio), Color(0.75, 0.72, 0.68), 5.0)  # Pie del hongo.
+		draw_circle(punta + Vector2(-radio * 0.4, -radio * 0.4), radio * 0.16, Color(0.2, 0.15, 0.25))
+		draw_circle(punta + Vector2(radio * 0.35, -radio * 0.55), radio * 0.12, Color(0.2, 0.15, 0.25))
 	else:
-		# Una hierba: varias hojas (círculos) alrededor del tallo.
-		var radio_hoja: float = lerpf(4.0, 14.0, progreso)
-		draw_circle(punta, radio_hoja, color_planta)
-		draw_circle(punta + Vector2(-radio_hoja, radio_hoja), radio_hoja, color_planta)
-		draw_circle(punta + Vector2(radio_hoja, radio_hoja), radio_hoja, color_planta)
+		# Una planta de hojas alargadas y puntiagudas, abiertas en abanico.
+		var largo: float = lerpf(8.0, 34.0, progreso)
+		for angulo_grados in [-70.0, -35.0, 0.0, 35.0, 70.0]:
+			var direccion: Vector2 = Vector2.UP.rotated(deg_to_rad(angulo_grados))
+			var lado: Vector2 = direccion.orthogonal() * largo * 0.18
+			# Las hojas laterales son un poco más cortas que la central.
+			var factor: float = 1.0 - absf(angulo_grados) / 200.0
+			var hoja: PackedVector2Array = [
+				punta,
+				punta + direccion * largo * factor * 0.5 + lado,
+				punta + direccion * largo * factor,
+				punta + direccion * largo * factor * 0.5 - lado,
+			]
+			draw_colored_polygon(hoja, color_planta)
 
 	if estado == Estado.CRECIENDO:
 		# Barra de progreso arriba.

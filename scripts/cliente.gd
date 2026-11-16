@@ -3,7 +3,7 @@
 # El cliente que espera en el mostrador. Pide una poción concreta y tiene una
 # barra de paciencia: si se acaba antes de que le vendas, se marcha enfadado.
 #
-# Cuando no hay nadie en la tienda, "presente" vale false y no se dibuja nada.
+# Cuando no hay nadie en el callejón, "presente" vale false y no se dibuja nada.
 # -----------------------------------------------------------------------------
 class_name Cliente
 extends Control
@@ -13,8 +13,9 @@ signal se_cansa
 
 # Nombres graciosos para los clientes (puedes añadir los que quieras).
 const NOMBRES: Array[String] = [
-	"Doña Remedios", "El Herrero Tito", "Fray Anselmo", "La Baronesa Pía",
-	"Pepe el Bardo", "Sir Gualterio", "La Tía Eulalia", "Un guardia (fuera de turno)",
+	"La Viuda Remedios", "El Enterrador Tito", "Fray Anselmo (sin hábito)",
+	"La Baronesa Pálida", "Un bardo con ojeras", "Sir Gualterio el Tuerto",
+	"La Vieja del Pozo", "Un guardia (fuera de turno)",
 ]
 
 var presente: bool = false
@@ -48,7 +49,7 @@ func llegar() -> void:
 	pedido = GameData.POCIONES.keys().pick_random()
 	paciencia_max = randf_range(25.0, 40.0)
 	paciencia = paciencia_max
-	_color_ropa = Color.from_hsv(randf(), 0.5, 0.75)
+	_color_ropa = Color.from_hsv(randf(), 0.35, 0.4)
 	queue_redraw()
 
 
@@ -62,7 +63,7 @@ func marcharse() -> void:
 func _draw() -> void:
 	if not presente:
 		draw_string(get_theme_default_font(), Vector2(0, size.y * 0.5),
-				"(No hay nadie... por ahora)", HORIZONTAL_ALIGNMENT_CENTER, size.x, 16,
+				"(Solo se oye la lluvia...)", HORIZONTAL_ALIGNMENT_CENTER, size.x, 16,
 				Color(0.7, 0.7, 0.7))
 		return
 
@@ -70,7 +71,7 @@ func _draw() -> void:
 	# Cuerpo: un rectángulo con el color de la ropa.
 	draw_rect(Rect2(cx - 35, 120, 70, 90), _color_ropa)
 	# Cabeza: un círculo color piel.
-	draw_circle(Vector2(cx, 95), 28.0, Color(0.95, 0.8, 0.65))
+	draw_circle(Vector2(cx, 95), 28.0, Color(0.78, 0.76, 0.72))
 	# Ojos.
 	draw_circle(Vector2(cx - 10, 90), 4.0, Color.BLACK)
 	draw_circle(Vector2(cx + 10, 90), 4.0, Color.BLACK)
@@ -79,7 +80,7 @@ func _draw() -> void:
 	var curva: float = lerpf(-6.0, 6.0, animo)
 	draw_line(Vector2(cx - 10, 106), Vector2(cx, 106 + curva), Color.BLACK, 2.0)
 	draw_line(Vector2(cx, 106 + curva), Vector2(cx + 10, 106), Color.BLACK, 2.0)
-	# Sombrero de pico (para darle aire medieval).
+	# Capucha de pico (nadie quiere que le reconozcan aquí).
 	var sombrero: PackedVector2Array = [
 		Vector2(cx - 32, 72), Vector2(cx + 32, 72), Vector2(cx + 4, 30),
 	]

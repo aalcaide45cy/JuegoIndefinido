@@ -25,19 +25,24 @@ const INGREDIENTES_POR_POCION: int = 2
 
 # Hierbas que se pueden plantar en el huerto.
 #  - nombre: lo que ve el jugador.
+#  - forma: cómo se dibuja ("hoja" = planta de hojas dentadas, "seta" = hongo).
 #  - color: color de la planta y del líquido en el caldero.
 #  - tiempo: segundos que tarda en crecer.
 #  - precio_semilla: monedas que cuesta plantarla.
 const HIERBAS: Dictionary = {
-	"risuena": {
-		"nombre": "Hierba Risueña",
-		"color": Color(0.45, 0.85, 0.35),
+	# La hierba estrella: ilegal, de hojas dentadas, cuyo humo hace soñar.
+	"bruma": {
+		"nombre": "Hoja de Bruma",
+		"forma": "hoja",
+		"color": Color(0.3, 0.6, 0.35),
 		"tiempo": 5.0,
 		"precio_semilla": 2,
 	},
-	"seta": {
-		"nombre": "Seta Saltarina",
-		"color": Color(0.9, 0.35, 0.35),
+	# Un hongo pálido que solo crece donde hay huesos.
+	"sepulcral": {
+		"nombre": "Hongo Sepulcral",
+		"forma": "seta",
+		"color": Color(0.62, 0.58, 0.7),
 		"tiempo": 8.0,
 		"precio_semilla": 3,
 	},
@@ -47,37 +52,37 @@ const HIERBAS: Dictionary = {
 # Pociones que se pueden mezclar.
 #  - receta: los ingredientes que hay que echar al caldero (el orden da igual).
 #  - precio: lo que paga el cliente.
-#  - efecto: una frase graciosa que se muestra al venderla.
+#  - efecto: una frase (oscura y algo absurda) que se muestra al venderla.
 const POCIONES: Dictionary = {
-	"risa": {
-		"nombre": "Poción de la Risa Tonta",
-		"color": Color(0.55, 0.95, 0.45),
-		"receta": ["risuena", "risuena"],
+	"humo": {
+		"nombre": "Humo del Olvido",
+		"color": Color(0.35, 0.7, 0.45),
+		"receta": ["bruma", "bruma"],
 		"precio": 8,
-		"efecto": "El cliente se ríe de una piedra durante una hora.",
+		"efecto": "El cliente olvida su nombre, sus deudas y dónde enterró a su suegra.",
 	},
-	"rebote": {
-		"nombre": "Elixir del Rebote",
-		"color": Color(0.95, 0.75, 0.3),
-		"receta": ["risuena", "seta"],
+	"sueno": {
+		"nombre": "Elixir del Mal Sueño",
+		"color": Color(0.45, 0.55, 0.6),
+		"receta": ["bruma", "sepulcral"],
 		"precio": 13,
-		"efecto": "El cliente rebota como una pelota al salir de la tienda.",
+		"efecto": "Esta noche soñará con sus antepasados. Ellos no están contentos.",
 	},
-	"bigote": {
-		"nombre": "Tónico del Bigote Andante",
-		"color": Color(0.75, 0.35, 0.85),
-		"receta": ["seta", "seta"],
+	"sombra": {
+		"nombre": "Tónico de la Sombra Propia",
+		"color": Color(0.4, 0.3, 0.55),
+		"receta": ["sepulcral", "sepulcral"],
 		"precio": 17,
-		"efecto": "Al cliente le crece un bigote que camina solo.",
+		"efecto": "La sombra del cliente se marcha por su cuenta. Volverá... quizá.",
 	},
 }
 
 
 # Recibe la lista de ingredientes que hay en el caldero y devuelve el
-# identificador de la poción que sale (por ejemplo "risa").
+# identificador de la poción que sale (por ejemplo "humo").
 # Si no coincide con ninguna receta, devuelve un texto vacío "".
 static func buscar_pocion(ingredientes: Array) -> String:
-	# Ordenamos para que ["seta", "risuena"] y ["risuena", "seta"] cuenten igual.
+	# Ordenamos para que ["sepulcral", "bruma"] y ["bruma", "sepulcral"] cuenten igual.
 	var ordenados: Array = []
 	ordenados.append_array(ingredientes)
 	ordenados.sort()
@@ -90,7 +95,7 @@ static func buscar_pocion(ingredientes: Array) -> String:
 	return ""
 
 
-# Devuelve el texto de la receta, por ejemplo "Hierba Risueña + Seta Saltarina".
+# Devuelve el texto de la receta, por ejemplo "Hoja de Bruma + Hongo Sepulcral".
 static func texto_receta(id_pocion: String) -> String:
 	var nombres: PackedStringArray = []
 	for id_hierba in POCIONES[id_pocion]["receta"]:

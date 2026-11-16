@@ -7,7 +7,7 @@
 class_name Caldero
 extends Control
 
-# Ingredientes echados, por ejemplo ["risuena", "seta"].
+# Ingredientes echados, por ejemplo ["bruma", "sepulcral"].
 var ingredientes: Array[String] = []
 
 # Pequeño efecto visual: cuando mezclas, el caldero "salta" un momento.
@@ -61,7 +61,7 @@ func _draw() -> void:
 	centro.y -= sin(_sacudida * PI) * 12.0  # El saltito al mezclar.
 	var radio: float = minf(size.x, size.y) * 0.38
 
-	# Fuego debajo (tres triángulos naranjas que tiemblan).
+	# Fuego debajo (tres llamas verdes y fantasmales que tiemblan).
 	var t: float = Time.get_ticks_msec() / 150.0
 	for i in 3:
 		var x: float = centro.x + (i - 1) * radio * 0.5
@@ -71,7 +71,7 @@ func _draw() -> void:
 			Vector2(x + 12, size.y - 4),
 			Vector2(x, size.y - 4 - alto_llama),
 		]
-		draw_colored_polygon(llama, Color(1.0, 0.55, 0.1))
+		draw_colored_polygon(llama, Color(0.35, 0.9, 0.5, 0.85))
 
 	# Cuerpo del caldero: un círculo negro grande.
 	draw_circle(centro, radio, Color(0.12, 0.12, 0.14))

@@ -1,15 +1,17 @@
 # Elixir Clandestino (nombre provisional)
 
-Juego 2D de gestión hecho con **Godot 4.7** (GDScript). De día eres una
-herboristería normal; de noche, en el sótano, preparas pociones prohibidas por
-la Corona y las vendes a escondidas.
+Juego 2D de gestión, de tono oscuro, hecho con **Godot 4.7** (GDScript). De día
+eres una herboristería normal; de noche, bajo la trampilla, cultivas Hoja de
+Bruma (una hierba prohibida cuyo humo hace soñar), preparas pociones vetadas
+por la Corona y las vendes por la puerta trasera.
 
 ## Estado actual: prototipo 0.1
 
 Un bucle mínimo jugable, con arte provisional hecho con formas simples:
 
-1. **Huerto**: eliges una semilla y haces clic en una maceta vacía. Cuando la
-   planta crece, haces clic otra vez para cosecharla.
+1. **Huerto**: eliges una semilla (Hoja de Bruma u Hongo Sepulcral) y haces
+   clic en una maceta vacía. Cuando la planta crece, haces clic otra vez para
+   cosecharla.
 2. **Caldero**: echas 2 hierbas y pulsas **¡Mezclar!** para obtener una poción.
 3. **Mostrador**: entra un cliente pidiendo una poción. Si la tienes, pulsa
    **Vender poción** antes de que se le acabe la paciencia.

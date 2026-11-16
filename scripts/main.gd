@@ -21,7 +21,7 @@ const NUMERO_MACETAS: int = 3
 var dinero: int = GameData.DINERO_INICIAL
 var hierbas: Dictionary = {}     # id_hierba -> cantidad en el almacén
 var pociones: Dictionary = {}    # id_pocion -> cantidad lista para vender
-var semilla_elegida: String = "risuena"
+var semilla_elegida: String = "bruma"
 var ha_ganado: bool = false
 
 # ------------------- REFERENCIAS A NODOS DE LA INTERFAZ ----------------------
@@ -51,7 +51,8 @@ func _ready() -> void:
 
 	# El primer cliente llega a los pocos segundos.
 	_timer_cliente.start(4.0)
-	_mensaje("Bienvenido a tu herboristería. Planta algo en el huerto para empezar.")
+	_mensaje("Medianoche. La guardia de la Corona patrulla arriba. "
+			+ "Planta Hoja de Bruma en el huerto para empezar.")
 	_actualizar_interfaz()
 
 
@@ -104,7 +105,7 @@ func _mezclar() -> void:
 	_caldero.sacudir()
 	_caldero.vaciar()
 	if id_pocion == "":
-		_mensaje("¡Puaj! Ha salido un pringue gris que no sirve para nada.")
+		_mensaje("El caldero escupe un lodo negro que huele a tumba. No sirve para nada.")
 	else:
 		pociones[id_pocion] += 1
 		_mensaje("¡Has preparado %s!" % GameData.POCIONES[id_pocion]["nombre"])
@@ -148,7 +149,7 @@ func _llega_cliente() -> void:
 
 
 func _cliente_se_cansa() -> void:
-	_mensaje("%s se ha cansado de esperar y se ha ido refunfuñando." % _cliente.nombre)
+	_mensaje("%s se ha cansado de esperar y se ha perdido en la niebla." % _cliente.nombre)
 	_cliente.marcharse()
 	_programar_siguiente_cliente()
 	_actualizar_interfaz()
@@ -221,9 +222,9 @@ func _reiniciar() -> void:
 # =============================================================================
 
 func _construir_interfaz() -> void:
-	# Fondo de madera oscura.
+	# Fondo casi negro: es de noche y esto es ilegal.
 	var fondo: ColorRect = ColorRect.new()
-	fondo.color = Color(0.13, 0.1, 0.08)
+	fondo.color = Color(0.05, 0.05, 0.07)
 	fondo.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(fondo)
 
@@ -241,7 +242,7 @@ func _construir_interfaz() -> void:
 	# --- Barra superior ---
 	var barra: HBoxContainer = HBoxContainer.new()
 	columna_principal.add_child(barra)
-	barra.add_child(_crear_label("Elixir Clandestino", 26, Color(0.95, 0.8, 0.4)))
+	barra.add_child(_crear_label("Elixir Clandestino", 26, Color(0.6, 0.85, 0.55)))
 	var hueco: Control = Control.new()
 	hueco.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	barra.add_child(hueco)
@@ -274,7 +275,7 @@ func _construir_interfaz() -> void:
 
 func _crear_zona_huerto() -> Control:
 	var panel: PanelContainer = _crear_panel()
-	var caja: VBoxContainer = _caja_de_panel(panel, "1. Huerto")
+	var caja: VBoxContainer = _caja_de_panel(panel, "1. Huerto (bajo la trampilla)")
 
 	caja.add_child(_crear_label("Elige semilla y haz clic en una maceta vacía:", 15))
 	var fila_semillas: HBoxContainer = HBoxContainer.new()
@@ -334,7 +335,7 @@ func _crear_zona_caldero() -> Control:
 
 func _crear_zona_mostrador() -> Control:
 	var panel: PanelContainer = _crear_panel()
-	var caja: VBoxContainer = _caja_de_panel(panel, "3. Mostrador")
+	var caja: VBoxContainer = _caja_de_panel(panel, "3. Mostrador (puerta trasera)")
 
 	_cliente = Cliente.new()
 	_cliente.se_cansa.connect(_cliente_se_cansa)
@@ -376,10 +377,10 @@ func _crear_panel() -> PanelContainer:
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 1.0
 	var estilo: StyleBoxFlat = StyleBoxFlat.new()
-	estilo.bg_color = Color(0.19, 0.15, 0.11)
+	estilo.bg_color = Color(0.09, 0.09, 0.11)
 	estilo.set_corner_radius_all(8)
 	estilo.set_content_margin_all(12)
-	estilo.border_color = Color(0.4, 0.3, 0.18)
+	estilo.border_color = Color(0.25, 0.32, 0.25)
 	estilo.set_border_width_all(2)
 	panel.add_theme_stylebox_override("panel", estilo)
 	return panel
@@ -390,5 +391,5 @@ func _caja_de_panel(panel: PanelContainer, titulo: String) -> VBoxContainer:
 	var caja: VBoxContainer = VBoxContainer.new()
 	caja.add_theme_constant_override("separation", 8)
 	panel.add_child(caja)
-	caja.add_child(_crear_label(titulo, 20, Color(0.95, 0.8, 0.4)))
+	caja.add_child(_crear_label(titulo, 20, Color(0.6, 0.85, 0.55)))
 	return caja
