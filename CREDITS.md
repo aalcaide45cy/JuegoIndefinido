@@ -13,5 +13,6 @@ paquete, autor, web y licencia. Solo licencias aptas para uso comercial
 
 Los archivos están en `assets/quaternius/` (cada paquete con su `License_Standard.txt`
 cuando lo trae). El CC0 no obliga a dar crédito, pero se agradece.
+No hay arte generado con IA en el juego.
 
 Motor: Godot Engine (licencia MIT), https://godotengine.org

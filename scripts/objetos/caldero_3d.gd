@@ -1,6 +1,6 @@
 # caldero_3d.gd
 # -----------------------------------------------------------------------------
-# El caldero de tu casa. Pulsa E y se abre su ventana (Ventanas.Caldero):
+# El caldero de tu casa. Pulsa E y se abre su ventana (Ventanas.VentanaCaldero):
 # eliges una receta, arrastras las hierbas a las casillas y preparas. Si la
 # mezcla no coincide con ninguna receta, sale un bodrio y se pierde.
 # -----------------------------------------------------------------------------
@@ -17,8 +17,14 @@ var _fuego: OmniLight3D
 func _ready() -> void:
 	distancia = 2.0
 	# Cuerpo negro, borde y patas. El cuerpo es sólido para no atravesarlo.
-	Construir.cilindro(self, Vector3(0, 0.5, 0), 0.55, 0.7, Color(0.08, 0.08, 0.09), true, 0.0, 0.62)
-	Construir.cilindro(self, Vector3(0, 0.87, 0), 0.66, 0.06, Color(0.12, 0.12, 0.13))
+	var cuerpo: Node3D = Construir.cilindro(self, Vector3(0, 0.5, 0), 0.55, 0.7, Color(0.08, 0.08, 0.09), true, 0.0, 0.62)
+	var borde: Node3D = Construir.cilindro(self, Vector3(0, 0.87, 0), 0.66, 0.06, Color(0.12, 0.12, 0.13))
+	# Con el modelo del paquete "Fantasy Props", el caldero de cajas queda solo de choque.
+	if Assets.existe("quaternius/fantasy-props-megakit/Cauldron"):
+		Construir.ocultar_mallas(cuerpo)
+		borde.visible = false
+		Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Cauldron", Vector3.ZERO, 0.0,
+				Vector3.ONE * 1.15, false)
 	_liquido = Construir.cilindro(self, Vector3(0, 0.86, 0), 0.58, 0.03, Color(0.25, 0.35, 0.45), false, 1.5)
 	_material_liquido = (_liquido as MeshInstance3D).mesh.material
 	# Brasas debajo y su luz verdosa.

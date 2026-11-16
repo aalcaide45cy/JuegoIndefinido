@@ -147,6 +147,13 @@ static func pared_con_huecos(padre: Node3D, z: float, ancho: float, alto: float,
 			cristal(padre, Vector3(centro_x, (abajo + arriba) / 2.0, z), Vector3(x1 - x0, arriba - abajo, 0.04))
 
 
+# Oculta todas las mallas de un nodo pero deja sus choques (para poner un
+# modelo descargado encima de un mueble hecho con cajas).
+static func ocultar_mallas(nodo: Node) -> void:
+	for malla in nodo.find_children("*", "MeshInstance3D", true, false):
+		(malla as MeshInstance3D).visible = false
+
+
 # Una luz que ilumina alrededor (farolas, velas, el fuego del caldero).
 static func luz(padre: Node3D, pos: Vector3, color: Color, energia: float,
 		alcance: float) -> OmniLight3D:

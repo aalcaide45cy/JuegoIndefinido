@@ -24,17 +24,133 @@ func construir() -> void:
 	pass
 
 
-# Material compartido de las ventanas con luz: CicloDia lo enciende al anochecer.
-static var _mat_ventana_luz: StandardMaterial3D
+# Altura de un piso con el kit "Medieval Village" (assets/modelos/pueblo/).
+const ALTO_PISO: float = 3.12
+const PUEBLO: String = "quaternius/medieval-village-megakit/"
+const PROPS: String = "quaternius/fantasy-props-megakit/"
 
-static func material_ventana_luz() -> StandardMaterial3D:
-	if _mat_ventana_luz == null:
-		_mat_ventana_luz = StandardMaterial3D.new()
-		_mat_ventana_luz.albedo_color = Color(0.1, 0.09, 0.07)
-		_mat_ventana_luz.emission_enabled = true
-		_mat_ventana_luz.emission = Color(1.0, 0.7, 0.35)
-		_mat_ventana_luz.emission_energy_multiplier = 0.0
-	return _mat_ventana_luz
+
+# true si el kit de edificios está descargado (si no, se usan las cajas de siempre).
+func hay_kit_pueblo() -> bool:
+	return Assets.existe(PUEBLO + "Wall_Plaster_Straight") and Assets.existe(PUEBLO + "Roof_RoundTiles_6x6")
+
+
+# Elige qué pared modular va en una posición: planta baja de ladrillo, pisos
+# de arriba de yeso; puertas solo en la fachada.
+func _modulo_pared(piso: int, es_fachada: bool, i: int, puerta_i: int, rng: RandomNumberGenerator) -> String:
+	var tipo: String = "UnevenBrick" if piso == 0 else "Plaster"
+	if es_fachada and piso == 0 and i == puerta_i:
+		return PUEBLO + "Wall_%s_%s" % [tipo, "Door_Round" if rng.randf() < 0.5 else "Door_Flat"]
+	var r: float = rng.randf()
+	if r < 0.5:
+		return PUEBLO + "Wall_%s_Window_Wide_%s" % [tipo, "Round" if rng.randf() < 0.5 else "Flat"]
+	if r < 0.75:
+		return PUEBLO + "Wall_%s_Window_Thin_Round" % tipo
+	return PUEBLO + "Wall_%s_Straight" % tipo
+
+
+# Una pared hecha con módulos de 2 m. En el nodo "lado" el eje x va a lo largo
+# de la pared y +z es hacia fuera. Los módulos se estiran un poco en x para
+# cubrir justo "largo" metros.
+func _pared_modular(lado: Node3D, largo: float, piso_desde: int, pisos: int,
+		es_fachada: bool, puerta_i: int, rng: RandomNumberGenerator) -> void:
+	var n: int = maxi(1, roundi(largo / 2.0))
+	var estirar: float = largo / (2.0 * n)
+	for piso in range(piso_desde, pisos):
+		for i in n:
+			var nombre: String = _modulo_pared(piso, es_fachada, i, puerta_i, rng)
+			var x: float = -largo / 2.0 + (i + 0.5) * (largo / n)
+			Assets.colocar_solido(lado, nombre, Vector3(x, piso * ALTO_PISO, 0.0), 0.0,
+					Vector3(estirar, 1.0, 1.0), false)
+			# Algunas ventanas tienen luz de noche: un cuadro cálido tras el hueco
+			# (ciclo_dia.gd lo enciende al anochecer y lo apaga de día).
+			if "Window" in nombre and rng.randf() < 0.3:
+				var ancho_v: float = 0.45 if "Thin" in nombre else 0.9
+				var vela: MeshInstance3D = Construir.caja(lado, Vector3(x, piso * ALTO_PISO + 1.5, -0.15),
+						Vector3(ancho_v, 1.0, 0.03), Color(1.0, 0.72, 0.38), false, 1.4) as MeshInstance3D
+				vela.visible = false
+				vela.add_to_group("ventanas_noche")
+
+
+# Reviste un edificio con paredes modulares por sus 4 lados. "salida" aleja las
+# paredes hacia fuera (para no meterse en habitaciones que ya existen);
+# "fachada_desde" es el primer piso con módulos en la fachada.
+func revestir(casa: Node3D, ancho: float, fondo: float, pisos: int, rng: RandomNumberGenerator,
+		salida: float = 0.0, fachada_desde: int = 0) -> void:
+	var puerta_i: int = rng.randi_range(0, maxi(0, roundi(ancho / 2.0) - 1))
+	var lados: Array = [
+		# [posición, giro, largo, es_fachada]
+		[Vector3(0, 0, salida), 0.0, ancho, true],
+		[Vector3(0, 0, -fondo - salida), PI, ancho, false],
+		[Vector3(ancho / 2.0 + salida, 0, -fondo / 2.0), PI / 2.0, fondo, false],
+		[Vector3(-ancho / 2.0 - salida, 0, -fondo / 2.0), -PI / 2.0, fondo, false],
+	]
+	for l in lados:
+		var lado: Node3D = Node3D.new()
+		lado.position = l[0]
+		lado.rotation.y = l[1]
+		casa.add_child(lado)
+		_pared_modular(lado, l[2], fachada_desde if l[3] else 0, pisos, l[3], puerta_i, rng)
+
+
+# Tejado de tejas sobre un edificio (el modelo se estira para cubrir la planta).
+func tejado(casa: Node3D, ancho: float, fondo: float, alto: float) -> void:
+	var lado_mayor: float = maxf(ancho, fondo)
+	var nombre: String = PUEBLO + "Roof_RoundTiles_4x4"
+	if lado_mayor > 7.0:
+		nombre = PUEBLO + "Roof_RoundTiles_8x8"
+	elif lado_mayor > 5.0:
+		nombre = PUEBLO + "Roof_RoundTiles_6x6"
+	var modelo: Node3D = Assets.modelo(nombre)
+	if modelo == null:
+		return
+	var caja: AABB = Assets.caja_de(modelo)
+	var sx: float = (ancho + 0.9) / caja.size.x
+	var sz: float = (fondo + 0.9) / caja.size.z
+	var sy: float = clampf((sx + sz) / 2.0, 0.7, 1.2)
+	modelo.position = Vector3(-caja.get_center().x, 0.0, -caja.get_center().z)
+	var contenedor: Node3D = Node3D.new()
+	contenedor.add_child(modelo)
+	contenedor.scale = Vector3(sx, sy, sz)
+	contenedor.position = Vector3(0, alto - caja.position.y * sy, -fondo / 2.0)
+	casa.add_child(contenedor)
+	# El tejado deja abiertos los triángulos de delante y detrás: los tapamos
+	# con un prisma de yeso para que no se vea el cielo por dentro.
+	var subida: float = caja.size.y * sy
+	var yeso: StandardMaterial3D = Construir.material(Color(0.78, 0.72, 0.6))
+	for z in [0.0, -fondo]:
+		var prisma: PrismMesh = PrismMesh.new()
+		prisma.size = Vector3(ancho + 0.7, subida * 0.93, 0.3)
+		prisma.material = yeso
+		var instancia: MeshInstance3D = MeshInstance3D.new()
+		instancia.mesh = prisma
+		instancia.position = Vector3(0, alto + subida * 0.93 / 2.0, z)
+		casa.add_child(instancia)
+
+
+# Pone un objeto del paquete "Fantasy Props" (barril, cofre, vela...). Si el
+# modelo no está, no pasa nada. "solido" = el jugador choca con él.
+func prop(padre: Node3D, nombre: String, pos: Vector3, giro: float = 0.0, escala: float = 1.0,
+		solido: bool = false) -> Node3D:
+	return Assets.colocar_solido(padre, PROPS + nombre, pos, giro, Vector3.ONE * escala, solido)
+
+
+# Decora la herboristería de la plaza (las demás tiendas usan _decorar_tienda,
+# que elige los muebles según el tipo de tienda). Pone muebles y objetos del kit de props:
+# barriles, cajas, un cofre, una lámpara de araña y velas y pociones en el mostrador.
+func decorar_tienda(tienda: Node3D) -> void:
+	if not Assets.existe(PROPS + "Barrel"):
+		return
+	prop(tienda, "Barrel", Vector3(-4.2, 0, -4.3), 0.0, 1.0, true)
+	prop(tienda, "Barrel", Vector3(-4.2, 0, -5.3), 0.4, 1.0, true)
+	prop(tienda, "Barrel_Apples", Vector3(4.2, 0, -4.3), 0.0, 1.0, true)
+	prop(tienda, "Crate_Wooden", Vector3(4.15, 0, -5.4), 0.3, 0.7, true)
+	prop(tienda, "Chest_Wood", Vector3(-3.0, 0, -6.9), 0.0, 1.0, true)
+	prop(tienda, "Chandelier", Vector3(0, ALTO_PLANTA_BAJA, -2.6), 0.0, 0.8)
+	prop(tienda, "Candle_2", Vector3(-2.0, 1.0, -5.2))
+	prop(tienda, "Potion_1", Vector3(2.0, 1.0, -5.1), 0.0, 2.0)
+	prop(tienda, "Potion_2", Vector3(2.35, 1.0, -5.25), 0.0, 2.0)
+	prop(tienda, "Potion_4", Vector3(1.7, 1.0, -5.3), 0.0, 2.0)
 
 
 # Un edificio genérico de cajas: fachada con ventanas, puerta y cornisa.
@@ -46,6 +162,19 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 	casa.position = pos
 	casa.rotation.y = angulo
 	add_child(casa)
+	if hay_kit_pueblo():
+		# Con el kit descargado: el bloque solo sirve de choque (invisible) y de
+		# fondo oscuro tras las ventanas; las paredes y el tejado son modelos.
+		var pisos_kit: int = int(alto / 3.0)
+		var alto_kit: float = pisos_kit * ALTO_PISO
+		var choque: Node3D = Construir.caja(casa, Vector3(0, alto_kit / 2.0, -fondo / 2.0),
+				Vector3(ancho, alto_kit, fondo), color)
+		Construir.ocultar_mallas(choque)
+		Construir.caja(casa, Vector3(0, alto_kit / 2.0, -fondo / 2.0),
+				Vector3(ancho - 0.4, alto_kit, fondo - 0.4), color.darkened(0.55), false)
+		revestir(casa, ancho, fondo, pisos_kit, rng)
+		tejado(casa, ancho, fondo, alto_kit)
+		return casa
 	# El bloque principal ocupa de z = -fondo a z = 0 (la fachada está en z = 0).
 	Construir.caja(casa, Vector3(0, alto / 2.0, -fondo / 2.0), Vector3(ancho, alto, fondo), color)
 	# Cornisa (borde del tejado) un poco más oscura y saliente.
@@ -57,12 +186,10 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 	for piso in range(1, pisos):
 		for col in columnas:
 			var x: float = (col - (columnas - 1) / 2.0) * (ancho / columnas)
-			var encendida: bool = rng.randf() < 0.55
-			var ventana: Node3D = Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.05), Vector3(0.9, 1.3, 0.1),
-					Color(0.05, 0.06, 0.09), false)
-			if encendida:
-				# Esta ventana se ilumina por la noche (la controla CicloDia).
-				(ventana as MeshInstance3D).mesh.material = material_ventana_luz()
+			var encendida: bool = rng.randf() < 0.3
+			var color_ventana: Color = Color(1.0, 0.7, 0.35) if encendida else Color(0.05, 0.06, 0.09)
+			Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.05), Vector3(0.9, 1.3, 0.1),
+					color_ventana, false, 1.2 if encendida else 0.0)
 	# Puerta de madera en la planta baja.
 	Construir.caja(casa, Vector3(rng.randf_range(-ancho / 4.0, ancho / 4.0), 1.1, 0.05),
 			Vector3(1.1, 2.2, 0.1), Color(0.2, 0.13, 0.09), false)
@@ -75,7 +202,7 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 # Devuelve el nodo del edificio: lo que pongas dentro va en sus coordenadas
 # locales (la fachada está en z = 0 y el interior va de z = -fondo a z = 0;
 # x va de -ancho/2 a ancho/2).
-const ALTO_PLANTA_BAJA: float = 3.5
+const ALTO_PLANTA_BAJA: float = 3.12
 
 func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: float,
 		color: Color, color_interior: Color, huecos: Array) -> Node3D:
@@ -83,6 +210,10 @@ func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float,
 	casa.position = pos
 	casa.rotation.y = angulo
 	add_child(casa)
+	var kit: bool = hay_kit_pueblo()
+	var pisos_kit: int = maxi(2, roundi(alto / ALTO_PISO))
+	if kit:
+		alto = pisos_kit * ALTO_PISO
 	var g: float = 0.2   # Grosor de las paredes.
 	var h: float = ALTO_PLANTA_BAJA
 	# Suelo de madera (un pelín por encima de la calle para que no parpadee).
@@ -115,6 +246,13 @@ func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float,
 	zona.body_exited.connect(func(cuerpo: Node3D) -> void:
 		if cuerpo.is_in_group("jugador"):
 			Juego.interiores = maxi(0, Juego.interiores - 1))
+	if kit:
+		# Paredes y tejado modulares por fuera: costados y fondo enteros, y la
+		# fachada solo de los pisos de arriba (la planta baja tiene la puerta y
+		# los escaparates hechos a medida).
+		revestir(casa, ancho, fondo, pisos_kit, RandomNumberGenerator.new(), 0.21, 1)
+		tejado(casa, ancho, fondo, alto)
+		return casa
 	# Ventanas de los pisos de arriba, a oscuras.
 	var pisos: int = int(alto / 3.0)
 	var columnas: int = maxi(1, int(ancho / 2.2))

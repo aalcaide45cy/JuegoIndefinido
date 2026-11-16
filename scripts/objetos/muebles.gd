@@ -21,6 +21,10 @@ class Cama extends Interactuable:
 		Construir.caja(self, Vector3(0, 0.25, 0), Vector3(1.1, 0.5, 2.1), Color(0.3, 0.2, 0.13))
 		Construir.caja(self, Vector3(0, 0.55, 0.1), Vector3(1.0, 0.12, 1.8), Color(0.45, 0.15, 0.15), false)
 		Construir.caja(self, Vector3(0, 0.62, -0.8), Vector3(0.7, 0.12, 0.35), Color(0.8, 0.78, 0.7), false)
+		if Assets.existe("quaternius/fantasy-props-megakit/Bed_Twin1"):
+			Construir.ocultar_mallas(self)
+			Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Bed_Twin1", Vector3.ZERO, 0.0,
+					Vector3.ONE * 0.8, false)
 
 	func texto_accion() -> String:
 		return "Dormir un rato (las plantas crecen)"
@@ -65,6 +69,10 @@ class Estanteria extends Interactuable:
 		# Unas cajas y botes encima para que parezca usada.
 		Construir.caja(self, Vector3(-0.4, 0.9, 0.05), Vector3(0.4, 0.3, 0.3), Color(0.45, 0.35, 0.2), false)
 		Construir.cilindro(self, Vector3(0.4, 1.42, 0.05), 0.1, 0.25, Color(0.3, 0.5, 0.4), false, 0.4)
+		if Assets.existe("quaternius/fantasy-props-megakit/Bookcase_2"):
+			Construir.ocultar_mallas(self)
+			Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Bookcase_2", Vector3(0, 0, 0.1), 0.0,
+					Vector3.ONE * 0.95, false)
 
 	func texto_accion() -> String:
 		return "Estantería (guardar y sacar cosas)"

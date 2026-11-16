@@ -34,6 +34,7 @@ extensión. Carpetas: `FANTASIA` (props: barriles, mesas, pociones, yunque...),
 `PERSONAJES` (personajes base y peinados). Los modelos miden metros reales y tienen
 el origen en el suelo (props) o en la empuñadura (armas, que miran hacia -X).
 Ya se usan: armas y cuchillo en la mano (`modelo_mano.gd`), decoración de tiendas y
-casas (`barrio.gd`) y puestos del mercado. Pendiente: edificios con Medieval Village y
-personajes para tenderos y guardias. La primera vez que abras el proyecto, Godot
+casas (`barrio.gd`) y puestos del mercado. Pendiente: personajes para tenderos y guardias. La primera vez que abras el proyecto, Godot
 tardará unos minutos en importar los ~700 modelos.
+
+Si quitas la carpeta de un paquete, el juego vuelve solo a las cajas de siempre.

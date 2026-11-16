@@ -57,6 +57,7 @@ func construir() -> void:
 	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
 			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
+	_decorar_plaza()
 	_guardia([Vector3(-12, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 12), Vector3(-12, 0, 12)])
 
 	farola(Vector3(-10, 0, -10))
@@ -120,8 +121,24 @@ func _herboristeria() -> void:
 		Construir.caja(tienda, Vector3(4.2, 0.3, -1.5 - i * 0.8), Vector3(0.7, 0.6, 0.5), Color(0.3, 0.25, 0.2))
 	# Ramos de hierbas colgando del techo.
 	for i in 5:
-		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 3.1, -3.0), 0.12, 0.5,
+		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 2.9, -3.0), 0.12, 0.5,
 				Color(0.3, 0.45, 0.25), false, 0.0, 0.02)
+	decorar_tienda(tienda)
+
+
+# Objetos sueltos por la plaza (del kit "Fantasy Props" y "Medieval Village"):
+# bancos junto a la fuente, un carro, barriles, cajas y un puesto de mercado.
+func _decorar_plaza() -> void:
+	for p in [Vector3(5, 0, 5), Vector3(-5, 0, 5), Vector3(5, 0, -5), Vector3(-5, 0, -5)]:
+		prop(self, "Bench", p, atan2(-p.x, -p.z), 1.0, true)
+	Assets.colocar_solido(self, PUEBLO + "Prop_Wagon", Vector3(-14, 0, 13), 0.5)
+	for i in 3:
+		prop(self, "Barrel", Vector3(14 + i * 0.8, 0, 15), i, 1.0, true)
+	prop(self, "Crate_Wooden", Vector3(-15, 0, -14), 0.2, 1.0, true)
+	prop(self, "Crate_Wooden", Vector3(-15, 0, -12.7), 0.6, 1.0, true)
+	prop(self, "Stall_Empty", Vector3(-14, 0, -3), PI / 2.0, 1.0, true)
+	prop(self, "Stall_Empty", Vector3(14, 0, 4), -PI / 2.0, 1.0, true)
+	prop(self, "Dummy", Vector3(10, 0, 8), -PI / 2.0, 1.0, true)
 
 
 # Un guardia del Prefecto que patrulla la plaza de noche (puntos en coordenadas de la plaza).

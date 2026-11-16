@@ -355,7 +355,7 @@ class CasillaIngrediente extends CasillaUI:
 
 # ==============================================================================
 # La ventana del caldero: eliges una receta, arrastras hierbas y preparas.
-class Caldero extends Ventana:
+class VentanaCaldero extends Ventana:
 	var _slots: Array = []
 	var _receta: String = ""
 	var _resultado: Label
