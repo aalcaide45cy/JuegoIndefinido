@@ -34,6 +34,7 @@ var _siguiente: float = 25.0
 var _compradores: Dictionary = {}   # id -> Comprador
 var _siguiente_id: int = 1
 var _aviso: Label
+var _lateral: Label
 var _capa: CanvasLayer
 
 
@@ -54,6 +55,19 @@ func _ready() -> void:
 	_capa = capa
 	for e in Juego.encargos:
 		_siguiente_id = maxi(_siguiente_id, int(e["id"]) + 1)
+	# Barra lateral con los encargos aceptados (debajo del minimapa, a la derecha).
+	_lateral = Label.new()
+	_lateral.add_theme_font_size_override("font_size", 16)
+	_lateral.add_theme_color_override("font_color", Color(0.95, 0.95, 0.85))
+	_lateral.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	_lateral.add_theme_constant_override("outline_size", 6)
+	_lateral.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_lateral.anchor_left = 1.0
+	_lateral.anchor_right = 1.0
+	_lateral.offset_left = -330.0
+	_lateral.offset_right = -16.0
+	_lateral.offset_top = 270.0
+	capa.add_child(_lateral)
 
 
 func _process(delta: float) -> void:
@@ -102,6 +116,14 @@ func _process(delta: float) -> void:
 		_entregar_material(p)
 	if cambio:
 		Juego.cambio.emit()
+	# Barra lateral: encargos aceptados con su lugar y tiempo.
+	var lineas: PackedStringArray = []
+	for e in Juego.encargos:
+		if e["estado"] == "aceptado":
+			var t: int = int(e["t"])
+			lineas.append("%s: %d x %s (%d $)\n  %s  -  %d:%02d" % [e["cliente"], e["cantidad"],
+					GameData.POCIONES[e["pocion"]]["nombre"], e["pago"], e["lugar"], t / 60, t % 60])
+	_lateral.text = ("ENCARGOS\n" + "\n".join(lineas)) if not lineas.is_empty() and not Juego.menu_abierto else ""
 	# Aviso fijo en pantalla mientras haya ofertas sin responder.
 	var ofertas: int = 0
 	for e in Juego.encargos:

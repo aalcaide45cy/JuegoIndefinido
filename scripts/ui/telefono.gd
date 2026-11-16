@@ -22,41 +22,74 @@ var _temporizadores: Array = []   # [Label, id_encargo o -1, texto_base]
 var _cantidades: Dictionary = {}  # id material -> cantidad elegida
 
 
+const ICONOS: String = "res://assets/kenney/game-icons/PNG/White/2x/"
+const FONDO_APP: Color = Color(0.05, 0.07, 0.11)
+
+
+func _icono(nombre: String, tam: float = 26.0) -> Texture2D:
+	var ruta: String = ICONOS + nombre + ".png"
+	return load(ruta) as Texture2D if ResourceLoader.exists(ruta) else null
+
+
 func construir() -> void:
 	_gestor = get_tree().get_first_node_in_group("gestor_encargos") as Encargos
+	# Carcasa: marco negro redondeado con pantalla oscura dentro y una muesca arriba.
 	var marco: PanelContainer = PanelContainer.new()
 	var estilo: StyleBoxFlat = StyleBoxFlat.new()
-	estilo.bg_color = Color(0.05, 0.06, 0.09)
-	estilo.border_color = Color(0.12, 0.13, 0.17)
-	estilo.set_border_width_all(10)
-	estilo.set_corner_radius_all(34)
-	estilo.set_content_margin_all(16)
+	estilo.bg_color = Color(0.02, 0.02, 0.03)
+	estilo.border_color = Color(0.28, 0.3, 0.36)
+	estilo.set_border_width_all(4)
+	estilo.set_corner_radius_all(44)
+	estilo.set_content_margin_all(14)
 	marco.add_theme_stylebox_override("panel", estilo)
-	Hud.centrar(marco, Vector2(400.0, 660.0))
+	Hud.centrar(marco, Vector2(410.0, 700.0))
 	add_child(marco)
+	var pantalla: PanelContainer = PanelContainer.new()
+	var est2: StyleBoxFlat = StyleBoxFlat.new()
+	est2.bg_color = FONDO_APP
+	est2.set_corner_radius_all(32)
+	est2.set_content_margin_all(14)
+	pantalla.add_theme_stylebox_override("panel", est2)
+	marco.add_child(pantalla)
 	var caja: VBoxContainer = VBoxContainer.new()
 	caja.add_theme_constant_override("separation", 8)
-	marco.add_child(caja)
+	pantalla.add_child(caja)
 
-	_cabecera_info = Hud.crear_label(15, ACENTO)
+	# Barra de estado: hora a la izquierda, dinero y reputación a la derecha.
+	_cabecera_info = Hud.crear_label(15, Color(0.85, 0.92, 1.0))
 	caja.add_child(_cabecera_info)
-	var pestanas: HBoxContainer = HBoxContainer.new()
-	pestanas.add_theme_constant_override("separation", 6)
-	caja.add_child(pestanas)
-	for i in 3:
-		var b: Button = Hud.crear_boton(["Encargos", "Pedidos", "Avisos"][i], _cambiar_pestana.bind(i))
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pestanas.add_child(b)
+	_titulo = Hud.crear_label(26, Color(1, 1, 1))
+	caja.add_child(_titulo)
+
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	caja.add_child(scroll)
 	_contenido = VBoxContainer.new()
 	_contenido.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_contenido.add_theme_constant_override("separation", 8)
+	_contenido.add_theme_constant_override("separation", 10)
 	scroll.add_child(_contenido)
-	caja.add_child(Hud.crear_boton("Guardar el móvil (P / Esc)", cerrar))
+
+	# Barra de aplicaciones abajo, con iconos.
+	var apps: HBoxContainer = HBoxContainer.new()
+	apps.add_theme_constant_override("separation", 6)
+	caja.add_child(apps)
+	var datos: Array = [["Encargos", "phone"], ["Pedidos", "cart"], ["Avisos", "exclamation"]]
+	for i in 3:
+		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
+		b.icon = _icono(datos[i][1])
+		b.expand_icon = true
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		b.custom_minimum_size = Vector2(0, 62)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		apps.add_child(b)
+	var cerrar_b: Button = Hud.crear_boton("Guardar el móvil (P / Esc)", cerrar)
+	caja.add_child(cerrar_b)
 	_reconstruir()
+
+
+var _titulo: Label
 
 
 func _cambiar_pestana(i: int) -> void:
@@ -65,7 +98,8 @@ func _cambiar_pestana(i: int) -> void:
 
 
 func _process(_delta: float) -> void:
-	_cabecera_info.text = "%s    Dinero: %d $    Reputación: %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
+	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
+	_titulo.text = ["Encargos", "Pedidos", "Avisos"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
 	var firma: String = "%d|" % _pestana
 	for e in Juego.encargos:
@@ -102,8 +136,10 @@ func _reconstruir() -> void:
 func _tarjeta() -> VBoxContainer:
 	var panel: PanelContainer = PanelContainer.new()
 	var est: StyleBoxFlat = StyleBoxFlat.new()
-	est.bg_color = Color(0.1, 0.12, 0.17)
-	est.set_corner_radius_all(14)
+	est.bg_color = Color(0.1, 0.13, 0.19)
+	est.border_color = ACENTO
+	est.border_width_left = 5
+	est.set_corner_radius_all(16)
 	est.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
