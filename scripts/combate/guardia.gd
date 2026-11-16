@@ -189,7 +189,7 @@ func _revisar_puertas(de_noche: bool) -> void:
 			continue
 		if global_position.distance_to(puerta.global_position) > 14.0:
 			continue
-		var prob: float = 0.35 if de_noche else 0.12
+		var prob: float = (0.35 if de_noche else 0.12) * (1.0 + Juego.sospecha / 60.0)
 		if randf() < prob:
 			Juego.avisar(Juego.registrar_casa())
 			puerta.abierta = false
@@ -208,6 +208,7 @@ func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
 		prob = 0.012
 	if Juego.lleva_ilegal():
 		prob *= 1.5
+	prob *= 1.0 + Juego.sospecha / 40.0
 	if randf() < prob / 6.0 and "hud" in jugador and jugador.hud != null:
 		Juego.enfriamiento_cacheo = 150.0
 		Juego.avisar("¡Alto! Un guardia quiere registrarte.")

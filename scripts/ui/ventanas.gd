@@ -679,6 +679,13 @@ class Admin extends Ventana:
 			if not v:
 				Juego.alerta = 0.0)
 		caja.add_child(policia)
+		var sosp: HSlider = HSlider.new()
+		sosp.min_value = 0.0
+		sosp.max_value = 100.0
+		sosp.value = Juego.sospecha
+		sosp.value_changed.connect(func(v: float) -> void: Juego.sospecha = v)
+		subtitulo(caja, "Sospecha de la policía (0-100)")
+		caja.add_child(sosp)
 
 		# Vida.
 		subtitulo(caja, "Vida")

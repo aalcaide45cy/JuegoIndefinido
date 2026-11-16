@@ -38,6 +38,8 @@ var ha_ganado: bool = false
 var alerta: float = 0.0              # 0-100: cuánto te buscan los guardias (100 = te están viendo).
 var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pantalla).
 var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
+var sospecha: float = 0.0           # 0-100: sube si llevas ilegal, corres con ello o vendes; baja con el tiempo. Sube la prob. de cacheo y registro.
+var _t_sospecha: float = 0.0
 var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
 var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
@@ -80,6 +82,7 @@ func reiniciar() -> void:
 	xp = 0
 	habilidades.clear()
 	reputacion = 0
+	sospecha = 0.0
 	encargos.clear()
 	pedidos_material.clear()
 	avisos.clear()
@@ -93,6 +96,18 @@ func reiniciar() -> void:
 
 func _process(delta: float) -> void:
 	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
+	_t_sospecha += delta
+	if _t_sospecha >= 1.0:
+		var dt: float = _t_sospecha
+		_t_sospecha = 0.0
+		var delta_s: float = -0.6   # Baja con el tiempo.
+		if lleva_ilegal():
+			delta_s += 0.9
+			if Input.is_action_pressed("correr"):
+				delta_s += 0.6
+		if delito_visto > 0.0:
+			delta_s += 3.0
+		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	if alerta > 0.0:
