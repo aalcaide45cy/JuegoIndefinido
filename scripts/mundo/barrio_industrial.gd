@@ -11,17 +11,18 @@ extends Barrio
 func construir() -> void:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 4040
-	suelo(-20, 20, -24, 36, Color(0.15, 0.15, 0.16))
+	# (Las filas empiezan en z = -36, pegadas a la plaza, para no dejar pasillos a los solares.)
+	suelo(-20, 20, -44, 36, Color(0.15, 0.15, 0.16))
 	calle(Vector3(0, 0, 0), 8.0, 72.0, false)
 
 	# Oeste (fachadas en x = -4 mirando al este; u = -z): ferretería en z = 0.
-	fila_con_huecos(Vector3(-4, 0, 0), PI / 2.0, -36.0, 24.0, [Vector2(-5.0, 5.0)], 8.0, rng)
+	fila_con_huecos(Vector3(-4, 0, 0), PI / 2.0, -36.0, 36.0, [Vector2(-5.0, 5.0)], 8.0, rng)
 	tienda_con_interior(Vector3(-4, 0, 0), PI / 2.0, "FERRETERÍA  Hierros del Puerto", "ferreteria",
 			"Ferretería Hierros del Puerto", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4),
 			Color(0.2, 0.2, 0.22), Color(0.32, 0.3, 0.27))
 
 	# Este (fachadas en x = 4 mirando al oeste; u = z): armería en z = 20.
-	fila_con_huecos(Vector3(4, 0, 0), -PI / 2.0, -24.0, 36.0, [Vector2(15.0, 25.0), Vector2(-15.0, -5.0)], 8.0, rng)
+	fila_con_huecos(Vector3(4, 0, 0), -PI / 2.0, -36.0, 36.0, [Vector2(15.0, 25.0), Vector2(-15.0, -5.0)], 8.0, rng)
 	tienda_con_interior(Vector3(4, 0, 20), -PI / 2.0, "ARMERÍA  Acero y Pólvora", "armeria",
 			"Armería Acero y Pólvora", "Hablar con la armera (comprar)", Color(1.0, 0.5, 0.4),
 			Color(0.2, 0.19, 0.2), Color(0.3, 0.27, 0.27))
