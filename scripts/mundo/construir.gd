@@ -66,6 +66,55 @@ static func esfera(padre: Node3D, pos: Vector3, radio: float, color: Color,
 	return nodo
 
 
+# Un cristal: una caja fina y semitransparente (escaparates, ventanas).
+static func cristal(padre: Node3D, pos: Vector3, tam: Vector3) -> Node3D:
+	var malla: BoxMesh = BoxMesh.new()
+	malla.size = tam
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.55, 0.7, 0.75, 0.18)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.roughness = 0.1
+	malla.material = mat
+	var forma: BoxShape3D = BoxShape3D.new()
+	forma.size = tam
+	return _colocar(padre, pos, malla, forma)
+
+
+# Una pared a lo largo del eje X (en "z") con huecos para puertas y ventanas.
+# Cada hueco es un diccionario: {"x": centro, "ancho": m, "abajo": m, "arriba": m,
+# "cristal": true/false}. La pared va de x = -ancho/2 a x = ancho/2.
+static func pared_con_huecos(padre: Node3D, z: float, ancho: float, alto: float,
+		grosor: float, huecos: Array, color: Color) -> void:
+	# Cortamos la pared en columnas por los bordes de cada hueco.
+	var cortes: Array[float] = [-ancho / 2.0, ancho / 2.0]
+	for h in huecos:
+		cortes.append(h["x"] - h["ancho"] / 2.0)
+		cortes.append(h["x"] + h["ancho"] / 2.0)
+	cortes.sort()
+	for i in cortes.size() - 1:
+		var x0: float = cortes[i]
+		var x1: float = cortes[i + 1]
+		if x1 - x0 < 0.001:
+			continue
+		var centro_x: float = (x0 + x1) / 2.0
+		var hueco: Dictionary = {}
+		for h in huecos:
+			if absf(h["x"] - centro_x) < h["ancho"] / 2.0:
+				hueco = h
+		if hueco.is_empty():
+			caja(padre, Vector3(centro_x, alto / 2.0, z), Vector3(x1 - x0, alto, grosor), color)
+			continue
+		# Columna con hueco: pared por debajo y por encima.
+		var abajo: float = hueco["abajo"]
+		var arriba: float = hueco["arriba"]
+		if abajo > 0.0:
+			caja(padre, Vector3(centro_x, abajo / 2.0, z), Vector3(x1 - x0, abajo, grosor), color)
+		if arriba < alto:
+			caja(padre, Vector3(centro_x, (arriba + alto) / 2.0, z), Vector3(x1 - x0, alto - arriba, grosor), color)
+		if hueco.get("cristal", false):
+			cristal(padre, Vector3(centro_x, (abajo + arriba) / 2.0, z), Vector3(x1 - x0, arriba - abajo, 0.04))
+
+
 # Una luz que ilumina alrededor (farolas, velas, el fuego del caldero).
 static func luz(padre: Node3D, pos: Vector3, color: Color, energia: float,
 		alcance: float) -> OmniLight3D:

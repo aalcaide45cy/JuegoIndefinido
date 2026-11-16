@@ -1,7 +1,8 @@
 # mostrador.gd
 # -----------------------------------------------------------------------------
-# El mostrador de la tienda. De vez en cuando entra un cliente que pide una
-# poción (prohibida, claro) y espera con una paciencia limitada.
+# La ventanilla de venta de tu casa. Cuando ya tienes la casa alquilada, de vez
+# en cuando llega un cliente que pide una poción (prohibida, claro) y espera
+# con una paciencia limitada.
 # Pulsa E en el mostrador para venderle si tienes lo que pide.
 # -----------------------------------------------------------------------------
 class_name Mostrador
@@ -18,6 +19,10 @@ var presente: bool = false
 var nombre: String = ""
 var pedido: String = ""
 var paciencia: float = 0.0
+# Dónde espera el cliente respecto al mostrador y hacia dónde mira.
+# (Quien crea el mostrador puede cambiarlo antes de añadirlo a la escena.)
+var posicion_cliente: Vector3 = Vector3(1.1, -1.05, 0)
+var giro_cliente: float = PI / 2.0
 
 var _espera_siguiente: float = 6.0   # Segundos hasta que llegue alguien.
 var _cliente: Node3D                 # El muñeco del cliente.
@@ -29,14 +34,14 @@ func _ready() -> void:
 	distancia = 2.0
 	# El cliente espera al otro lado del mostrador (1,1 m a la derecha, +X).
 	_cliente = Node3D.new()
-	_cliente.position = Vector3(1.1, -1.05, 0)
-	_cliente.rotation.y = PI / 2.0   # Mira hacia -X, hacia ti.
+	_cliente.position = posicion_cliente
+	_cliente.rotation.y = giro_cliente
 	add_child(_cliente)
 	var ropa: Node3D = Construir.cilindro(_cliente, Vector3(0, 0.65, 0), 0.32, 1.3, Color.GRAY, false, 0.0, 0.22)
 	_material_ropa = (ropa as MeshInstance3D).mesh.material
 	Construir.esfera(_cliente, Vector3(0, 1.5, 0), 0.19, Color(0.7, 0.66, 0.6))
 	Construir.cilindro(_cliente, Vector3(0, 1.62, 0), 0.22, 0.25, Color(0.1, 0.1, 0.12), false, 0.0, 0.05)
-	_cartel = Construir.texto(self, Vector3(1.1, 1.05, 0), "", 32)
+	_cartel = Construir.texto(self, posicion_cliente + Vector3(0, 2.1, 0), "", 32)
 	_cartel.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_cliente.visible = false
 	_cartel.visible = false
@@ -44,6 +49,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if not presente:
+		if not Juego.casa_alquilada:
+			return  # Nadie viene a comprar hasta que tengas tu escondite.
 		_espera_siguiente -= delta
 		if _espera_siguiente <= 0.0:
 			_llega_cliente()
@@ -64,8 +71,8 @@ func texto_accion() -> String:
 		return "No hay nadie en el mostrador"
 	var datos: Dictionary = GameData.POCIONES[pedido]
 	if Juego.pociones[pedido] > 0:
-		return "Vender %s (%d monedas)" % [datos["nombre"], datos["precio"]]
-	return "Te pide %s (prepárala en el sótano)" % datos["nombre"]
+		return "Vender %s (%d $)" % [datos["nombre"], datos["precio"]]
+	return "Te pide %s (prepárala en el caldero)" % datos["nombre"]
 
 
 func usar(_jugador: Node) -> void:
@@ -77,7 +84,7 @@ func usar(_jugador: Node) -> void:
 		return
 	Juego.pociones[pedido] -= 1
 	var precio: int = GameData.POCIONES[pedido]["precio"]
-	Juego.avisar("Vendido por %d monedas. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
+	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
 	Juego.cobrar(precio)
 	_se_marcha()
 
@@ -90,7 +97,7 @@ func _llega_cliente() -> void:
 	_material_ropa.albedo_color = Color.from_hsv(randf(), 0.35, 0.35)
 	_cliente.visible = true
 	_cartel.visible = true
-	Juego.avisar("Suena la campanilla de la tienda: ha entrado %s." % nombre)
+	Juego.avisar("Alguien golpea la ventanilla de tu casa: es %s." % nombre)
 
 
 func _se_marcha() -> void:

@@ -1,12 +1,12 @@
 # jugador.gd
 # -----------------------------------------------------------------------------
-# El alquimista que controlas. Cámara en tercera persona (detrás del hombro)
-# que se puede cambiar a primera persona con la tecla V.
+# El alquimista que controlas. Empieza en primera persona; con V cambias a
+# tercera persona (cámara detrás del hombro) y viceversa.
 #
 #   WASD / flechas  moverse        Ratón   mirar
 #   Shift           correr         Espacio saltar
 #   E               usar           Q       cambiar hierba en la mano
-#   V               cambiar cámara Esc     soltar el ratón
+#   V               primera/tercera persona   TAB  inventario   Esc soltar el ratón
 #
 # Estructura (se crea sola en _ready):
 #   Jugador (CharacterBody3D)  <- se mueve, pero nunca gira
@@ -26,15 +26,15 @@ const DISTANCIA_CAMARA: float = 3.0
 # Cámara un poco a la derecha (por encima del hombro) para que el muñeco no tape el centro.
 const DESPLAZAMIENTO_HOMBRO: float = 0.6
 
-# El HUD (lo pone mundo.gd) para hacer el fundido a negro al cruzar puertas.
+# El HUD (lo pone mundo.gd): ventanas, fundidos y mensajes.
 var hud: Hud
 # Lo que tienes delante y puedes usar con E (o null si no hay nada).
 var objetivo: Interactuable = null
-var primera_persona: bool = false
+var primera_persona: bool = true   # Empieza en primera persona; V cambia.
 
 var _giro: float = 0.0        # Izquierda/derecha de la cámara (radianes).
 var _inclinacion: float = -0.2  # Arriba/abajo de la cámara.
-var _bloqueado: bool = false   # Durante el fundido no te puedes mover.
+var _bloqueado: bool = false   # Para quietos momentáneos (por ejemplo, escenas).
 
 var _cuerpo: Node3D
 var _pivote: Node3D
@@ -45,12 +45,15 @@ var _camara: Camera3D
 func _ready() -> void:
 	_crear_cuerpo()
 	_crear_camara()
+	_aplicar_camara()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 # ------------------------------- Ratón y teclas -------------------------------
 
 func _unhandled_input(evento: InputEvent) -> void:
+	if Juego.menu_abierto:
+		return  # Con una ventana abierta, el ratón y las teclas son para la ventana.
 	var raton_capturado: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	if evento is InputEventMouseMotion and raton_capturado:
 		var movimiento: InputEventMouseMotion = evento
@@ -63,9 +66,7 @@ func _unhandled_input(evento: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif evento.is_action_pressed("cambiar_camara"):
 		primera_persona = not primera_persona
-		_brazo.spring_length = 0.0 if primera_persona else DISTANCIA_CAMARA
-		_brazo.position.x = 0.0 if primera_persona else DESPLAZAMIENTO_HOMBRO
-		_cuerpo.visible = not primera_persona
+		_aplicar_camara()
 	elif evento.is_action_pressed("cambiar_hierba"):
 		Juego.siguiente_hierba()
 	elif evento.is_action_pressed("usar") and objetivo != null and not _bloqueado:
@@ -84,7 +85,7 @@ func _physics_process(delta: float) -> void:
 
 	# Dirección según las teclas, relativa a hacia dónde mira la cámara.
 	var teclas: Vector2 = Vector2.ZERO
-	if not _bloqueado:
+	if not _bloqueado and not Juego.menu_abierto:
 		teclas = Input.get_vector("izquierda", "derecha", "adelante", "atras")
 		if Input.is_action_just_pressed("saltar") and is_on_floor():
 			velocity.y = FUERZA_SALTO
@@ -107,6 +108,12 @@ func _physics_process(delta: float) -> void:
 	_buscar_objetivo()
 
 
+func _aplicar_camara() -> void:
+	_brazo.spring_length = 0.0 if primera_persona else DISTANCIA_CAMARA
+	_brazo.position.x = 0.0 if primera_persona else DESPLAZAMIENTO_HOMBRO
+	_cuerpo.visible = not primera_persona
+
+
 # Busca el objeto usable más cercano que esté delante de la cámara.
 func _buscar_objetivo() -> void:
 	var delante: Vector3 = -_pivote.global_basis.z
@@ -127,24 +134,21 @@ func _buscar_objetivo() -> void:
 			continue
 		if d > 0.3 and delante.dot(hacia / d) < 0.25:
 			continue  # Está detrás o muy de lado.
-		if d < mejor_distancia:
+		if d < mejor_distancia and _se_ve(cosa):
 			mejor = cosa
 			mejor_distancia = d
 	objetivo = mejor
 
 
-# Lleva al jugador a otro sitio con un fundido a negro (lo usan las puertas).
-func teletransportar(destino: Vector3, angulo: float) -> void:
-	if _bloqueado:
-		return
-	_bloqueado = true
-	hud.fundido(func() -> void:
-		global_position = destino
-		velocity = Vector3.ZERO
-		_giro = angulo
-		_inclinacion = -0.2
-		_cuerpo.rotation.y = angulo
-		_bloqueado = false)
+# true si no hay una pared entre los ojos del jugador y el objeto.
+func _se_ve(cosa: Interactuable) -> bool:
+	var ojos: Vector3 = global_position + Vector3(0, 1.5, 0)
+	var destino: Vector3 = cosa.global_position + Vector3(0, 0.3, 0)
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ojos, destino)
+	consulta.exclude = [get_rid()]
+	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
+	# Si choca, solo vale si es con el propio objeto (o muy cerca de él).
+	return choque.is_empty() or choque["position"].distance_to(destino) < 0.8
 
 
 # ------------------------- Construcción del muñeco ----------------------------

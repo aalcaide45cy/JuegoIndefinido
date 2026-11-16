@@ -1,6 +1,6 @@
 # caldero_3d.gd
 # -----------------------------------------------------------------------------
-# El caldero del sótano secreto. Pulsa E para echar la hierba que tienes en la
+# El caldero de tu casa. Pulsa E para echar la hierba que tienes en la
 # mano (Q para cambiarla). Cuando hay GameData.INGREDIENTES_POR_POCION hierbas
 # dentro, se mezclan solas: si coinciden con una receta sale una poción; si
 # no, sale un bodrio y se pierde.
@@ -51,7 +51,7 @@ func texto_accion() -> String:
 func usar(_jugador: Node) -> void:
 	var id_hierba: String = Juego.hierba_seleccionada()
 	if Juego.hierbas[id_hierba] <= 0:
-		Juego.avisar("Primero cosecha %s en las macetas de la tienda." %
+		Juego.avisar("Primero cosecha %s en tus macetas." %
 				GameData.HIERBAS[id_hierba]["nombre"])
 		return
 	Juego.hierbas[id_hierba] -= 1
@@ -72,7 +72,7 @@ func _mezclar() -> void:
 		Juego.avisar("El caldero escupe un humo gris. Has hecho un bodrio y se ha perdido.")
 	else:
 		Juego.pociones[id_pocion] += 1
-		Juego.avisar("¡Has preparado %s! Véndela en el mostrador de arriba." %
+		Juego.avisar("¡Has preparado %s! Véndela en la ventanilla." %
 				GameData.POCIONES[id_pocion]["nombre"])
 	ingredientes.clear()
 	_actualizar_color()

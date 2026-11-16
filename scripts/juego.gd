@@ -1,8 +1,8 @@
 # juego.gd  (se carga solo al arrancar, con el nombre "Juego")
 # -----------------------------------------------------------------------------
-# El "cerebro" de la partida: dinero, hierbas cosechadas y pociones hechas.
-# Como está en Proyecto > Configuración > Autoload, cualquier script puede
-# escribir, por ejemplo, Juego.dinero o Juego.avisar("Hola").
+# El "cerebro" de la partida: dinero, inventario, hierbas cosechadas y
+# pociones hechas. Como está en Proyecto > Configuración > Autoload, cualquier
+# script puede escribir, por ejemplo, Juego.dinero o Juego.avisar("Hola").
 #
 # También crea los controles (teclas) para no tener que configurarlos a mano.
 # -----------------------------------------------------------------------------
@@ -14,11 +14,19 @@ signal cambio
 signal mensaje(texto: String)
 
 var dinero: int = 0
+var objetos: Dictionary = {}    # id_objeto (de GameData.OBJETOS) -> cantidad
+var agua_jarra: int = 0         # Riegos que le quedan a la jarra.
 var hierbas: Dictionary = {}    # id_hierba -> cantidad cosechada
 var pociones: Dictionary = {}   # id_pocion -> cantidad lista para vender
 var ha_ganado: bool = false
+var casa_alquilada: bool = false
+var almacen: Dictionary = {}    # Lo guardado en la estantería de casa: id_objeto -> cantidad
 
-# Qué hierba tienes "en la mano" (para plantar o echar al caldero). Se cambia con Q.
+# true mientras hay un menú abierto (tienda, inventario, minijuego):
+# el jugador no se mueve y el ratón se puede usar para hacer clic.
+var menu_abierto: bool = false
+
+# Qué hierba tienes "en la mano" para echar al caldero. Se cambia con Q.
 var _indice_hierba: int = 0
 
 
@@ -30,6 +38,11 @@ func _ready() -> void:
 
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
+	for id_objeto in GameData.OBJETOS:
+		objetos[id_objeto] = 0
+		almacen[id_objeto] = 0
+	agua_jarra = 0
+	casa_alquilada = false
 	for id_hierba in GameData.HIERBAS:
 		hierbas[id_hierba] = 0
 	for id_pocion in GameData.POCIONES:
@@ -66,8 +79,51 @@ func cobrar(cantidad: int) -> void:
 	cambio.emit()
 	if not ha_ganado and dinero >= GameData.OBJETIVO_DINERO:
 		ha_ganado = true
-		avisar("¡Has reunido %d monedas y pagado el alquiler! Prototipo superado." %
+		avisar("¡Has reunido %d $ y pagado el alquiler! Prototipo superado." %
 				GameData.OBJETIVO_DINERO)
+
+
+# ------------------------------ Objetos ---------------------------------------
+
+func tiene(id_objeto: String, cantidad: int = 1) -> bool:
+	return objetos[id_objeto] >= cantidad
+
+
+# Compra un objeto del puesto. Devuelve un texto con lo que ha pasado.
+func comprar(id_objeto: String) -> String:
+	var datos: Dictionary = GameData.OBJETOS[id_objeto]
+	if datos["unico"] and objetos[id_objeto] > 0:
+		return "Ya tienes %s." % datos["nombre"]
+	if not gastar(datos["precio"]):
+		return "No te llega: %s cuesta %d $." % [datos["nombre"], datos["precio"]]
+	objetos[id_objeto] += 1
+	if id_objeto == "jarra":
+		agua_jarra = GameData.CARGAS_JARRA  # La jarra viene llena.
+	cambio.emit()
+	return "Has comprado %s por %d $." % [datos["nombre"], datos["precio"]]
+
+
+# Gasta un objeto (por ejemplo, un saco de tierra al plantar).
+func usar_objeto(id_objeto: String) -> void:
+	objetos[id_objeto] -= 1
+	cambio.emit()
+
+
+# Mueve un objeto entre el inventario y la estantería de casa.
+func guardar_en_almacen(id_objeto: String) -> void:
+	if objetos[id_objeto] <= 0:
+		return
+	objetos[id_objeto] -= 1
+	almacen[id_objeto] += 1
+	cambio.emit()
+
+
+func sacar_de_almacen(id_objeto: String) -> void:
+	if almacen[id_objeto] <= 0:
+		return
+	almacen[id_objeto] -= 1
+	objetos[id_objeto] += 1
+	cambio.emit()
 
 
 func avisar(texto: String) -> void:
@@ -87,6 +143,7 @@ func _crear_controles() -> void:
 	_accion("usar", [KEY_E])
 	_accion("cambiar_hierba", [KEY_Q])
 	_accion("cambiar_camara", [KEY_V])
+	_accion("inventario", [KEY_TAB])
 	_accion("liberar_raton", [KEY_ESCAPE])
 
 

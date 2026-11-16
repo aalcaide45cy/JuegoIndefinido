@@ -54,6 +54,46 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 	return casa
 
 
+# Un edificio en el que se puede entrar: la planta baja es una habitación de
+# verdad (suelo, paredes, techo) y la fachada tiene huecos para la puerta y
+# los escaparates. Los pisos de arriba son un bloque macizo.
+# Devuelve el nodo del edificio: lo que pongas dentro va en sus coordenadas
+# locales (la fachada está en z = 0 y el interior va de z = -fondo a z = 0;
+# x va de -ancho/2 a ancho/2).
+const ALTO_PLANTA_BAJA: float = 3.5
+
+func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: float,
+		color: Color, color_interior: Color, huecos: Array) -> Node3D:
+	var casa: Node3D = Node3D.new()
+	casa.position = pos
+	casa.rotation.y = angulo
+	add_child(casa)
+	var g: float = 0.2   # Grosor de las paredes.
+	var h: float = ALTO_PLANTA_BAJA
+	# Suelo de madera (un pelín por encima de la calle para que no parpadee).
+	Construir.caja(casa, Vector3(0, 0.015, -fondo / 2.0), Vector3(ancho, 0.03, fondo), Color(0.24, 0.17, 0.11))
+	# Paredes de dentro: fondo y laterales.
+	Construir.caja(casa, Vector3(0, h / 2.0, -fondo + g / 2.0), Vector3(ancho, h, g), color_interior)
+	Construir.caja(casa, Vector3(-ancho / 2.0 + g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo), color_interior)
+	Construir.caja(casa, Vector3(ancho / 2.0 - g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo), color_interior)
+	# Fachada con huecos.
+	Construir.pared_con_huecos(casa, -g / 2.0, ancho, h, g, huecos, color)
+	# Techo de la planta baja y pisos de arriba (macizos).
+	Construir.caja(casa, Vector3(0, h + (alto - h) / 2.0, -fondo / 2.0), Vector3(ancho, alto - h, fondo), color)
+	Construir.caja(casa, Vector3(0, h - 0.05, -fondo / 2.0), Vector3(ancho, 0.1, fondo), color_interior.darkened(0.5), false)
+	Construir.caja(casa, Vector3(0, alto + 0.15, -fondo / 2.0 + 0.15),
+			Vector3(ancho + 0.3, 0.3, fondo + 0.3), color.darkened(0.4), false)
+	# Ventanas de los pisos de arriba, a oscuras.
+	var pisos: int = int(alto / 3.0)
+	var columnas: int = maxi(1, int(ancho / 2.2))
+	for piso in range(1, pisos):
+		for col in columnas:
+			var x: float = (col - (columnas - 1) / 2.0) * (ancho / columnas)
+			Construir.caja(casa, Vector3(x, piso * 3.0 + 1.5, 0.05), Vector3(0.9, 1.3, 0.1),
+					Color(0.05, 0.06, 0.09), false)
+	return casa
+
+
 # Una fila de edificios de "desde" a "hasta" (en el eje local X de la fila).
 func fila_edificios(origen: Vector3, angulo: float, desde: float, hasta: float,
 		fondo: float, rng: RandomNumberGenerator) -> void:

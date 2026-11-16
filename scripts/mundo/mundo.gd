@@ -2,7 +2,8 @@
 # -----------------------------------------------------------------------------
 # La escena principal del juego 3D. Monta todo al arrancar:
 #   - el ambiente nocturno (cielo oscuro, luna, niebla),
-#   - los barrios de la ciudad (de momento, la plaza y tu herboristería),
+#   - los barrios de la ciudad (de momento, la Plaza del Ahorcado, con la
+#     herboristería y la casa en alquiler),
 #   - el HUD y el jugador.
 #
 # Para ampliar la ciudad, añade más barrios en _ready() (mira barrio.gd).
@@ -17,7 +18,6 @@ func _ready() -> void:
 	_crear_ambiente()
 
 	_anadir_barrio(BarrioPlaza.new(), Vector3.ZERO)
-	_anadir_barrio(InteriorHerboristeria.new(), Vector3.ZERO)
 	# Ejemplo para el futuro:
 	# _anadir_barrio(BarrioMercado.new(), Vector3(0, 0, -60))
 
