@@ -362,6 +362,7 @@ class VentanaCaldero extends Ventana:
 	var _detalle: Label
 	var _preparar: Button
 	var _botones_receta: Dictionary = {}
+	var _cocinando: bool = false
 
 	func construir() -> void:
 		_slots.resize(GameData.INGREDIENTES_POR_POCION)
@@ -486,16 +487,28 @@ class VentanaCaldero extends Ventana:
 			_slots[i] = null
 		if id_pocion == "":
 			_resultado.text = "El caldero escupe un humo gris. Has hecho un bodrio y se ha perdido."
-		else:
-			var objeto: String = "pocion_" + id_pocion
-			Juego.ganar_xp(20)
-			if Juego.cabe(objeto):
-				Juego.anadir(objeto)
-				_resultado.text = "¡Has preparado %s! %s" % [GameData.POCIONES[id_pocion]["nombre"],
-						"Véndela en la ventanilla."]
-			else:
-				_resultado.text = "Has preparado %s, pero no te cabe y se derrama." % \
-						GameData.POCIONES[id_pocion]["nombre"]
+			Juego.cambio.emit()
+			return
+		if _cocinando:
+			return
+		# Receta buena: antes de sacar la poción hay que remover a tiempo (minijuego).
+		_cocinando = true
+		var barra: BarraRemover = BarraRemover.new()
+		barra.terminado.connect(_terminar_cocinado.bind(id_pocion))
+		add_child(barra)
+		Juego.cambio.emit()
+
+	func _terminar_cocinado(aciertos: int, id_pocion: String) -> void:
+		_cocinando = false
+		# 0 aciertos: 1 poción (no se pierde nada); 1-2: 2 pociones; 3: 3 pociones y más XP.
+		var cantidad: int = 1 if aciertos == 0 else (2 if aciertos < 3 else 3)
+		var objeto: String = "pocion_" + id_pocion
+		Juego.ganar_xp(10 + 8 * aciertos)
+		var sobra: int = Juego.anadir(objeto, cantidad)
+		var nombre: String = GameData.POCIONES[id_pocion]["nombre"]
+		var calidad: String = ["con mala mano", "regular", "bien", "¡perfecta!"][aciertos]
+		_resultado.text = "Mezcla %s: %d x %s%s." % [calidad, cantidad - sobra, nombre,
+				"" if sobra == 0 else " (el resto no cabía y se derramó)"]
 		Juego.cambio.emit()
 
 	func _refrescar() -> void:
