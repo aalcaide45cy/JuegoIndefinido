@@ -65,6 +65,10 @@ static func crear(id: String) -> Node3D:
 			if datos["forma"] == "lanzagranadas":
 				var tubo: Node3D = Construir.cilindro(raiz, Vector3(0, 0.03, -0.55), 0.06, 0.4, c.darkened(0.2), false)
 				tubo.rotation.x = deg_to_rad(90.0)
+		"pan":
+			Construir.esfera(raiz, Vector3(0, 0, 0), 0.08, c, Vector3(1.3, 0.7, 1.0))
+		"venda":
+			Construir.cilindro(raiz, Vector3(0, 0, 0), 0.045, 0.08, c, false)
 		"granada":
 			Construir.esfera(raiz, Vector3(0, 0, 0), 0.055, c)
 			Construir.cilindro(raiz, Vector3(0, 0.07, 0), 0.015, 0.04, Color(0.5, 0.5, 0.5), false)

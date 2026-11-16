@@ -2,8 +2,9 @@
 # -----------------------------------------------------------------------------
 # La escena principal del juego 3D. Monta todo al arrancar:
 #   - el cielo y la luz del día y la noche (ciclo_dia.gd),
-#   - los barrios de la ciudad (de momento, la Plaza del Ahorcado, con la
-#     herboristería y la casa en alquiler),
+#   - los barrios de la ciudad: la Plaza del Ahorcado en el centro y, unidos
+#     por calles, el Mercado (norte), el Barrio Residencial (este) y la Zona
+#     Industrial (sur),
 #   - el HUD y el jugador.
 #
 # Para ampliar la ciudad, añade más barrios en _ready() (mira barrio.gd).
@@ -18,8 +19,10 @@ func _ready() -> void:
 	add_child(CicloDia.new())
 
 	_anadir_barrio(BarrioPlaza.new(), Vector3.ZERO)
-	# Ejemplo para el futuro:
-	# _anadir_barrio(BarrioMercado.new(), Vector3(0, 0, -60))
+	# Tres calles salen de la plaza: norte, este y sur.
+	_anadir_barrio(BarrioMercado.new(), Vector3(16, 0, -64))
+	_anadir_barrio(BarrioResidencial.new(), Vector3(64, 0, -16))
+	_anadir_barrio(BarrioIndustrial.new(), Vector3(-16, 0, 64))
 
 	var hud: Hud = Hud.new()
 	add_child(hud)

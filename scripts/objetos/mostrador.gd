@@ -15,6 +15,7 @@ const NOMBRES: Array[String] = [
 ]
 const PACIENCIA_MAX: float = 45.0
 
+var id_casa: String = "plaza"   # A qué vivienda pertenece esta ventanilla.
 var presente: bool = false
 var nombre: String = ""
 var pedido: String = ""
@@ -49,7 +50,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if not presente:
-		if not Juego.casa_alquilada:
+		if not Juego.alquilada(id_casa):
 			return  # Nadie viene a comprar hasta que tengas tu escondite.
 		_espera_siguiente -= delta
 		if _espera_siguiente <= 0.0:

@@ -70,6 +70,9 @@ func _unhandled_input(evento: InputEvent) -> void:
 			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):
 		var paso: int = -1 if evento.button_index == MOUSE_BUTTON_WHEEL_UP else 1
 		Juego.seleccionar(Juego.seleccion + paso)
+	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
+			and evento.button_index == MOUSE_BUTTON_LEFT:
+		Juego.usar_en_mano()
 	elif evento is InputEventMouseButton and evento.pressed and not raton_capturado:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # Clic para volver a jugar.
 	elif evento.is_action_pressed("liberar_raton"):

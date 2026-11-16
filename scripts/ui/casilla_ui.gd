@@ -174,6 +174,13 @@ static func dibujar_icono(lienzo: CanvasItem, r: Rect2, id: String) -> void:
 				lienzo.draw_rect(Rect2(o + s * Vector2(0.4, 0.28), s * Vector2(0.3, 0.1)), Color(0.1, 0.1, 0.1))
 			if datos["forma"] == "lanzagranadas":
 				lienzo.draw_rect(Rect2(o + s * Vector2(0.45, 0.33), s * Vector2(0.5, 0.3)), c)
+		"pan":
+			lienzo.draw_circle(o + s * Vector2(0.5, 0.6), s.x * 0.32, c)
+			lienzo.draw_arc(o + s * Vector2(0.5, 0.6), s.x * 0.2, PI, TAU, 8, oscuro, 3.0)
+		"venda":
+			lienzo.draw_rect(Rect2(o + s * Vector2(0.15, 0.3), s * Vector2(0.7, 0.4)), c)
+			lienzo.draw_rect(Rect2(o + s * Vector2(0.45, 0.35), s * Vector2(0.1, 0.3)), Color(0.8, 0.15, 0.15))
+			lienzo.draw_rect(Rect2(o + s * Vector2(0.35, 0.45), s * Vector2(0.3, 0.1)), Color(0.8, 0.15, 0.15))
 		"granada":
 			lienzo.draw_circle(o + s * Vector2(0.5, 0.6), s.x * 0.3, c)
 			lienzo.draw_rect(Rect2(o + s * Vector2(0.42, 0.15), s * Vector2(0.16, 0.2)), Color(0.5, 0.5, 0.5))

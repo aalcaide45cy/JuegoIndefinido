@@ -9,7 +9,8 @@
 #                "arma_cc" (cuerpo a cuerpo), "arma_fuego", "explosivo", "municion".
 #   pila         cuántos caben en una casilla (1 = no se amontona; máximo 20).
 #   precio       en dólares (0 = no se vende en tiendas).
-#   tienda       dónde se compra: "herbolario", "ferreteria", "armeria" o "".
+#   tienda       dónde se compra: "herbolario", "ferreteria", "armeria",
+#                "panaderia", "botica" o "".
 #   nivel        nivel mínimo del jugador para comprarlo (fase 3).
 #   habilidad    habilidad necesaria para comprarlo, o "" (fase 3).
 #   color        color de su icono y de su modelo en la mano.
@@ -169,6 +170,33 @@ const LISTA: Dictionary = {
 		"color": Color(0.25, 0.3, 0.2), "forma": "lanzagranadas", "dano": 100,
 		"municion": "granada", "cargador": 1,
 		"descripcion": "Dispara granadas. Requiere saber de explosivos.",
+	},
+
+	# ------------------------- Comida y medicinas ------------------------------
+	# "cura": vida que recupera al usarlo (clic izquierdo con él en la mano).
+	"pan": {
+		"nombre": "Pan duro", "tipo": "consumible", "pila": 20, "precio": 5,
+		"tienda": "panaderia", "nivel": 1, "habilidad": "",
+		"color": Color(0.75, 0.55, 0.3), "forma": "pan", "cura": 10,
+		"descripcion": "Duro como una piedra, pero alimenta.",
+	},
+	"empanada": {
+		"nombre": "Empanada de molleja", "tipo": "consumible", "pila": 20, "precio": 12,
+		"tienda": "panaderia", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.6, 0.3), "forma": "pan", "cura": 25,
+		"descripcion": "No preguntes de qué es la molleja.",
+	},
+	"venda": {
+		"nombre": "Venda limpia", "tipo": "consumible", "pila": 10, "precio": 20,
+		"tienda": "botica", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.9, 0.85), "forma": "venda", "cura": 30,
+		"descripcion": "Cierra heridas. Casi limpia.",
+	},
+	"tonico": {
+		"nombre": "Tónico curativo", "tipo": "consumible", "pila": 10, "precio": 55,
+		"tienda": "botica", "nivel": 2, "habilidad": "",
+		"color": Color(0.8, 0.25, 0.3), "forma": "frasco", "cura": 70,
+		"descripcion": "Sabe a hierro y a mala decisión. Cura mucho.",
 	},
 
 	# ------------------------------- Explosivos --------------------------------

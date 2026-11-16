@@ -18,7 +18,7 @@ const CATEGORIAS: Dictionary = {
 	"semilla": "Semillas", "material": "Cultivo", "herramienta": "Herramientas",
 	"arma_cc": "Cuerpo a cuerpo", "arma_fuego": "Armas de fuego",
 	"municion": "Munición", "explosivo": "Explosivos",
-	"hierba": "Hierbas", "pocion": "Pociones",
+	"hierba": "Hierbas", "pocion": "Pociones", "consumible": "Comida y medicina",
 }
 
 

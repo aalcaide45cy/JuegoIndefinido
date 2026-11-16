@@ -4,6 +4,9 @@
 # rodeada de casas, con una fuente seca en el centro y farolas.
 #   - Norte: la herboristería, donde se compra todo (se entra andando).
 #   - Este:  la casa con el cartel SE ALQUILA, que puede ser tu escondite.
+#   - Oeste: la ferretería. Sur: la armería.
+#   - Tres calles salen de la plaza: norte (Mercado), este (Barrio Residencial)
+#     y sur (Zona Industrial).
 #
 # El centro de la plaza es el punto (0, 0, 0). El norte es -Z.
 # -----------------------------------------------------------------------------
@@ -28,25 +31,31 @@ func construir() -> void:
 	var e: float = MITAD + FONDO_CASAS
 	var h: float = ANCHO_HERBORISTERIA / 2.0
 	var v: float = ANCHO_VIVIENDA / 2.0
-	fila_edificios(Vector3(0, 0, -MITAD), 0.0, -e, -h, FONDO_CASAS, rng)
-	fila_edificios(Vector3(0, 0, -MITAD), 0.0, h, e, FONDO_CASAS, rng)
+	# Calles que salen de la plaza (de 8 m de ancho): al norte hacia el Mercado,
+	# al este hacia el barrio residencial y al sur hacia la zona industrial.
+	var calle_norte: Vector2 = Vector2(12.0, 20.0)      # En X (fila norte).
+	var calle_sur: Vector2 = Vector2(12.0, 20.0)        # En -X (la fila sur está girada).
+	var calle_este: Vector2 = Vector2(-20.0, -12.0)     # En Z (fila este).
+	fila_con_huecos(Vector3(0, 0, -MITAD), 0.0, -e, e,
+			[Vector2(-h, h), calle_norte], FONDO_CASAS, rng)
 	var t: float = ANCHO_TIENDA / 2.0
-	# Sur: hueco para la armería. Oeste: hueco para la ferretería.
-	fila_edificios(Vector3(0, 0, MITAD), PI, -e, -t, FONDO_CASAS, rng)
-	fila_edificios(Vector3(0, 0, MITAD), PI, t, e, FONDO_CASAS, rng)
-	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, -MITAD, -v, FONDO_CASAS, rng)
-	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, v, MITAD, FONDO_CASAS, rng)
-	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, -t, FONDO_CASAS, rng)
-	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, t, MITAD, FONDO_CASAS, rng)
+	fila_con_huecos(Vector3(0, 0, MITAD), PI, -e, e,
+			[Vector2(-t, t), calle_sur], FONDO_CASAS, rng)
+	fila_con_huecos(Vector3(MITAD, 0, 0), -PI / 2.0, -MITAD, MITAD,
+			[Vector2(-v, v), calle_este], FONDO_CASAS, rng)
+	fila_con_huecos(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, MITAD,
+			[Vector2(-t, t)], FONDO_CASAS, rng)
+	# Asfalto de las tres salidas.
+	calle(Vector3(16, 0, -MITAD - 4), 8.0, 8.0, false)
+	calle(Vector3(MITAD + 4, 0, -16), 8.0, 8.0, true)
+	calle(Vector3(-16, 0, MITAD + 4), 8.0, 8.0, false)
 
 	_herboristeria()
-	_vivienda()
-	_tienda_extra(Vector3(-MITAD, 0, 0), PI / 2.0, "FERRETERÍA  Clavo y Martillo", "ferreteria",
-			"Ferretería Clavo y Martillo", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4),
-			Color(0.26, 0.24, 0.2), Color(0.38, 0.33, 0.27))
-	_tienda_extra(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
-			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4),
-			Color(0.24, 0.2, 0.2), Color(0.33, 0.28, 0.27))
+	vivienda("plaza", GameData.PRECIO_ALQUILER, Vector3(MITAD, 0, 0), -PI / 2.0)
+	tienda_con_interior(Vector3(-MITAD, 0, 0), PI / 2.0, "FERRETERÍA  Clavo y Martillo", "ferreteria",
+			"Ferretería Clavo y Martillo", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4))
+	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
+			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
 
 	farola(Vector3(-10, 0, -10))
@@ -112,116 +121,6 @@ func _herboristeria() -> void:
 	for i in 5:
 		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 3.1, -3.0), 0.12, 0.5,
 				Color(0.3, 0.45, 0.25), false, 0.0, 0.02)
-
-
-# --------------- Otras tiendas (ferretería, armería...) ------------------------
-# Una tienda con interior: mostrador con vendedor al fondo y estantes con
-# género. "id_tienda" es el campo "tienda" de scripts/datos/objetos.gd, así
-# que lo que se vende sale de ese archivo.
-
-func _tienda_extra(pos: Vector3, angulo: float, titulo: String, id_tienda: String,
-		nombre: String, texto_hablar: String, color_cartel: Color,
-		color: Color, color_interior: Color) -> void:
-	var huecos: Array = [
-		{"x": 0.0, "ancho": 1.6, "abajo": 0.0, "arriba": 2.5},
-		{"x": -3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
-		{"x": 3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
-	]
-	var tienda: Node3D = edificio_visitable(pos, angulo, ANCHO_TIENDA, FONDO_CASAS, 9.0,
-			color, color_interior, huecos)
-	Construir.texto(tienda, Vector3(0, 3.05, 0.12), titulo, 90, color_cartel)
-	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
-	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.4, 8.0)
-	# Mostrador y vendedor.
-	Construir.caja(tienda, Vector3(0, 0.5, -5.2), Vector3(5.0, 1.0, 0.7), Color(0.3, 0.2, 0.13))
-	var vendedor: Tendero = Tendero.new()
-	vendedor.tienda = id_tienda
-	vendedor.nombre_tienda = nombre
-	vendedor.texto_hablar = texto_hablar
-	vendedor.position = Vector3(0, 1.0, -5.2)
-	tienda.add_child(vendedor)
-	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
-	# Estantes con el género: una cajita de color por cada objeto que vende.
-	var ids: Array = Juego.DatosObjetos.de_tienda(id_tienda)
-	for fila in 3:
-		var y: float = 0.6 + fila * 0.65
-		Construir.caja(tienda, Vector3(0, y, -7.6), Vector3(8.0, 0.05, 0.45), Color(0.25, 0.17, 0.11), false)
-		for i in 10:
-			var color_obj: Color = Color(0.4, 0.4, 0.4)
-			if not ids.is_empty():
-				color_obj = Juego.DatosObjetos.datos(ids[(fila * 10 + i) % ids.size()])["color"]
-			Construir.caja(tienda, Vector3(-3.6 + i * 0.8, y + 0.15, -7.6), Vector3(0.3, 0.25, 0.25), color_obj, false)
-
-
-# ------------------------------- Tu casa --------------------------------------
-
-func _vivienda() -> void:
-	# En el lado este (x = 20), con la fachada mirando al oeste (ángulo -PI/2).
-	# En coordenadas de la casa: x va de -5 a 5 a lo largo de la fachada, y el
-	# interior va de z = 0 (fachada) a z = -8 (pared del fondo).
-	var huecos: Array = [
-		{"x": -3.0, "ancho": PuertaCasa.ANCHO, "abajo": 0.0, "arriba": PuertaCasa.ALTO},
-		{"x": 1.5, "ancho": 2.0, "abajo": 1.0, "arriba": 2.3, "cristal": true},
-	]
-	var casa: Node3D = edificio_visitable(Vector3(MITAD, 0, 0), -PI / 2.0, ANCHO_VIVIENDA, FONDO_CASAS, 7.0,
-			Color(0.3, 0.26, 0.24), Color(0.42, 0.36, 0.3), huecos)
-
-	# Cartel de alquiler encima de la puerta.
-	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.75, 0.12),
-			"SE ALQUILA  %d $" % GameData.PRECIO_ALQUILER, 56, Color(1.0, 0.85, 0.5))
-	# Farolillo junto a la puerta.
-	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(1.0, 0.75, 0.4), false, 3.0)
-	Construir.luz_noche(casa, Vector3(-4.0, 2.4, 0.6), Color(1.0, 0.7, 0.4), 0.9, 5.0)
-	var puerta: PuertaCasa = PuertaCasa.new()
-	puerta.position = Vector3(-3.0, 1.0, -0.1)
-	puerta.cartel = cartel
-	casa.add_child(puerta)
-
-	# Luz de dentro (una lámpara de aceite) y una alfombra.
-	Construir.luz(casa, Vector3(0, 3.0, -4.0), Color(1.0, 0.75, 0.45), 1.2, 8.0)
-	Construir.caja(casa, Vector3(0, 0.035, -4.0), Vector3(3.0, 0.01, 2.0), Color(0.35, 0.12, 0.12), false)
-
-	# Ventanilla de venta: el mostrador está detrás del cristal y el cliente fuera.
-	Construir.caja(casa, Vector3(1.5, 0.5, -0.55), Vector3(2.0, 1.0, 0.6), Color(0.3, 0.2, 0.13))
-	var mostrador: Mostrador = Mostrador.new()
-	mostrador.position = Vector3(1.5, 1.0, -0.55)
-	mostrador.posicion_cliente = Vector3(0, -1.0, 1.5)
-	mostrador.giro_cliente = 0.0   # Mira hacia dentro de la casa.
-	casa.add_child(mostrador)
-
-	# Cocina con grifo (rellena la jarra) contra la pared del fondo.
-	var cocina: Muebles.Grifo = Muebles.Grifo.new()
-	cocina.position = Vector3(3.2, 0, -7.45)
-	casa.add_child(cocina)
-
-	# Estantería para guardar cosas.
-	var estanteria: Muebles.Estanteria = Muebles.Estanteria.new()
-	estanteria.position = Vector3(0.2, 0, -7.6)
-	casa.add_child(estanteria)
-
-	# Cama en la esquina.
-	var cama: Muebles.Cama = Muebles.Cama.new()
-	cama.position = Vector3(-4.1, 0, -6.6)
-	casa.add_child(cama)
-
-	# Caldero y recetario en la pared.
-	var caldero: Caldero3D = Caldero3D.new()
-	caldero.position = Vector3(3.3, 0, -4.2)
-	casa.add_child(caldero)
-	var recetas: PackedStringArray = ["RECETARIO (no enseñar a la guardia)"]
-	for id_pocion in GameData.POCIONES:
-		recetas.append("%s = %s" % [GameData.POCIONES[id_pocion]["nombre"], GameData.texto_receta(id_pocion)])
-	var recetario: Label3D = Construir.texto(casa, Vector3(4.88, 1.9, -4.2), "\n".join(recetas), 40,
-			Color(0.75, 0.9, 0.7))
-	recetario.rotation.y = -PI / 2.0
-
-	# Cinco huecos para macetas junto a la pared izquierda; las dos primeras ya vienen puestas.
-	for i in 5:
-		var hueco: Muebles.HuecoMaceta = Muebles.HuecoMaceta.new()
-		hueco.position = Vector3(-4.4, 0.03, -1.9 - i * 0.8)
-		casa.add_child(hueco)
-		if i < 2:
-			hueco.poner_maceta()
 
 
 func _fuente() -> void:

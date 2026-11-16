@@ -47,9 +47,18 @@ compartían plano con las paredes).
 
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
-Adelanto de la fase 2 (misma rama): la plaza ya tiene **ferretería** (oeste) y
-**armería** (sur) con interior y vendedor; lo que venden sale de
-`scripts/datos/objetos.gd` (campo `tienda`). Falta la ciudad grande por barrios.
+Fase 2 (misma rama): la ciudad ya tiene **cuatro barrios** unidos por calles de
+8 m, cada uno en su script de `scripts/mundo/`:
+- Plaza del Ahorcado (centro): herboristería, ferretería, armería y tu primera casa.
+- Mercado (norte): botica, herbolario, ferretería, armería, panadería y otra botica.
+- Barrio Residencial (este): cuatro casas en alquiler (160 a 700 $), panadería y botica.
+- Zona Industrial (sur): ferretería, armería, almacenes y contenedores.
+Hay 11 tiendas y 5 casas en alquiler; cada casa tiene su propio caldero,
+cama, estantería y macetas. Lo que vende cada tienda sale de
+`scripts/datos/objetos.gd` (campo `tienda`). Comida y medicinas curan al usarlas
+(clic izquierdo con ellas en la mano). Para añadir un barrio: copia uno de los
+tres y añádelo en `mundo.gd`. Falta el barrio oeste y los edificios de relleno
+con detalle.
 
 ## Peticiones nuevas de Alfonso (2026-11-16)
 

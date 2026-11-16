@@ -12,6 +12,8 @@ extends Interactuable
 const ANCHO: float = 1.2
 const ALTO: float = 2.3
 
+var id_casa: String = "plaza"     # Identificador de la vivienda (para el alquiler y el guardado).
+var precio: int = GameData.PRECIO_ALQUILER
 var abierta: bool = false
 var cartel: Label3D = null   # El cartel "SE ALQUILA" (lo pone quien crea la puerta).
 
@@ -35,18 +37,17 @@ func _process(delta: float) -> void:
 
 
 func texto_accion() -> String:
-	if not Juego.casa_alquilada:
-		return "Alquilar la casa por %d $" % GameData.PRECIO_ALQUILER
+	if not Juego.alquilada(id_casa):
+		return "Alquilar la casa por %d $" % precio
 	return "Cerrar la puerta" if abierta else "Abrir la puerta"
 
 
 func usar(_jugador: Node) -> void:
-	if not Juego.casa_alquilada:
-		if not Juego.gastar(GameData.PRECIO_ALQUILER):
-			Juego.avisar("El casero quiere %d $ por adelantado. Vuelve cuando los tengas." %
-					GameData.PRECIO_ALQUILER)
+	if not Juego.alquilada(id_casa):
+		if not Juego.gastar(precio):
+			Juego.avisar("El casero quiere %d $ por adelantado. Vuelve cuando los tengas." % precio)
 			return
-		Juego.casa_alquilada = true
+		Juego.viviendas[id_casa] = true
 		if cartel != null:
 			cartel.text = "OCUPADO"
 		Juego.avisar("¡Casa alquilada! Dentro tienes cama, cocina, estantería y sitio para macetas.")

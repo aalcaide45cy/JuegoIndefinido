@@ -35,7 +35,7 @@ var dia: int = 1
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
-var casa_alquilada: bool = false
+var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
@@ -62,7 +62,7 @@ func reiniciar() -> void:
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	ha_ganado = false
-	casa_alquilada = false
+	viviendas.clear()
 	nivel = 1
 	habilidades.clear()
 	inventario.clear()
@@ -84,6 +84,15 @@ func _process(delta: float) -> void:
 func texto_hora() -> String:
 	var minutos: int = int(hora * 60.0) % (24 * 60)
 	return "%02d:%02d" % [minutos / 60, minutos % 60]
+
+
+# ¿Tienes alquilada esa vivienda? (Cada casa de la ciudad tiene su identificador.)
+func alquilada(id_casa: String) -> bool:
+	return viviendas.has(id_casa)
+
+
+func tiene_vivienda() -> bool:
+	return not viviendas.is_empty()
 
 
 func es_de_noche() -> bool:
@@ -331,6 +340,25 @@ func motivo_no_compra(id: String) -> String:
 	if datos["habilidad"] != "" and not habilidades.has(datos["habilidad"]):
 		return "Necesitas la habilidad: %s" % DatosHabilidades.nombre(datos["habilidad"])
 	return ""
+
+
+# Usa lo que llevas en la mano con el clic izquierdo (comida y medicinas curan).
+func usar_en_mano() -> void:
+	var casilla = en_mano()
+	if casilla == null:
+		return
+	var datos: Dictionary = DatosObjetos.datos(casilla["id"])
+	if not datos.has("cura"):
+		return
+	if vida >= VIDA_MAX:
+		avisar("Ya tienes la vida completa.")
+		return
+	cambiar_vida(datos["cura"])
+	casilla["cantidad"] -= 1
+	if casilla["cantidad"] <= 0:
+		inventario[seleccion] = null
+	avisar("Usas %s (+%d de vida)." % [datos["nombre"], datos["cura"]])
+	cambio.emit()
 
 
 # Vende una casilla entera a una tienda por la mitad de su precio.
