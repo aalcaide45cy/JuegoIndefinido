@@ -15,6 +15,7 @@ extends RefCounted
 
 class Cama extends Interactuable:
 	const HORAS_DE_SUENO: float = 60.0   # Segundos de crecimiento que "pasan" al dormir.
+	const HORAS_RELOJ: float = 6.0       # Horas del reloj del juego que pasan al dormir.
 
 	func _ready() -> void:
 		distancia = 2.0
@@ -27,14 +28,14 @@ class Cama extends Interactuable:
 					Vector3.ONE * 0.8, false)
 
 	func texto_accion() -> String:
-		return "Dormir un rato (las plantas crecen)"
+		return "Dormir (pasan %d horas y las plantas crecen)" % int(HORAS_RELOJ)
 
 	func usar(jugador: Node) -> void:
 		jugador.hud.fundido(func() -> void:
 			for maceta in get_tree().get_nodes_in_group("macetas"):
 				maceta.adelantar(HORAS_DE_SUENO)
-			# El reloj también avanza lo mismo que han crecido las plantas.
-			Juego.hora += HORAS_DE_SUENO * 24.0 / (maxf(1.0, Juego.duracion_dia_min) * 60.0)
+			# El reloj avanza unas horas: dormir sirve también para que pase la noche.
+			Juego.hora += HORAS_RELOJ
 			if Juego.hora >= 24.0:
 				Juego.hora -= 24.0
 				Juego.dia += 1

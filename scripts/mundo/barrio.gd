@@ -404,8 +404,12 @@ func fila_con_huecos(origen: Vector3, angulo: float, desde: float, hasta: float,
 
 
 # Un edificio grande que cierra el final de una calle.
-func tapon_de_calle(centro: Vector3, ancho: float, color: Color = Color(0.2, 0.2, 0.23)) -> void:
-	Construir.caja(self, Vector3(centro.x, 5.0, centro.z), Vector3(ancho, 10.0, 4.0), color)
+# "calle_en_x" = true si la calle va a lo largo de X (el tapón se gira para
+# cruzarla entera; si no, quedaban dos pasillos a los lados por donde colarse).
+func tapon_de_calle(centro: Vector3, ancho: float, color: Color = Color(0.2, 0.2, 0.23),
+		calle_en_x: bool = false) -> void:
+	var tam: Vector3 = Vector3(4.0, 10.0, ancho) if calle_en_x else Vector3(ancho, 10.0, 4.0)
+	Construir.caja(self, Vector3(centro.x, 5.0, centro.z), tam, color)
 
 
 # ---------------------------------- Tiendas -----------------------------------

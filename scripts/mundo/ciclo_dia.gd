@@ -108,13 +108,21 @@ func _luces_cercanas() -> void:
 
 
 func actualizar() -> void:
-	# Ángulo del sol: 0 a las 6:00, PI/2 a las 12:00, PI a las 18:00.
-	var t: float = (Juego.hora - 6.0) / 24.0 * TAU
+	# Ángulo del sol: sale a las 6:00, está arriba a las 13:00 y se pone a las 20:00
+	# (14 horas de luz). Así la noche del cielo coincide con la del juego
+	# (Juego.es_de_noche): antes a las 18:00 ya estaba oscuro y los guardias
+	# no salían hasta las 20:00.
+	var h: float = fposmod(Juego.hora, 24.0)
+	var t: float
+	if h >= 6.0 and h < 20.0:
+		t = (h - 6.0) / 14.0 * PI
+	else:
+		t = PI + fposmod(h - 20.0, 24.0) / 10.0 * PI
 	var altura: float = sin(t)                         # 1 = mediodía, -1 = medianoche.
-	var dia: float = smoothstep(-0.12, 0.3, altura)    # 0 = noche, 1 = día.
+	var dia: float = smoothstep(-0.15, 0.25, altura)    # 0 = noche, 1 = día.
 
 	_sol.rotation = Vector3(-t, deg_to_rad(30), 0)
-	_sol.light_energy = 1.1 * dia
+	_sol.light_energy = 0.85 * dia   # (Con 1.1 las fachadas claras salían quemadas en blanco.)
 	_sol.visible = dia > 0.01
 	_sol.light_color = Color(1.0, 0.55, 0.3).lerp(Color(1.0, 0.96, 0.88), clampf(altura * 2.5, 0.0, 1.0))
 	_luna.light_energy = 0.25 * (1.0 - dia)
@@ -130,9 +138,9 @@ func actualizar() -> void:
 	_material_cielo.ground_bottom_color = Color(0.02, 0.025, 0.04).lerp(Color(0.25, 0.27, 0.3), dia)
 	_material_cielo.energy_multiplier = lerpf(0.5, 1.0, dia)
 	_ambiente.ambient_light_color = AMBIENTE_NOCHE.lerp(AMBIENTE_DIA, dia)
-	_ambiente.ambient_light_energy = lerpf(0.35, 0.8, dia)
+	_ambiente.ambient_light_energy = lerpf(0.35, 0.6, dia)
 	_ambiente.fog_light_color = NIEBLA_NOCHE.lerp(NIEBLA_DIA, dia)
-	_ambiente.fog_density = lerpf(0.035, 0.008, dia)
+	_ambiente.fog_density = lerpf(0.03, 0.004, dia)   # De día casi sin niebla: lo lejano no se ve lavado.
 
 	# Luces de la ciudad: encendidas de noche, apagadas de día.
 	var encendido: float = 1.0 - smoothstep(0.0, 0.35, altura)

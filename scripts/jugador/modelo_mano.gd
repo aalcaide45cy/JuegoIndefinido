@@ -20,7 +20,7 @@ const MODELOS: Dictionary = {
 	"francotirador": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Sniper", "escala": 0.5, "giro": Vector3(0, -PI / 2.0, 0)},
 	"lanzagranadas": {"modelo": "quaternius/toon-shooter-game-kit/Guns/GrenadeLauncher", "escala": 0.55, "giro": Vector3(0, -PI / 2.0, 0)},
 	"granada": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Grenade", "escala": 0.12, "giro": Vector3.ZERO},
-	"cuchillo": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Knife_1", "escala": 0.045, "giro": Vector3(-PI / 2.0, 0, 0)},
+	"cuchillo": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Knife_1", "escala": 0.11, "giro": Vector3(-PI / 2.0, 0, 0)},
 }
 
 
