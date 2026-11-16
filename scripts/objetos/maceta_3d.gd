@@ -20,6 +20,8 @@ var velocidad: float = 1.0   # 1 = normal; con abono, más rápido.
 var nivel: int = 1           # 1-3: sube con "Mejora de maceta" (más rápida y más cosecha).
 var riego: bool = false      # Kit de riego instalado: +20% de velocidad.
 var abonada_extra: bool = false   # Ya recibió abono mejorado.
+var _bonus_foco: float = 1.0
+var _t_foco: float = 0.0
 var _anillo: Node3D
 var _grifo: Node3D
 
@@ -62,6 +64,14 @@ func _factor_velocidad() -> float:
 
 
 func _process(delta: float) -> void:
+	_t_foco -= delta
+	if _t_foco <= 0.0:
+		_t_foco = 1.0
+		_bonus_foco = 1.0
+		for f in get_tree().get_nodes_in_group("focos"):
+			var foco: Colocable = f as Colocable
+			if foco != null and foco.global_position.distance_to(global_position) < 3.5:
+				_bonus_foco = maxf(_bonus_foco, foco.bonus_cultivo())
 	if estado == Estado.CRECIENDO:
 		adelantar(delta)
 	elif estado == Estado.LISTA:
@@ -75,7 +85,7 @@ func _process(delta: float) -> void:
 func adelantar(segundos: float) -> void:
 	if estado != Estado.CRECIENDO:
 		return
-	progreso += segundos * velocidad / GameData.HIERBAS[tipo_hierba]["tiempo"]
+	progreso += segundos * velocidad * _bonus_foco / GameData.HIERBAS[tipo_hierba]["tiempo"]
 	if progreso >= 1.0:
 		progreso = 1.0
 		estado = Estado.LISTA

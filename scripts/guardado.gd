@@ -54,6 +54,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"inventario": Juego.inventario,
 		"estanteria": Juego.estanteria,
 		"macetas": macetas,
+		"colocables": _exportar_colocables(arbol),
 		"jugador": [pos.x, pos.y, pos.z],
 	}
 	var archivo: FileAccess = FileAccess.open(RUTA, FileAccess.WRITE)
@@ -123,6 +124,13 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 		if d is Dictionary:
 			_restaurar_maceta(arbol, d)
 
+	for nodo in arbol.get_nodes_in_group("colocables"):
+		nodo.queue_free()
+	for c in datos.get("colocables", []):
+		var pc: Array = c.get("pos", []) if c is Dictionary else []
+		if pc.size() == 3 and Colocable.TIPOS.has(str(c.get("tipo", ""))):
+			Colocable.crear(arbol.current_scene, str(c["tipo"]), int(c.get("nivel", 1)), Vector3(pc[0], pc[1], pc[2]))
+
 	var p: Array = datos.get("jugador", [])
 	if p.size() == 3:
 		jugador.global_position = Vector3(p[0], p[1], p[2])
@@ -130,6 +138,16 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 			(jugador as CharacterBody3D).velocity = Vector3.ZERO
 	Juego.cambio.emit()
 	return true
+
+
+static func _exportar_colocables(arbol: SceneTree) -> Array:
+	var r: Array = []
+	for nodo in arbol.get_nodes_in_group("colocables"):
+		var c: Colocable = nodo as Colocable
+		if c != null:
+			var p: Vector3 = c.global_position
+			r.append({"tipo": c.tipo, "nivel": c.nivel, "pos": [p.x, p.y, p.z]})
+	return r
 
 
 # Copia las casillas guardadas a la lista del juego (convirtiendo los números).

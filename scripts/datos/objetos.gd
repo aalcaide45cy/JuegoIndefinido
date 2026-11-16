@@ -74,6 +74,24 @@ const LISTA: Dictionary = {
 		"color": Color(0.6, 0.33, 0.22), "forma": "maceta",
 		"descripcion": "Colócala en uno de los huecos para macetas de tu casa.",
 	},
+	"lampara": {
+		"nombre": "Lámpara", "tipo": "mueble", "pila": 20, "precio": 35,
+		"tienda": "ferreteria", "nivel": 1, "habilidad": "",
+		"color": Color(1.0, 0.82, 0.5), "forma": "jarra",
+		"descripcion": "Para montar en tu casa: apunta al suelo y pulsa G. Mejorable (niveles 1-3).",
+	},
+	"foco_cultivo": {
+		"nombre": "Foco de cultivo", "tipo": "mueble", "pila": 20, "precio": 110,
+		"tienda": "ferreteria", "nivel": 2, "habilidad": "",
+		"color": Color(0.8, 0.45, 1.0), "forma": "jarra",
+		"descripcion": "Se monta con G. Las macetas a menos de 3,5 m crecen +25% por nivel.",
+	},
+	"mejora_equipo": {
+		"nombre": "Mejora de equipo", "tipo": "material", "pila": 20, "precio": 90,
+		"tienda": "ferreteria", "nivel": 2, "habilidad": "",
+		"color": Color(0.7, 0.9, 1.0), "forma": "saco",
+		"descripcion": "Con E sobre una lámpara o foco montados, sube su nivel (máx. 3).",
+	},
 	"jarra": {
 		"nombre": "Jarra de agua", "tipo": "herramienta", "pila": 1, "precio": 25,
 		"tienda": "herbolario", "nivel": 1, "habilidad": "",

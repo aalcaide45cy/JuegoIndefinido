@@ -88,6 +88,10 @@ func _unhandled_input(evento: InputEvent) -> void:
 		Juego.seleccionar(_tecla_barra(evento))
 	elif evento.is_action_pressed("recargar"):
 		_recargar()
+	elif evento.is_action_pressed("colocar") and not _bloqueado:
+		var texto: String = Colocable.colocar_desde(self, Juego.id_en_mano())
+		if texto != "":
+			Juego.avisar(texto)
 	elif evento is InputEventMouseButton and evento.pressed and not raton_capturado:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # Clic para volver a jugar.
 	elif evento.is_action_pressed("liberar_raton"):

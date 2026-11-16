@@ -540,6 +540,7 @@ func _crear_controles() -> void:
 	_accion("inventario", [KEY_TAB])
 	_accion("admin", [KEY_F1])
 	_accion("recargar", [KEY_R])
+	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
 	_accion("liberar_raton", [KEY_ESCAPE])
 	for i in TAM_BARRA:
