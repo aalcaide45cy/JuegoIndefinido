@@ -54,7 +54,13 @@ func construir() -> void:
 	camara.global_transform = Transform3D(Basis(Vector3.RIGHT, -PI / 2.0),
 			Vector3(_centro.x, 90.0, _centro.z))
 
+	# El tamaño se mide en las unidades de la interfaz (que el HUD escala según la
+	# pantalla), no en píxeles reales: si no, en 4K el mapa salía 3 veces más
+	# grande que la pantalla y se cortaba.
 	var tam: Vector2 = get_viewport_rect().size
+	var padre: Control = get_parent() as Control
+	if padre != null and padre.size.y > 0.0:
+		tam = padre.size
 	_px = minf(tam.x - 80.0, tam.y - 110.0)
 	var marco: PanelContainer = Hud.crear_panel()
 	Hud.centrar(marco, Vector2(_px + 40.0, _px + 80.0))

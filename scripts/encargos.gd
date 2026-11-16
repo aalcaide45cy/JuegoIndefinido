@@ -7,7 +7,6 @@
 #
 # El estado vive en Juego (encargos, pedidos_material, reputacion, avisos) para
 # que se guarde con la partida. Este nodo solo lo hace avanzar. Lo añade mundo.gd.
-# SIN PROBAR en Godot.
 # -----------------------------------------------------------------------------
 class_name Encargos
 extends Node
@@ -35,6 +34,7 @@ var _siguiente: float = 25.0
 var _compradores: Dictionary = {}   # id -> Comprador
 var _siguiente_id: int = 1
 var _aviso: Label
+var _capa: CanvasLayer
 
 
 func _ready() -> void:
@@ -49,13 +49,18 @@ func _ready() -> void:
 	_aviso.add_theme_constant_override("outline_size", 6)
 	_aviso.anchor_left = 0.0
 	_aviso.offset_left = 16.0
-	_aviso.offset_top = 150.0
+	_aviso.offset_top = 196.0   # Debajo del panel de vida y de los avisos de sigilo.
 	capa.add_child(_aviso)
+	_capa = capa
 	for e in Juego.encargos:
 		_siguiente_id = maxi(_siguiente_id, int(e["id"]) + 1)
 
 
 func _process(delta: float) -> void:
+	# El aviso se escala igual que el resto de la interfaz (pensada para 720 de alto):
+	# sin esto, en 4K salía con letra diminuta.
+	var factor: float = maxf(0.5, get_viewport().get_visible_rect().size.y / Hud.ALTO_DISENO)
+	_capa.scale = Vector2(factor, factor)
 	_siguiente -= delta
 	if _siguiente <= 0.0:
 		_siguiente = randf_range(50.0, 90.0)
@@ -70,8 +75,15 @@ func _process(delta: float) -> void:
 				_notificar("%s ya no espera tu respuesta (oferta caducada)." % e["cliente"])
 			else:
 				_comprador_se_va(e)
-		elif e["estado"] == "aceptado" and not _compradores.has(int(e["id"])):
-			_crear_comprador(e)
+		elif e["estado"] == "aceptado":
+			if not _compradores.has(int(e["id"])):
+				_crear_comprador(e)
+			else:
+				# Tras cargar otra partida el mismo número puede ser otro encargo en otro sitio.
+				var c: Comprador = _compradores[int(e["id"])]
+				var sitio: Vector3 = Vector3(e["pos"][0], e["pos"][1], e["pos"][2])
+				if is_instance_valid(c) and c.position.distance_to(sitio) > 0.5:
+					c.position = sitio
 	# Compradores cuyo encargo ya no existe (p. ej. al cargar otra partida).
 	for id in _compradores.keys():
 		var existe: bool = false
@@ -112,6 +124,9 @@ func _crear_oferta() -> void:
 	var factor: float = randf_range(1.15, 1.6) * (1.0 + clampf(Juego.reputacion, 0, 100) / 250.0)
 	var lugar: Array = LUGARES[randi() % LUGARES.size()]
 	var pos: Vector3 = lugar[0]
+	# El número nunca repite uno que ya exista (por ejemplo, tras cargar una partida).
+	for otro in Juego.encargos:
+		_siguiente_id = maxi(_siguiente_id, int(otro["id"]) + 1)
 	var e: Dictionary = {
 		"id": _siguiente_id, "cliente": NOMBRES[randi() % NOMBRES.size()], "pocion": pocion,
 		"cantidad": cantidad, "pago": int(precio * cantidad * factor), "estado": "oferta",
