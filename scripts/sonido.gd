@@ -69,3 +69,38 @@ static func _generar(nombre: String) -> AudioStream:
 	w.stereo = false
 	w.data = datos
 	return w
+
+
+# Viento suave de fondo en bucle. Si existe assets/sonidos/ambiente.ogg/.wav se usa ese.
+static func ambiente(padre: Node, volumen_db: float = -22.0) -> void:
+	var flujo: AudioStream = null
+	for ext in ["ogg", "wav"]:
+		var ruta: String = "res://assets/sonidos/ambiente.%s" % ext
+		if ResourceLoader.exists(ruta):
+			flujo = load(ruta) as AudioStream
+			break
+	if flujo == null:
+		var tasa: int = 11025
+		var n: int = tasa * 6
+		var datos: PackedByteArray = PackedByteArray()
+		datos.resize(n * 2)
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.seed = 11
+		var suave: float = 0.0
+		for i in n:
+			suave = lerpf(suave, rng.randf_range(-1.0, 1.0), 0.06)
+			var oleaje: float = 0.6 + 0.4 * sin(TAU * float(i) / n * 2.0)
+			datos.encode_s16(i * 2, int(clampf(suave * 3.0 * oleaje, -1.0, 1.0) * 20000.0))
+		var w: AudioStreamWAV = AudioStreamWAV.new()
+		w.format = AudioStreamWAV.FORMAT_16_BITS
+		w.mix_rate = tasa
+		w.data = datos
+		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		w.loop_begin = 0
+		w.loop_end = n
+		flujo = w
+	var p: AudioStreamPlayer = AudioStreamPlayer.new()
+	p.stream = flujo
+	p.volume_db = volumen_db
+	p.autoplay = true
+	padre.add_child(p)

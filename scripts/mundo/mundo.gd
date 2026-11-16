@@ -35,6 +35,36 @@ func _ready() -> void:
 	jugador.hud = hud
 	add_child(jugador)
 	hud.jugador = jugador
+	Sonido.ambiente(self)
+	_polvo_en_el_aire(jugador)
+
+
+# Motas de polvo / luciérnagas flotando alrededor del jugador (partículas ligeras).
+func _polvo_en_el_aire(jugador: Node3D) -> void:
+	var p: CPUParticles3D = CPUParticles3D.new()
+	p.amount = 60
+	p.lifetime = 8.0
+	p.preprocess = 8.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(14, 4, 14)
+	p.position = Vector3(0, 3, 0)
+	p.direction = Vector3(0.3, 0.2, 0.1)
+	p.spread = 180.0
+	p.initial_velocity_min = 0.1
+	p.initial_velocity_max = 0.35
+	p.gravity = Vector3.ZERO
+	p.local_coords = false
+	var malla: SphereMesh = SphereMesh.new()
+	malla.radius = 0.02
+	malla.height = 0.04
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.95, 0.75, 0.6)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.9, 0.6)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	malla.material = mat
+	p.mesh = malla
+	jugador.add_child(p)
 
 
 # Cierra la ciudad: calcula el rectángulo que ocupan todos los barrios y pone
