@@ -10,12 +10,44 @@ class_name Construir
 extends RefCounted
 
 
+static var _textura_ruido: ImageTexture = null
+
+
+# Una textura de grano suave (hecha con código) que da algo de relieve y
+# variación a paredes y suelos en vez de un color liso. Se crea una sola vez.
+static func _ruido() -> ImageTexture:
+	if _textura_ruido == null:
+		var generador: FastNoiseLite = FastNoiseLite.new()
+		generador.noise_type = FastNoiseLite.TYPE_CELLULAR
+		generador.frequency = 0.045
+		generador.seed = 7
+		var fino: FastNoiseLite = FastNoiseLite.new()
+		fino.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		fino.frequency = 0.25
+		fino.seed = 11
+		var imagen: Image = Image.create(256, 256, false, Image.FORMAT_L8)
+		for y in 256:
+			for x in 256:
+				var a: float = generador.get_noise_2d(x, y) * 0.5 + 0.5
+				var b: float = fino.get_noise_2d(x, y) * 0.5 + 0.5
+				var v: float = 0.8 + 0.12 * a + 0.08 * b
+				imagen.set_pixel(x, y, Color(v, v, v))
+		imagen.generate_mipmaps()
+		_textura_ruido = ImageTexture.create_from_image(imagen)
+	return _textura_ruido
+
+
 # Crea un material de un color. "brillo" > 0 hace que emita luz propia
 # (ventanas encendidas, líquidos mágicos...).
 static func material(color: Color, brillo: float = 0.0) -> StandardMaterial3D:
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = 0.9
+	if brillo <= 0.0:
+		# Grano en el espacio del objeto: no hace falta UV y se ve bien en cajas grandes.
+		mat.albedo_texture = _ruido()
+		mat.uv1_triplanar = true
+		mat.uv1_scale = Vector3.ONE * 0.4
 	if brillo > 0.0:
 		mat.emission_enabled = true
 		mat.emission = color

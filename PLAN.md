@@ -53,6 +53,11 @@ C4 con detonador, lanzagranadas, galería de tiro con dianas y guardias que
 patrullan de noche y te persiguen si llevas algo ilegal. Si la vida llega a
 cero reapareces en la plaza y pierdes el 20 % del dinero.
 
+Primer paso de calidad visual (fase 7, solo con código): cielo con degradado,
+sol visible y atardeceres naranjas; grano de textura en paredes y suelos;
+ajuste de contraste y color. Quedan los modelos y texturas reales (ver
+`assets/LEEME.md`), partículas, sonido y el tema de interfaz.
+
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
 Fase 2 (misma rama): la ciudad ya tiene **cuatro barrios** unidos por calles de

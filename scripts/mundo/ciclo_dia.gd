@@ -20,11 +20,22 @@ const NIEBLA_DIA: Color = Color(0.62, 0.7, 0.78)
 var _ambiente: Environment
 var _sol: DirectionalLight3D
 var _luna: DirectionalLight3D
+var _material_cielo: ProceduralSkyMaterial
 
 
 func _ready() -> void:
 	_ambiente = Environment.new()
-	_ambiente.background_mode = Environment.BG_COLOR
+	# Cielo con degradado y disco solar; sus colores cambian con la hora.
+	_material_cielo = ProceduralSkyMaterial.new()
+	_material_cielo.sun_angle_max = 25.0
+	_material_cielo.sun_curve = 0.15
+	var cielo: Sky = Sky.new()
+	cielo.sky_material = _material_cielo
+	_ambiente.sky = cielo
+	_ambiente.background_mode = Environment.BG_SKY
+	_ambiente.adjustment_enabled = true
+	_ambiente.adjustment_contrast = 1.08
+	_ambiente.adjustment_saturation = 1.12
 	_ambiente.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_ambiente.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	_ambiente.fog_enabled = true
@@ -64,7 +75,15 @@ func actualizar() -> void:
 	_luna.light_energy = 0.25 * (1.0 - dia)
 	_luna.visible = dia < 0.99
 
-	_ambiente.background_color = CIELO_NOCHE.lerp(CIELO_DIA, dia)
+	# Cielo: azul de día, casi negro de noche y naranja en el amanecer y el atardecer.
+	var crepusculo: float = clampf(1.0 - absf(altura + 0.05) * 4.0, 0.0, 1.0)
+	var horizonte: Color = Color(0.04, 0.05, 0.1).lerp(Color(0.68, 0.8, 0.92), dia)
+	horizonte = horizonte.lerp(Color(1.0, 0.5, 0.28), crepusculo * 0.75)
+	_material_cielo.sky_top_color = Color(0.012, 0.016, 0.04).lerp(Color(0.2, 0.45, 0.82), dia)
+	_material_cielo.sky_horizon_color = horizonte
+	_material_cielo.ground_horizon_color = horizonte
+	_material_cielo.ground_bottom_color = Color(0.02, 0.025, 0.04).lerp(Color(0.25, 0.27, 0.3), dia)
+	_material_cielo.energy_multiplier = lerpf(0.5, 1.0, dia)
 	_ambiente.ambient_light_color = AMBIENTE_NOCHE.lerp(AMBIENTE_DIA, dia)
 	_ambiente.ambient_light_energy = lerpf(0.35, 0.8, dia)
 	_ambiente.fog_light_color = NIEBLA_NOCHE.lerp(NIEBLA_DIA, dia)
