@@ -62,11 +62,7 @@ func _ready() -> void:
 	_lateral.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_lateral.add_theme_constant_override("outline_size", 6)
 	_lateral.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_lateral.anchor_left = 1.0
-	_lateral.anchor_right = 1.0
-	_lateral.offset_left = -330.0
-	_lateral.offset_right = -16.0
-	_lateral.offset_top = 270.0
+	_lateral.size = Vector2(330.0, 0.0)   # Su sitio se calcula en _process (la capa va escalada).
 	capa.add_child(_lateral)
 
 
@@ -75,6 +71,10 @@ func _process(delta: float) -> void:
 	# sin esto, en 4K salía con letra diminuta.
 	var factor: float = maxf(0.5, get_viewport().get_visible_rect().size.y / Hud.ALTO_DISENO)
 	_capa.scale = Vector2(factor, factor)
+	# La barra lateral va pegada al borde derecho, debajo del minimapa. Se coloca a
+	# mano porque, con la capa escalada, los anclajes la mandaban fuera de la pantalla.
+	var ancho_ui: float = get_viewport().get_visible_rect().size.x / factor
+	_lateral.position = Vector2(ancho_ui - 346.0, 270.0)
 	_siguiente -= delta
 	if _siguiente <= 0.0:
 		_siguiente = randf_range(50.0, 90.0)
