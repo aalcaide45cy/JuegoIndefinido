@@ -1,8 +1,8 @@
 # minijuego_machacar.gd
 # -----------------------------------------------------------------------------
 # Mortero: machaca 2 hierbas pulsando Espacio (o el botón) lo más rápido posible
-# durante 4 segundos. 14+ golpes: salen 3 hierbas; 8+: salen 2; menos: sale 1.
-# Es rejugable y no bloquea (si fallas pierdes una hierba como mucho).
+# durante 4 segundos. Sale "polvo" (producto legal que se vende en tiendas):
+# 14+ golpes: 3 polvos; 8+: 2; menos: 1. Rejugable y sin bloqueos.
 # SIN PROBAR en Godot.
 # -----------------------------------------------------------------------------
 class_name MinijuegoMachacar
@@ -66,7 +66,12 @@ func _terminar() -> void:
 		return
 	Juego.quitar(hierba, 2)
 	var sale: int = 3 if _golpes >= 14 else (2 if _golpes >= 8 else 1)
-	var sobra: int = Juego.anadir(hierba, sale)
+	var polvo: String = "polvo_" + hierba.trim_prefix("hierba_")
+	if not DatosObjetos.LISTA.has(polvo):
+		Juego.anadir(hierba, 2)
+		_fin.text = "Esta hierba no se puede machacar."
+		return
+	var sobra: int = Juego.anadir(polvo, sale)
 	Juego.ganar_xp(4 * sale)
-	_fin.text = "Has sacado %d x %s.%s Cierra o vuelve a probar." % [sale - sobra, DatosObjetos.nombre(hierba),
+	_fin.text = "Has sacado %d x %s.%s Cierra o vuelve a probar." % [sale - sobra, DatosObjetos.nombre(polvo),
 			"" if sobra == 0 else " (algo no cabía)"]

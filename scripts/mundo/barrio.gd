@@ -583,7 +583,7 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	caldero.position = Vector3(3.3, 0, -4.2)
 	casa.add_child(caldero)
 	var mortero: Mortero = Mortero.new()
-	mortero.position = Vector3(-0.2, 0, -7.2)
+	mortero.position = Vector3(4.2, 0, -1.4)
 	casa.add_child(mortero)
 	var empaquetadora: Empaquetadora = Empaquetadora.new()
 	empaquetadora.position = Vector3(1.4, 0, -7.2)

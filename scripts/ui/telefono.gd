@@ -74,7 +74,7 @@ func construir() -> void:
 	var apps: HBoxContainer = HBoxContainer.new()
 	apps.add_theme_constant_override("separation", 6)
 	caja.add_child(apps)
-	var datos: Array = [["Encargos", "phone"], ["Pedidos", "cart"], ["Avisos", "exclamation"]]
+	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"]]
 	for i in 3:
 		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
 		b.icon = _icono(datos[i][1])

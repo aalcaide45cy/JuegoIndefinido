@@ -222,6 +222,9 @@ func _revisar_puertas(de_noche: bool) -> void:
 		if global_position.distance_to(puerta.global_position) > 14.0:
 			continue
 		var prob: float = (0.35 if de_noche else 0.12) * (1.0 + Juego.sospecha / 60.0)
+		var jug: Node3D = _buscar_jugador()
+		if jug != null and jug.global_position.distance_to(puerta.global_position) < 8.0:
+			prob *= 0.3   # Si estás cerca de tu casa, es menos probable que se atrevan.
 		if randf() < prob:
 			Juego.avisar(Juego.registrar_casa())
 			puerta.abierta = false

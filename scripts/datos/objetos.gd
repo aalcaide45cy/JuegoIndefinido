@@ -120,6 +120,18 @@ const LISTA: Dictionary = {
 		"color": Color(0.75, 0.6, 0.4), "forma": "saco",
 		"descripcion": "Poción empaquetada. Los clientes de los encargos pagan un 30% más.",
 	},
+	"polvo_bruma": {
+		"nombre": "Polvo de Hoja de Bruma", "tipo": "material", "pila": 20, "precio": 14,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.75, 0.5), "forma": "saco",
+		"descripcion": "Hierba machacada en el mortero. Legal: se vende en las tiendas.",
+	},
+	"polvo_sepulcral": {
+		"nombre": "Polvo de Hongo Sepulcral", "tipo": "material", "pila": 20, "precio": 20,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.7, 0.65, 0.78), "forma": "saco",
+		"descripcion": "Hongo machacado en el mortero. Legal: se vende en las tiendas.",
+	},
 	"pocion_humo": {
 		"nombre": "Humo del Olvido", "tipo": "pocion", "pila": 20, "precio": 0,
 		"tienda": "", "nivel": 1, "habilidad": "",
