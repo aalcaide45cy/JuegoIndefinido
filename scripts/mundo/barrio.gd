@@ -127,7 +127,8 @@ func prop(padre: Node3D, nombre: String, pos: Vector3, giro: float = 0.0, escala
 	return Assets.colocar_solido(padre, PROPS + nombre, pos, giro, Vector3.ONE * escala, solido)
 
 
-# Decora el interior de una tienda con muebles y objetos del kit de props:
+# Decora la herboristería de la plaza (las demás tiendas usan _decorar_tienda,
+# que elige los muebles según el tipo de tienda). Pone muebles y objetos del kit de props:
 # barriles, cajas, un cofre, una lámpara de araña y velas y pociones en el mostrador.
 func decorar_tienda(tienda: Node3D) -> void:
 	if not Assets.existe(PROPS + "Barrel"):
@@ -363,7 +364,6 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 			if not ids.is_empty():
 				color_obj = Juego.DatosObjetos.datos(ids[(fila * 10 + i) % ids.size()])["color"]
 			Construir.caja(tienda, Vector3(-3.6 + i * 0.8, y + 0.15, -7.6), Vector3(0.3, 0.25, 0.25), color_obj, false)
-	decorar_tienda(tienda)
 
 
 # Muebles y objetos de verdad (paquete Fantasy Props) para que cada tienda tenga
