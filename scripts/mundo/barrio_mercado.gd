@@ -63,6 +63,11 @@ func construir() -> void:
 	guardia.ruta = ruta
 	add_child(guardia)
 
+	# Puestos de mercado en la calle (si está el paquete de modelos).
+	Assets.colocar(self, Assets.FANTASIA + "Stall_Empty", Vector3(-2.3, 0, -16.0), 1.0, PI / 2.0)
+	Assets.colocar(self, Assets.FANTASIA + "Stall_Cart_Empty", Vector3(2.3, 0, 8.0), 1.0, -PI / 2.0)
+	Assets.colocar(self, Assets.MEDIEVAL + "Prop_Wagon", Vector3(-2.4, 0, 26.0))
+
 	tapon_de_calle(Vector3(0, 0, -38), 14.0)
 	Construir.texto(self, Vector3(0, 3.5, -35.8), "MERCADO DE LAS ÁNIMAS", 100, Color(0.9, 0.85, 0.65))
 

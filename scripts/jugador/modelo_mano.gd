@@ -10,10 +10,34 @@ extends RefCounted
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 
 
+# Modelos de verdad (Quaternius, CC0) para lo que llevas en la mano. "escala"
+# ajusta el tamaño y "giro" los pone apuntando hacia delante (-Z): las armas del
+# paquete miran hacia -X y los cuchillos hacia +Y, con el origen en la empuñadura.
+const MODELOS: Dictionary = {
+	"pistola": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Pistol", "escala": 0.28, "giro": Vector3(0, -PI / 2.0, 0)},
+	"escopeta": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Shotgun", "escala": 0.55, "giro": Vector3(0, -PI / 2.0, 0)},
+	"rifle": {"modelo": "quaternius/toon-shooter-game-kit/Guns/AK", "escala": 0.6, "giro": Vector3(0, -PI / 2.0, 0)},
+	"francotirador": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Sniper", "escala": 0.5, "giro": Vector3(0, -PI / 2.0, 0)},
+	"lanzagranadas": {"modelo": "quaternius/toon-shooter-game-kit/Guns/GrenadeLauncher", "escala": 0.55, "giro": Vector3(0, -PI / 2.0, 0)},
+	"granada": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Grenade", "escala": 0.3, "giro": Vector3.ZERO},
+	"cuchillo": {"modelo": "quaternius/toon-shooter-game-kit/Guns/Knife_1", "escala": 0.25, "giro": Vector3(-PI / 2.0, 0, 0)},
+}
+
+
 # Crea un nodo con el modelo del objeto "id" (o null si no hay nada).
 static func crear(id: String) -> Node3D:
 	if id == "":
 		return null
+	# ¿Hay un modelo de verdad? Si no, se dibuja con formas simples (más abajo).
+	var equipo: Dictionary = MODELOS.get(DatosObjetos.datos(id)["forma"], {})
+	if not equipo.is_empty():
+		var modelo: Node3D = Assets.modelo(equipo["modelo"])
+		if modelo != null:
+			var contenedor: Node3D = Node3D.new()
+			modelo.scale = Vector3.ONE * float(equipo["escala"])
+			modelo.rotation = equipo["giro"]
+			contenedor.add_child(modelo)
+			return contenedor
 	var datos: Dictionary = DatosObjetos.datos(id)
 	var c: Color = datos["color"]
 	var raiz: Node3D = Node3D.new()

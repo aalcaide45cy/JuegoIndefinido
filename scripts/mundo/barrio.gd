@@ -193,6 +193,7 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 	vendedor.position = Vector3(0, 1.0, -5.2)
 	tienda.add_child(vendedor)
 	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
+	_decorar_tienda(tienda, id_tienda)
 	# Estantes con el género: una cajita de color por cada objeto que vende.
 	var ids: Array = Juego.DatosObjetos.de_tienda(id_tienda)
 	for fila in 3:
@@ -203,6 +204,38 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 			if not ids.is_empty():
 				color_obj = Juego.DatosObjetos.datos(ids[(fila * 10 + i) % ids.size()])["color"]
 			Construir.caja(tienda, Vector3(-3.6 + i * 0.8, y + 0.15, -7.6), Vector3(0.3, 0.25, 0.25), color_obj, false)
+
+
+# Muebles y objetos de verdad (paquete Fantasy Props) para que cada tienda tenga
+# su ambiente. Si el paquete no está, no se pone nada y la tienda sigue igual.
+func _decorar_tienda(tienda: Node3D, id_tienda: String) -> void:
+	var f: String = Assets.FANTASIA
+	Assets.colocar(tienda, f + "Barrel", Vector3(-4.2, 0, -1.0))
+	Assets.colocar(tienda, f + "Crate_Wooden", Vector3(4.0, 0, -1.1), 1.0, 0.3)
+	match id_tienda:
+		"ferreteria":
+			Assets.colocar(tienda, f + "Anvil", Vector3(-3.6, 0, -3.0))
+			Assets.colocar(tienda, f + "Workbench", Vector3(3.3, 0, -2.8))
+			Assets.colocar(tienda, f + "Bucket_Metal", Vector3(-3.4, 0, -1.8))
+		"armeria":
+			Assets.colocar(tienda, f + "WeaponStand", Vector3(-3.6, 0, -3.0))
+			Assets.colocar(tienda, f + "WeaponStand", Vector3(3.6, 0, -3.0))
+			Assets.colocar(tienda, f + "Dummy", Vector3(3.6, 0, -1.0))
+		"botica", "herbolario":
+			Assets.colocar(tienda, f + "Potion_1", Vector3(-1.6, 1.0, -5.2))
+			Assets.colocar(tienda, f + "Potion_2", Vector3(-0.4, 1.0, -5.2))
+			Assets.colocar(tienda, f + "Potion_4", Vector3(1.4, 1.0, -5.2))
+			Assets.colocar(tienda, f + "Candle_1", Vector3(2.2, 1.0, -5.2))
+			Assets.colocar(tienda, f + "Cauldron", Vector3(3.6, 0, -3.2))
+			Assets.colocar(tienda, f + "Bookcase_2", Vector3(-3.8, 0, -3.4), 1.0, PI / 2.0)
+		"panaderia":
+			Assets.colocar(tienda, f + "Barrel_Apples", Vector3(-3.6, 0, -2.4))
+			Assets.colocar(tienda, f + "Bench", Vector3(3.0, 0, -3.0))
+			Assets.colocar(tienda, f + "Mug", Vector3(-1.0, 1.0, -5.2))
+		"":
+			# La academia: maniquíes de entrenamiento.
+			Assets.colocar(tienda, f + "Dummy", Vector3(-3.4, 0, -3.0))
+			Assets.colocar(tienda, f + "Dummy", Vector3(3.4, 0, -3.0))
 
 
 # --------------------------- Viviendas en alquiler ----------------------------
@@ -267,6 +300,11 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	var recetario: Label3D = Construir.texto(casa, Vector3(4.88, 1.9, -4.2), "\n".join(recetas), 40,
 			Color(0.75, 0.9, 0.7))
 	recetario.rotation.y = -PI / 2.0
+
+	# Un poco de mobiliario de verdad: mesa con vela y un baúl.
+	Assets.colocar(casa, Assets.FANTASIA + "Table_Large", Vector3(-1.6, 0, -3.0))
+	Assets.colocar(casa, Assets.FANTASIA + "Candle_2", Vector3(-1.6, 0.81, -3.0))
+	Assets.colocar(casa, Assets.FANTASIA + "Chest_Wood", Vector3(-2.6, 0, -7.3))
 
 	# Cinco huecos para macetas junto a la pared izquierda; las dos primeras ya vienen puestas.
 	for i in 5:

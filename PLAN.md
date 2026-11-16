@@ -58,6 +58,13 @@ sol visible y atardeceres naranjas; grano de textura en paredes y suelos;
 ajuste de contraste y color. Quedan los modelos y texturas reales (ver
 `assets/LEEME.md`), partículas, sonido y el tema de interfaz.
 
+Assets reales: los paquetes CC0 de Quaternius ya están en `assets/quaternius/`
+(Fantasy Props, Medieval Village, Toon Shooter y Universal Base Characters; el
+Downtown City MegaKit no se copió por tamaño, 88 MB). Ya se ven en las armas de
+la mano y en la decoración de tiendas, casas y mercado. Quedan: cambiar las cajas
+de los edificios por Medieval Village, personajes para tenderos, clientes y
+guardias, y texturas de Poly Haven. Las licencias están en `CREDITS.md`.
+
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
 Fase 2 (misma rama): la ciudad ya tiene **cuatro barrios** unidos por calles de

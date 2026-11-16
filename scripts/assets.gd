@@ -15,11 +15,21 @@ extends RefCounted
 const CARPETA_MODELOS: String = "res://assets/modelos/"
 const CARPETA_TEXTURAS: String = "res://assets/texturas/"
 
+# Paquetes CC0 de Quaternius ya incluidos (ver CREDITS.md). Se usan así:
+#   Assets.modelo(Assets.FANTASIA + "Barrel")
+const FANTASIA: String = "quaternius/fantasy-props-megakit/"      # Barriles, mesas, pociones...
+const MEDIEVAL: String = "quaternius/medieval-village-megakit/"   # Muros, tejados, carros...
+const ARMAS: String = "quaternius/toon-shooter-game-kit/Guns/"    # Pistola, escopeta, AK...
+const ENTORNO: String = "quaternius/toon-shooter-game-kit/Environment/"
+const PERSONAJES: String = "quaternius/universal-base-characters/"
 
-# Devuelve una copia nueva del modelo, o null si no está descargado.
+
+# Devuelve una copia nueva del modelo, o null si no está descargado. Si el nombre
+# lleva una carpeta (como "quaternius/..."), se busca dentro de assets/.
 static func modelo(nombre: String) -> Node3D:
+	var base: String = "res://assets/" if "/" in nombre else CARPETA_MODELOS
 	for ext in ["glb", "gltf"]:
-		var ruta: String = "%s%s.%s" % [CARPETA_MODELOS, nombre, ext]
+		var ruta: String = "%s%s.%s" % [base, nombre, ext]
 		if ResourceLoader.exists(ruta):
 			var escena = load(ruta)
 			if escena is PackedScene:

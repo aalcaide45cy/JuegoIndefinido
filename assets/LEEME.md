@@ -24,3 +24,16 @@ una fila aquí. Si un archivo no existe, se dibuja la caja de siempre.)
 | `suelo.png` | suelo de las calles |
 
 El tamaño de los modelos se ajusta en `scripts/assets.gd` (parámetro `escala`).
+
+
+## Paquetes de Quaternius ya incluidos (assets/quaternius/)
+
+`Assets.modelo(Assets.FANTASIA + "Barrel")` carga un modelo por nombre de archivo sin
+extensión. Carpetas: `FANTASIA` (props: barriles, mesas, pociones, yunque...),
+`MEDIEVAL` (muros, tejados, carros), `ARMAS` y `ENTORNO` (Toon Shooter Game Kit),
+`PERSONAJES` (personajes base y peinados). Los modelos miden metros reales y tienen
+el origen en el suelo (props) o en la empuñadura (armas, que miran hacia -X).
+Ya se usan: armas y cuchillo en la mano (`modelo_mano.gd`), decoración de tiendas y
+casas (`barrio.gd`) y puestos del mercado. Pendiente: edificios con Medieval Village y
+personajes para tenderos y guardias. La primera vez que abras el proyecto, Godot
+tardará unos minutos en importar los ~700 modelos.
