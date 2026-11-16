@@ -112,6 +112,8 @@ static func _leer_lista(guardada: Array, destino: Array) -> void:
 		var casilla: Dictionary = {"id": str(c["id"]), "cantidad": maxi(1, int(c.get("cantidad", 1)))}
 		if c.has("agua"):
 			casilla["agua"] = int(c["agua"])
+		if c.has("balas"):
+			casilla["balas"] = int(c["balas"])
 		destino[i] = casilla
 
 

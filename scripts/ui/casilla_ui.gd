@@ -46,6 +46,8 @@ func _al_cambiar() -> void:
 		tooltip_text = "%s\n%s" % [datos["nombre"], datos["descripcion"]]
 		if casilla.has("agua"):
 			tooltip_text += "\nAgua: %d/%d" % [casilla["agua"], datos["agua_max"]]
+		if datos.has("cargador"):
+			tooltip_text += "\nBalas: %d/%d" % [casilla.get("balas", 0), datos["cargador"]]
 	queue_redraw()
 
 

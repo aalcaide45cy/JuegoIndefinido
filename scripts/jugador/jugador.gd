@@ -43,9 +43,13 @@ var _brazo: SpringArm3D
 var _camara: Camera3D
 var _mano: Node3D = null       # El objeto que llevas en la mano (lo dibuja ModeloMano).
 var _id_mano: String = "~"     # Qué objeto se está dibujando ("~" = todavía ninguno).
+var _enfriamiento: float = 0.0   # Segundos hasta poder atacar otra vez.
+var _zoom: bool = false          # Mira del francotirador.
+var _muerto: bool = false
 
 
 func _ready() -> void:
+	add_to_group("jugador")
 	_crear_cuerpo()
 	_crear_camara()
 	_aplicar_camara()
@@ -72,7 +76,12 @@ func _unhandled_input(evento: InputEvent) -> void:
 		Juego.seleccionar(Juego.seleccion + paso)
 	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
 			and evento.button_index == MOUSE_BUTTON_LEFT:
-		Juego.usar_en_mano()
+		_atacar()
+	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
+			and evento.button_index == MOUSE_BUTTON_RIGHT:
+		_alternar_zoom()
+	elif evento.is_action_pressed("recargar"):
+		_recargar()
 	elif evento is InputEventMouseButton and evento.pressed and not raton_capturado:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # Clic para volver a jugar.
 	elif evento.is_action_pressed("liberar_raton"):
@@ -87,6 +96,15 @@ func _unhandled_input(evento: InputEvent) -> void:
 # --------------------------------- Movimiento ---------------------------------
 
 func _physics_process(delta: float) -> void:
+	_enfriamiento -= delta
+	if Juego.vida <= 0.0 and not _muerto:
+		_morir()
+	# El rifle dispara en ráfaga mientras mantienes el botón.
+	if _enfriamiento <= 0.0 and not Juego.menu_abierto and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED \
+			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		var datos_mano: Dictionary = _datos_mano()
+		if datos_mano.get("forma", "") == "rifle":
+			_atacar()
 	_pivote.rotation.y = _giro
 	_brazo.rotation.x = _inclinacion
 
@@ -137,6 +155,171 @@ func _actualizar_mano() -> void:
 		_mano = null
 	_mano = ModeloMano.crear(id)
 	_colocar_mano()
+	_zoom = false
+	_camara.fov = 70.0
+
+
+# ------------------------- Combate: golpear, disparar, explotar ----------------
+
+func _datos_mano() -> Dictionary:
+	var id: String = Juego.id_en_mano()
+	return {} if id == "" else Juego.DatosObjetos.datos(id)
+
+
+# Clic izquierdo: ataca con lo que lleves en la mano (o usa comida y medicinas).
+func _atacar() -> void:
+	if _enfriamiento > 0.0 or _muerto:
+		return
+	var casilla = Juego.en_mano()
+	if casilla == null:
+		return
+	var datos: Dictionary = Juego.DatosObjetos.datos(casilla["id"])
+	match datos["tipo"]:
+		"arma_cc":
+			_golpear(datos)
+		"arma_fuego":
+			_disparar(casilla, datos)
+		"explosivo":
+			_usar_explosivo(casilla, datos)
+		"herramienta":
+			if casilla["id"] == "detonador":
+				_enfriamiento = 0.5
+				var n: int = Combate.detonar_c4(get_tree())
+				Juego.avisar("¡BUM! %d carga(s) detonada(s)." % n if n > 0 else "No hay cargas colocadas.")
+		_:
+			Juego.usar_en_mano()
+
+
+func _origen() -> Vector3:
+	return global_position + Vector3(0, 1.5, 0)
+
+
+func _adelante() -> Vector3:
+	return -_camara.global_basis.z
+
+
+func _escena() -> Node3D:
+	return get_parent() as Node3D
+
+
+# Un pequeño vaivén de la mano para que se note el golpe o el disparo.
+func _animar_mano(retroceso: float) -> void:
+	if _mano == null:
+		return
+	var base: Vector3 = _mano.position
+	var animacion: Tween = create_tween()
+	animacion.tween_property(_mano, "position", base + Vector3(0, 0.03, retroceso), 0.05)
+	animacion.tween_property(_mano, "position", base, 0.12)
+
+
+func _golpear(datos: Dictionary) -> void:
+	_enfriamiento = 0.45
+	_animar_mano(-0.25)
+	var choque: Dictionary = Combate.rayo(get_world_3d(), _origen(), _adelante(), 2.4, [get_rid()])
+	if choque.is_empty():
+		return
+	var cosa = choque["collider"]
+	if cosa != null and cosa.has_method("recibir_dano"):
+		cosa.recibir_dano(float(datos["dano"]))
+
+
+func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
+	if casilla.get("balas", 0) <= 0:
+		_enfriamiento = 0.3
+		Juego.avisar("Sin balas en el cargador. Pulsa R para recargar.")
+		return
+	casilla["balas"] -= 1
+	var forma: String = datos["forma"]
+	var pausa: Dictionary = {"pistola": 0.28, "escopeta": 0.9, "rifle": 0.11, "francotirador": 1.4,
+			"lanzagranadas": 1.0}
+	_enfriamiento = pausa.get(forma, 0.4)
+	_animar_mano(0.12)
+	_inclinacion = clampf(_inclinacion + 0.015, -1.3, 1.0)   # Retroceso.
+	if forma == "lanzagranadas":
+		Combate.lanzar(_escena(), _origen() + _adelante() * 0.8, _adelante() * 26.0, 4.0, true,
+				6.0, float(datos["dano"]), Color(0.3, 0.35, 0.25), 0.1)
+	else:
+		var perdigones: int = int(datos.get("perdigones", 1))
+		var dispersion: float = 0.07 if perdigones > 1 else (0.002 if _zoom else 0.008)
+		for i in perdigones:
+			var dir: Vector3 = _adelante() + _camara.global_basis.x * randf_range(-dispersion, dispersion) \
+					+ _camara.global_basis.y * randf_range(-dispersion, dispersion)
+			var choque: Dictionary = Combate.rayo(get_world_3d(), _origen(), dir, 150.0, [get_rid()])
+			if choque.is_empty():
+				continue
+			var cosa = choque["collider"]
+			if cosa != null and cosa.has_method("recibir_dano"):
+				cosa.recibir_dano(float(datos["dano"]))
+			else:
+				Combate.marca_bala(_escena(), choque["position"], choque["normal"])
+	Juego.cambio.emit()
+
+
+# R: llena el cargador con la munición que lleves encima.
+func _recargar() -> void:
+	var casilla = Juego.en_mano()
+	if casilla == null:
+		return
+	var datos: Dictionary = Juego.DatosObjetos.datos(casilla["id"])
+	if datos["tipo"] != "arma_fuego":
+		return
+	var falta: int = int(datos["cargador"]) - int(casilla.get("balas", 0))
+	var disponible: int = Juego.cuenta(datos["municion"])
+	var pasa: int = mini(falta, disponible)
+	if pasa <= 0:
+		Juego.avisar("Cargador lleno." if falta <= 0 else "No tienes munición (%s)." % Juego.DatosObjetos.nombre(datos["municion"]))
+		return
+	Juego.quitar(datos["municion"], pasa)
+	casilla["balas"] = int(casilla.get("balas", 0)) + pasa
+	_enfriamiento = 0.8
+	Juego.avisar("Recargas %d." % pasa)
+	Juego.cambio.emit()
+
+
+func _usar_explosivo(casilla: Dictionary, datos: Dictionary) -> void:
+	_enfriamiento = 0.8
+	if casilla["id"] == "c4":
+		var choque: Dictionary = Combate.rayo(get_world_3d(), _origen(), _adelante(), 4.0, [get_rid()])
+		if choque.is_empty():
+			Juego.avisar("Acércate a una superficie para pegar la carga.")
+			return
+		var carga: CargaC4 = CargaC4.new()
+		carga.dano = float(datos["dano"])
+		_escena().add_child(carga)
+		carga.look_at_from_position(choque["position"] + choque["normal"] * 0.04,
+				choque["position"] + choque["normal"] * 2.0,
+				Vector3.RIGHT if absf(choque["normal"].y) > 0.99 else Vector3.UP)
+		Juego.avisar("Carga colocada. Usa el detonador (clic) para hacerla explotar.")
+	else:
+		Combate.lanzar(_escena(), _origen() + _adelante() * 0.6, _adelante() * 14.0 + Vector3.UP * 3.0,
+				2.5, false, 6.0, float(datos["dano"]), Color(0.25, 0.32, 0.2), 0.08)
+	casilla["cantidad"] -= 1
+	if casilla["cantidad"] <= 0:
+		Juego.inventario[Juego.seleccion] = null
+	Juego.cambio.emit()
+
+
+# Botón derecho con el francotirador: acerca la vista.
+func _alternar_zoom() -> void:
+	if _datos_mano().get("forma", "") != "francotirador":
+		return
+	_zoom = not _zoom
+	_camara.fov = 22.0 if _zoom else 70.0
+
+
+# Si la vida llega a cero: fundido a negro, reaparece en la plaza y pierdes
+# una parte del dinero.
+func _morir() -> void:
+	_muerto = true
+	Juego.avisar("Has caído. Despiertas en la plaza, y te falta dinero...")
+	hud.fundido(func() -> void:
+		var multa: int = Juego.dinero / 5
+		Juego.dinero -= multa
+		Juego.vida = Juego.VIDA_MAX * 0.6
+		global_position = Vector3(0, 0.2, 8)
+		velocity = Vector3.ZERO
+		_muerto = false
+		Juego.cambio.emit(), 1.5)
 
 
 # En primera persona el objeto cuelga de la cámara; en tercera, del muñeco.

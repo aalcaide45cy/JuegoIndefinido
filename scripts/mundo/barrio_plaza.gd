@@ -57,6 +57,7 @@ func construir() -> void:
 	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
 			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
+	_guardia([Vector3(-12, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 12), Vector3(-12, 0, 12)])
 
 	farola(Vector3(-10, 0, -10))
 	farola(Vector3(10, 0, -10))
@@ -121,6 +122,16 @@ func _herboristeria() -> void:
 	for i in 5:
 		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 3.1, -3.0), 0.12, 0.5,
 				Color(0.3, 0.45, 0.25), false, 0.0, 0.02)
+
+
+# Un guardia del Prefecto que patrulla la plaza de noche (puntos en coordenadas de la plaza).
+func _guardia(puntos: Array) -> void:
+	var guardia: Guardia = Guardia.new()
+	var ruta: Array[Vector3] = []
+	for p in puntos:
+		ruta.append(to_global(p))
+	guardia.ruta = ruta
+	add_child(guardia)
 
 
 func _fuente() -> void:

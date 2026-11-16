@@ -180,6 +180,10 @@ func _actualizar_estado() -> void:
 		_label_mano.text = Juego.DatosObjetos.nombre(mano["id"])
 		if mano.has("agua"):
 			_label_mano.text += "  (agua %d)" % mano["agua"]
+		var datos_mano: Dictionary = Juego.DatosObjetos.datos(mano["id"])
+		if datos_mano.has("cargador"):
+			_label_mano.text += "  [%d/%d]  reserva: %d  (R recarga)" % [mano.get("balas", 0),
+					datos_mano["cargador"], Juego.cuenta(datos_mano["municion"])]
 
 
 func _mostrar_mensaje(texto: String) -> void:

@@ -37,6 +37,16 @@ func construir() -> void:
 		Construir.caja(self, Vector3(-2.2, 1.3, 18.0 + i * 5.0), Vector3(2.4, 2.6, 4.4), colores[i])
 	Construir.caja(self, Vector3(-2.2, 3.9, 23.0), Vector3(2.4, 2.6, 4.4), colores[0])
 
+	# Galería de tiro al final de la calle: tres dianas para practicar.
+	for i in 3:
+		var diana: Diana = Diana.new()
+		diana.position = Vector3(0.6 + i * 1.3, 0, 33.5)
+		diana.rotation.y = PI
+		add_child(diana)
+	var letrero: Label3D = Construir.texto(self, Vector3(1.9, 2.6, 33.0), "GALERÍA DE TIRO", 50,
+			Color(1.0, 0.8, 0.6))
+	letrero.rotation.y = PI
+
 	tapon_de_calle(Vector3(0, 0, 38), 14.0)
 	var cartel: Label3D = Construir.texto(self, Vector3(0, 3.5, 35.8), "ZONA INDUSTRIAL", 100,
 			Color(0.8, 0.8, 0.75))

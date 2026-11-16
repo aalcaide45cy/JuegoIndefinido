@@ -82,6 +82,18 @@ func _process(delta: float) -> void:
 		dia += 1
 
 
+# ¿Llevas algo ilegal? (pociones, hierbas, armas de fuego o explosivos.) Los
+# guardias solo te persiguen si es así.
+func lleva_ilegal() -> bool:
+	for casilla in inventario:
+		if casilla == null:
+			continue
+		var tipo: String = DatosObjetos.datos(casilla["id"])["tipo"]
+		if tipo == "pocion" or tipo == "hierba" or tipo == "arma_fuego" or tipo == "explosivo":
+			return true
+	return false
+
+
 # Experiencia que hace falta para pasar del nivel actual al siguiente.
 func xp_necesaria() -> int:
 	return 100 * nivel
@@ -440,6 +452,7 @@ func _crear_controles() -> void:
 	_accion("cambiar_camara", [KEY_V])
 	_accion("inventario", [KEY_TAB])
 	_accion("admin", [KEY_F1])
+	_accion("recargar", [KEY_R])
 	_accion("liberar_raton", [KEY_ESCAPE])
 	for i in TAM_BARRA:
 		_accion("barra_%d" % (i + 1), [KEY_1 + i])

@@ -45,6 +45,14 @@ Ajustes tras la primera prueba: un día dura 60 minutos reales por defecto (se
 cambia en F1) y se quitaron los parpadeos de las fachadas (cajas que
 compartían plano con las paredes).
 
+Fases 3 a 6 (misma rama, sin probar): nivel con experiencia (plantar, cosechar,
+preparar y vender dan XP), academia en la Zona Industrial para aprender
+habilidades, armas cuerpo a cuerpo y de fuego (clic izquierdo, R recarga, clic
+derecho = zoom del francotirador), munición por tipo, marcas de bala, granadas,
+C4 con detonador, lanzagranadas, galería de tiro con dianas y guardias que
+patrullan de noche y te persiguen si llevas algo ilegal. Si la vida llega a
+cero reapareces en la plaza y pierdes el 20 % del dinero.
+
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
 Fase 2 (misma rama): la ciudad ya tiene **cuatro barrios** unidos por calles de

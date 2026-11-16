@@ -58,6 +58,11 @@ func construir() -> void:
 		tienda_con_interior(Vector3(4, 0, t["z"]), -PI / 2.0, t["titulo"], t["id"], t["nombre"],
 				t["habla"], t["color"])
 
+	var guardia: Guardia = Guardia.new()
+	var ruta: Array[Vector3] = [to_global(Vector3(0, 0, -30)), to_global(Vector3(0, 0, 30))]
+	guardia.ruta = ruta
+	add_child(guardia)
+
 	tapon_de_calle(Vector3(0, 0, -38), 14.0)
 	Construir.texto(self, Vector3(0, 3.5, -35.8), "MERCADO DE LAS ÁNIMAS", 100, Color(0.9, 0.85, 0.65))
 

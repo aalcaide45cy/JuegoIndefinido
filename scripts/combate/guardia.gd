@@ -1,0 +1,156 @@
+# guardia.gd
+# -----------------------------------------------------------------------------
+# Un guardia del Prefecto. De noche patrulla su ruta; si te ve con algo ilegal
+# (pociones, hierbas, armas de fuego o explosivos en el inventario) te persigue
+# y te golpea. De día no sale. Se le puede dañar con cualquier arma; si cae,
+# vuelve a aparecer a los 90 segundos.
+# -----------------------------------------------------------------------------
+class_name Guardia
+extends CharacterBody3D
+
+const VELOCIDAD_PATRULLA: float = 1.8
+const VELOCIDAD_PERSECUCION: float = 4.5
+const DISTANCIA_VISTA: float = 14.0
+const VIDA_MAXIMA: float = 60.0
+
+# Puntos por los que patrulla (posiciones del mundo). Los pone quien lo crea.
+var ruta: Array[Vector3] = []
+
+var _vida: float = VIDA_MAXIMA
+var _punto: int = 0
+var _persiguiendo: bool = false
+var _sin_ver: float = 0.0
+var _golpe: float = 0.0
+var _muerto: bool = false
+var _cuerpo: Node3D
+var _material: StandardMaterial3D
+
+
+func _ready() -> void:
+	add_to_group("danable")
+	var forma: CollisionShape3D = CollisionShape3D.new()
+	var capsula: CapsuleShape3D = CapsuleShape3D.new()
+	capsula.radius = 0.35
+	capsula.height = 1.7
+	forma.shape = capsula
+	forma.position.y = 0.85
+	add_child(forma)
+	_cuerpo = Node3D.new()
+	add_child(_cuerpo)
+	var abrigo: Node3D = Construir.cilindro(_cuerpo, Vector3(0, 0.6, 0), 0.34, 1.2, Color(0.12, 0.14, 0.26), false, 0.0, 0.26)
+	_material = (abrigo as MeshInstance3D).mesh.material
+	Construir.esfera(_cuerpo, Vector3(0, 1.42, 0), 0.2, Color(0.75, 0.62, 0.52))
+	Construir.cilindro(_cuerpo, Vector3(0, 1.68, 0), 0.2, 0.2, Color(0.1, 0.1, 0.18), false, 0.0, 0.16)
+	Construir.caja(_cuerpo, Vector3(0.35, 1.0, -0.1), Vector3(0.05, 0.05, 0.9), Color(0.5, 0.5, 0.55), false)  # Lanza.
+	Construir.caja(_cuerpo, Vector3(0, 1.42, -0.2), Vector3(0.06, 0.06, 0.1), Color(0.7, 0.55, 0.45), false)
+	if not ruta.is_empty():
+		global_position = ruta[0]
+	_poner_activo(false)
+
+
+# Solo existe de noche (y mientras no esté caído).
+func _poner_activo(activo: bool) -> void:
+	visible = activo
+	collision_layer = 1 if activo else 0
+	collision_mask = 1 if activo else 0
+
+
+func _physics_process(delta: float) -> void:
+	if _muerto:
+		return
+	var noche: bool = Juego.es_de_noche()
+	if noche != visible:
+		_poner_activo(noche)
+		_persiguiendo = false
+	if not noche:
+		return
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+	_golpe -= delta
+
+	var jugador: Node3D = _buscar_jugador()
+	var ve: bool = jugador != null and _ve_ilegal(jugador)
+	if ve:
+		_persiguiendo = true
+		_sin_ver = 0.0
+	elif _persiguiendo:
+		_sin_ver += delta
+		if _sin_ver > 6.0:
+			_persiguiendo = false
+
+	var destino: Vector3 = global_position
+	var velocidad: float = 0.0
+	if _persiguiendo and jugador != null:
+		destino = jugador.global_position
+		velocidad = VELOCIDAD_PERSECUCION
+		if global_position.distance_to(destino) < 1.6:
+			velocidad = 0.0
+			if _golpe <= 0.0:
+				_golpe = 1.0
+				Juego.cambiar_vida(-8.0)
+				Juego.avisar("¡Un guardia te golpea!")
+	elif not ruta.is_empty():
+		destino = ruta[_punto]
+		velocidad = VELOCIDAD_PATRULLA
+		if global_position.distance_to(Vector3(destino.x, global_position.y, destino.z)) < 0.6:
+			_punto = (_punto + 1) % ruta.size()
+
+	var hacia: Vector3 = destino - global_position
+	hacia.y = 0.0
+	if hacia.length() > 0.1 and velocidad > 0.0:
+		var d: Vector3 = hacia.normalized()
+		velocity.x = d.x * velocidad
+		velocity.z = d.z * velocidad
+		_cuerpo.rotation.y = lerp_angle(_cuerpo.rotation.y, atan2(-d.x, -d.z), minf(1.0, delta * 8.0))
+	else:
+		velocity.x = 0.0
+		velocity.z = 0.0
+	move_and_slide()
+
+
+func _buscar_jugador() -> Node3D:
+	var lista: Array = get_tree().get_nodes_in_group("jugador")
+	return null if lista.is_empty() else lista[0] as Node3D
+
+
+# true si el jugador está cerca, a la vista y lleva algo ilegal.
+func _ve_ilegal(jugador: Node3D) -> bool:
+	if global_position.distance_to(jugador.global_position) > DISTANCIA_VISTA:
+		return false
+	if not Juego.lleva_ilegal():
+		return false
+	var desde: Vector3 = global_position + Vector3(0, 1.5, 0)
+	var hasta: Vector3 = jugador.global_position + Vector3(0, 1.2, 0)
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, hasta)
+	consulta.exclude = [get_rid()]
+	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
+	return choque.is_empty() or choque["collider"] == jugador
+
+
+func recibir_dano(cantidad: float) -> void:
+	if _muerto or not visible:
+		return
+	_vida -= cantidad
+	_persiguiendo = true
+	_sin_ver = 0.0
+	_material.emission_enabled = true
+	_material.emission = Color(1, 0.2, 0.1)
+	if _vida <= 0.0:
+		_caer()
+		return
+	await get_tree().create_timer(0.15).timeout
+	_material.emission_enabled = false
+
+
+func _caer() -> void:
+	_muerto = true
+	_poner_activo(false)
+	_material.emission_enabled = false
+	Juego.cobrar(15)
+	Juego.avisar("Un guardia cae. Llevaba 15 $ encima.")
+	await get_tree().create_timer(90.0).timeout
+	_vida = VIDA_MAXIMA
+	_persiguiendo = false
+	if not ruta.is_empty():
+		global_position = ruta[0]
+	_muerto = false
