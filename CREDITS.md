@@ -10,9 +10,13 @@ paquete, autor, web y licencia. Solo licencias aptas para uso comercial
 | Medieval Village MegaKit (versión Standard gratuita) | Quaternius | https://quaternius.com/packs/medievalvillagemegakit.html | CC0 1.0 |
 | Toon Shooter Game Kit | Quaternius | https://quaternius.com/ (https://quaternius.com/packs/toonshootergamekit.html) | CC0 según su web; el zip descargado no trae archivo de licencia |
 | Universal Base Characters (versión Standard gratuita) | Quaternius | https://quaternius.com/packs/universalbasecharacters.html | CC0 1.0 |
+| Downtown City MegaKit (versión Standard gratuita, 153 modelos glTF) | Quaternius | https://quaternius.com/packs/downtowncitymegakit.html (descarga: https://quaternius.itch.io/downtown-city-megakit) | CC0 1.0, según `License_Standard.txt` del zip |
+| Game Icons (213 iconos de interfaz, en blanco y en negro) | Kenney | https://kenney.nl/assets/game-icons | CC0 1.0, según `license.txt` del zip |
+| Car Kit 3.1 (coches, furgonetas, camiones, tractores y ruedas, en GLB) | Kenney | https://kenney.nl/assets/car-kit | CC0 1.0, según `License.txt` del zip |
 
-Los archivos están en `assets/quaternius/` (cada paquete con su `License_Standard.txt`
-cuando lo trae). El CC0 no obliga a dar crédito, pero se agradece.
+Los archivos están en `assets/quaternius/` y `assets/kenney/` (cada paquete con su archivo
+de licencia cuando lo trae). Los tres últimos se descargaron el 2026-11-16; del zip de cada uno
+solo se copió la parte para Godot (glTF/GLB y PNG). El CC0 no obliga a dar crédito, pero se agradece.
 No hay arte generado con IA en el juego.
 
 Otros recursos:
