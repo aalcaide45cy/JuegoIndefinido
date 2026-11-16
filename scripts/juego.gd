@@ -472,6 +472,7 @@ func _crear_controles() -> void:
 	_accion("atras", [KEY_S, KEY_DOWN])
 	_accion("izquierda", [KEY_A, KEY_LEFT])
 	_accion("derecha", [KEY_D, KEY_RIGHT])
+	_accion("mapa", [KEY_M])   # Cambia el zoom del minimapa.
 	_accion("correr", [KEY_SHIFT])
 	_accion("saltar", [KEY_SPACE])
 	_accion("usar", [KEY_E])

@@ -189,6 +189,14 @@ func marcos_de_huecos(casa: Node3D, huecos: Array) -> void:
 			Construir.caja(casa, Vector3(x, abajo - f / 2.0, 0.1), Vector3(ancho + 2.0 * f, f, 0.26), Color.WHITE, false, 0.0, madera)
 
 
+# Marca un edificio como "punto de interés": sale en la brújula y el minimapa
+# (scripts/ui/brujula.gd y minimapa.gd) con su nombre y su color.
+func registrar_poi(nodo: Node3D, nombre: String, color: Color) -> void:
+	nodo.add_to_group("poi")
+	nodo.set_meta("poi_nombre", nombre)
+	nodo.set_meta("poi_color", color)
+
+
 # Un tablón de madera con el nombre de la tienda, entre los escaparates y la viga de arriba.
 func cartel_tienda(tienda: Node3D, titulo: String, color_texto: Color) -> void:
 	if hay_kit_pueblo():
@@ -405,6 +413,7 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 	]
 	var tienda: Node3D = edificio_visitable(pos, angulo, 10.0, 8.0, 9.0, color, color_interior, huecos)
 	cartel_tienda(tienda, titulo, color_cartel)
+	registrar_poi(tienda, nombre, color_cartel)
 	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
 	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.8, 10.0)
 	Construir.luz(tienda, Vector3(0, 3.0, -1.5), Color(1.0, 0.85, 0.6), 1.2, 7.0)
@@ -475,6 +484,7 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 		{"x": 1.5, "ancho": 2.0, "abajo": 1.0, "arriba": 2.3, "cristal": true},
 	]
 	var casa: Node3D = edificio_visitable(pos, angulo, 10.0, 8.0, 7.0, color, color_interior, huecos)
+	registrar_poi(casa, "Casa en alquiler", Color(1.0, 0.85, 0.5))
 
 	# Cartel de alquiler encima de la puerta.
 	if hay_kit_pueblo():
