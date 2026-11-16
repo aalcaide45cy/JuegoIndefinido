@@ -180,6 +180,10 @@ func _pintar_encargos() -> void:
 			var acepta: Button = Hud.crear_boton("Aceptar", _aceptar.bind(int(e["id"])))
 			acepta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			fila.add_child(acepta)
+			for pct in [15, 30]:
+				var neg: Button = Hud.crear_boton("+%d%%" % pct, _negociar.bind(int(e["id"]), pct))
+				neg.tooltip_text = "Contraoferta: éxito ~%d%%" % int(Encargos.prob_contraoferta(pct) * 100.0)
+				fila.add_child(neg)
 			var rechaza: Button = Hud.crear_boton("Rechazar", _rechazar.bind(int(e["id"])))
 			rechaza.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			fila.add_child(rechaza)
@@ -195,6 +199,11 @@ func _pintar_encargos() -> void:
 
 func _aceptar(id: int) -> void:
 	_gestor.aceptar(id)
+	_reconstruir()
+
+
+func _negociar(id: int, pct: int) -> void:
+	_gestor.negociar(id, pct)
 	_reconstruir()
 
 

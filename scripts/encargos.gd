@@ -161,6 +161,27 @@ func _crear_oferta() -> void:
 	Juego.cambio.emit()
 
 
+# Probabilidad de que el cliente acepte una contraoferta de +pct%. La reputación ayuda.
+static func prob_contraoferta(pct: int) -> float:
+	return clampf(0.9 - pct / 100.0 * 1.9 + Juego.reputacion / 300.0, 0.1, 0.95)
+
+
+# Acepta subiendo el precio un pct%. Si el cliente se ofende, retira el encargo.
+func negociar(id: int, pct: int) -> void:
+	for e in Juego.encargos:
+		if int(e["id"]) == id and e["estado"] == "oferta":
+			if randf() < prob_contraoferta(pct):
+				e["pago"] = int(int(e["pago"]) * (1.0 + pct / 100.0))
+				_notificar("%s acepta tu precio (+%d%%): %d $." % [e["cliente"], pct, e["pago"]])
+				aceptar(id)
+			else:
+				Juego.encargos.erase(e)
+				Juego.reputacion = maxi(-50, Juego.reputacion - 1)
+				_notificar("%s se ofende por tu precio y retira el encargo." % e["cliente"])
+			Juego.cambio.emit()
+			return
+
+
 func aceptar(id: int) -> void:
 	for e in Juego.encargos:
 		if int(e["id"]) == id and e["estado"] == "oferta":

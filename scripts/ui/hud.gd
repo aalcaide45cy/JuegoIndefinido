@@ -324,6 +324,12 @@ func abrir_estanteria() -> void:
 	_abrir_menu(Ventanas.Estanteria.new())
 
 
+func abrir_negociacion(mostrador: Mostrador) -> void:
+	var n: Negociacion = Negociacion.new()
+	n.mostrador = mostrador
+	_abrir_menu(n)
+
+
 func abrir_cacheo() -> void:
 	_abrir_menu(Cacheo.new())
 
