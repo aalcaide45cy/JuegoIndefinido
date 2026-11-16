@@ -28,6 +28,7 @@ var _golpe: float = 0.0
 var _muerto: bool = false
 var _cuerpo: Node3D
 var _material: StandardMaterial3D
+var _t_puertas: float = 0.0
 var _nodo_destino: String = ""
 var _espera: float = 0.0
 var _modelo: Node3D   # Personaje de Quaternius (null = muñeco de cajas).
@@ -82,6 +83,11 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	_golpe -= delta
+
+	_t_puertas -= delta
+	if _t_puertas <= 0.0:
+		_t_puertas = 5.0
+		_revisar_puertas(de_noche)
 
 	var jugador: Node3D = _buscar_jugador()
 	var ve: bool = jugador != null and _ve_ilegal(jugador, de_noche)
@@ -173,6 +179,22 @@ func _ve_ilegal(jugador: Node3D, de_noche: bool = true) -> bool:
 	consulta.exclude = [get_rid()]
 	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
 	return choque.is_empty() or choque["collider"] == jugador
+
+
+# Si pasa cerca de una casa tuya con la puerta abierta, puede entrar a registrarla.
+func _revisar_puertas(de_noche: bool) -> void:
+	for nodo in get_tree().get_nodes_in_group("puertas"):
+		var puerta: PuertaCasa = nodo as PuertaCasa
+		if puerta == null or not puerta.abierta or not Juego.alquilada(puerta.id_casa):
+			continue
+		if global_position.distance_to(puerta.global_position) > 14.0:
+			continue
+		var prob: float = 0.35 if de_noche else 0.12
+		if randf() < prob:
+			Juego.avisar(Juego.registrar_casa())
+			puerta.abierta = false
+			puerta._giro_objetivo = 0.0
+			return
 
 
 # Con probabilidad baja (más alta de noche y si llevas algo ilegal) te pide un cacheo.

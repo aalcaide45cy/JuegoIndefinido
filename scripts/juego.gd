@@ -474,6 +474,26 @@ func comprar(id: String) -> String:
 	return "Has comprado %s por %d $." % [datos["nombre"], datos["precio"]]
 
 
+# La policía entra en una casa con la puerta abierta y registra la estantería:
+# confisca lo ilegal y cobra una multa. Devuelve un texto para el aviso.
+func registrar_casa() -> String:
+	var tipos_ilegales: Array = ["pocion", "paquete", "hierba", "arma_fuego", "explosivo"]
+	var montones: int = 0
+	var unidades: int = 0
+	for i in estanteria.size():
+		var c = estanteria[i]
+		if c != null and DatosObjetos.datos(c["id"])["tipo"] in tipos_ilegales:
+			montones += 1
+			unidades += int(c["cantidad"])
+			estanteria[i] = null
+	if montones == 0:
+		return "La policía ha entrado en tu casa por la puerta abierta, no ha encontrado nada y se ha ido."
+	var multa: int = mini(dinero, 30 * montones + 5 * unidades)
+	dinero -= multa
+	cambio.emit()
+	return "¡La policía ha registrado tu casa (puerta abierta)! Confiscado lo ilegal de tu estantería y multa de %d $." % multa
+
+
 func avisar(texto: String) -> void:
 	mensaje.emit(texto)
 

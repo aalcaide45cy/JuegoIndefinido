@@ -23,6 +23,7 @@ var _giro_objetivo: float = 0.0
 
 func _ready() -> void:
 	distancia = 2.2
+	add_to_group("puertas")
 	# La puerta es un cuerpo sólido que cuelga de la bisagra.
 	_bisagra = Node3D.new()
 	_bisagra.position = Vector3(-ANCHO / 2.0, -1.0, 0)
@@ -51,7 +52,7 @@ func _process(delta: float) -> void:
 func texto_accion() -> String:
 	if not Juego.alquilada(id_casa):
 		return "Alquilar la casa por %d $" % precio
-	return "Cerrar la puerta" if abierta else "Abrir la puerta"
+	return "Cerrar con llave" if abierta else "Abrir la puerta (sin llave)"
 
 
 func usar(_jugador: Node) -> void:
