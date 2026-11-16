@@ -212,6 +212,7 @@ func _finalizar() -> void:
 		quedan = recipiente["agua"]
 	Juego.cambio.emit()
 	maceta.plantar(_semilla, _nota_media(), _con_abono)
+	Juego.ganar_xp(10)
 	Juego.avisar("Has plantado %s. Te quedan %d riegos en el recipiente." % [
 			GameData.HIERBAS[_semilla]["nombre"], quedan])
 	cerrar()

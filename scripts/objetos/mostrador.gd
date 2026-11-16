@@ -87,6 +87,7 @@ func usar(_jugador: Node) -> void:
 	var precio: int = GameData.POCIONES[pedido]["precio"]
 	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
 	Juego.cobrar(precio)
+	Juego.ganar_xp(25)
 	_se_marcha()
 
 

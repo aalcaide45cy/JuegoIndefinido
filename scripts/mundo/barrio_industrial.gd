@@ -21,10 +21,15 @@ func construir() -> void:
 			Color(0.2, 0.2, 0.22), Color(0.32, 0.3, 0.27))
 
 	# Este (fachadas en x = 4 mirando al oeste; u = z): armería en z = 20.
-	fila_con_huecos(Vector3(4, 0, 0), -PI / 2.0, -24.0, 36.0, [Vector2(15.0, 25.0)], 8.0, rng)
+	fila_con_huecos(Vector3(4, 0, 0), -PI / 2.0, -24.0, 36.0, [Vector2(15.0, 25.0), Vector2(-15.0, -5.0)], 8.0, rng)
 	tienda_con_interior(Vector3(4, 0, 20), -PI / 2.0, "ARMERÍA  Acero y Pólvora", "armeria",
 			"Armería Acero y Pólvora", "Hablar con la armera (comprar)", Color(1.0, 0.5, 0.4),
 			Color(0.2, 0.19, 0.2), Color(0.3, 0.27, 0.27))
+
+	# Este, z = -10: la academia donde se aprenden habilidades (nivel y dinero).
+	tienda_con_interior(Vector3(4, 0, -10), -PI / 2.0, "ACADEMIA  Plomo y Pericia", "",
+			"Academia Plomo y Pericia", "Hablar con el instructor (aprender habilidades)",
+			Color(0.6, 0.8, 1.0), Color(0.22, 0.22, 0.26), Color(0.32, 0.3, 0.3), true)
 
 	# Contenedores apilados en la calle (decoración con choque).
 	var colores: Array[Color] = [Color(0.45, 0.2, 0.15), Color(0.2, 0.3, 0.4), Color(0.35, 0.35, 0.2)]

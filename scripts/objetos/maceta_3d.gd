@@ -82,6 +82,7 @@ func usar(jugador: Node) -> void:
 				Juego.avisar("No te cabe la cosecha. Haz sitio en el inventario.")
 				return
 			Juego.anadir(id_hierba, cosecha)
+			Juego.ganar_xp(15)
 			Juego.avisar("Has cosechado %d %s." % [cosecha, GameData.HIERBAS[tipo_hierba]["nombre"]])
 			_vaciar()
 

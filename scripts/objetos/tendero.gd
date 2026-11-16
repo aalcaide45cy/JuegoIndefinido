@@ -16,6 +16,7 @@ const POS_MUNECO: Vector3 = Vector3(0, -1.0, -0.9)
 var tienda: String = "herbolario"
 var nombre_tienda: String = "Herboristería La Mandrágora Honrada"
 var texto_hablar: String = "Hablar con el herbolario (comprar)"
+var es_instructor: bool = false   # true: en vez de tienda, abre la academia de habilidades.
 
 
 func _ready() -> void:
@@ -34,4 +35,7 @@ func texto_accion() -> String:
 
 
 func usar(jugador: Node) -> void:
-	jugador.hud.abrir_tienda(tienda, nombre_tienda)
+	if es_instructor:
+		jugador.hud.abrir_instructor()
+	else:
+		jugador.hud.abrir_tienda(tienda, nombre_tienda)

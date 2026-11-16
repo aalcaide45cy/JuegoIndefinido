@@ -24,8 +24,8 @@ const CATEGORIAS: Dictionary = {
 
 # Muestra un resumen: dinero, nivel y vida.
 static func texto_estado() -> String:
-	return "%d $    ·    Nivel %d    ·    Vida %d/%d" % [Juego.dinero, Juego.nivel,
-			int(Juego.vida), int(Juego.VIDA_MAX)]
+	return "%d $    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.nivel,
+			Juego.xp, Juego.xp_necesaria(), int(Juego.vida), int(Juego.VIDA_MAX)]
 
 
 # Las casillas del inventario del jugador: mochila arriba y barra rápida abajo.
@@ -485,6 +485,7 @@ class Caldero extends Ventana:
 			_resultado.text = "El caldero escupe un humo gris. Has hecho un bodrio y se ha perdido."
 		else:
 			var objeto: String = "pocion_" + id_pocion
+			Juego.ganar_xp(20)
 			if Juego.cabe(objeto):
 				Juego.anadir(objeto)
 				_resultado.text = "¡Has preparado %s! %s" % [GameData.POCIONES[id_pocion]["nombre"],
@@ -506,6 +507,45 @@ class Caldero extends Ventana:
 			if c == null:
 				llena = false
 		_preparar.disabled = not llena
+
+
+# ==============================================================================
+# La academia: aquí se aprenden habilidades pagando. Sin la habilidad, las
+# tiendas no te venden ciertas armas y explosivos.
+class Instructor extends Ventana:
+	var _estado: Label
+	var _lista: VBoxContainer
+
+	func construir() -> void:
+		var caja: VBoxContainer = panel_centrado(Vector2(720, 520))
+		cabecera(caja, "Academia Plomo y Pericia")
+		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
+		caja.add_child(_estado)
+		subtitulo(caja, "Aprende una habilidad para poder comprar armas y explosivos avanzados.")
+		_lista = VBoxContainer.new()
+		_lista.add_theme_constant_override("separation", 8)
+		caja.add_child(_lista)
+		Juego.cambio.connect(_refrescar)
+		_refrescar()
+
+	func _refrescar() -> void:
+		_estado.text = Ventanas.texto_estado()
+		for hijo in _lista.get_children():
+			hijo.queue_free()
+		for id_hab in DatosHabilidades.LISTA:
+			var datos: Dictionary = DatosHabilidades.LISTA[id_hab]
+			var fila: HBoxContainer = HBoxContainer.new()
+			fila.add_theme_constant_override("separation", 12)
+			_lista.add_child(fila)
+			var texto: Label = Hud.crear_label(17)
+			texto.text = "%s   —   %d $   (nivel %d)" % [datos["nombre"], datos["precio"], datos["nivel"]]
+			texto.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			fila.add_child(texto)
+			var sabida: bool = Juego.habilidades.has(id_hab)
+			var boton: Button = Hud.crear_boton("Aprendida" if sabida else "Aprender",
+					func() -> void: Juego.avisar(Juego.aprender(id_hab)))
+			boton.disabled = sabida or Juego.nivel < datos["nivel"] or Juego.dinero < datos["precio"]
+			fila.add_child(boton)
 
 
 # ==============================================================================

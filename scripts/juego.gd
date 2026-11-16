@@ -37,6 +37,7 @@ var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
+var xp: int = 0                      # Experiencia hacia el siguiente nivel.
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
 var inventario: Array = []
@@ -64,6 +65,7 @@ func reiniciar() -> void:
 	ha_ganado = false
 	viviendas.clear()
 	nivel = 1
+	xp = 0
 	habilidades.clear()
 	inventario.clear()
 	inventario.resize(TAM_INVENTARIO)
@@ -78,6 +80,35 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+
+
+# Experiencia que hace falta para pasar del nivel actual al siguiente.
+func xp_necesaria() -> int:
+	return 100 * nivel
+
+
+# Suma experiencia (plantar, cosechar, preparar y vender dan XP) y sube de nivel.
+func ganar_xp(cantidad: int) -> void:
+	xp += cantidad
+	while xp >= xp_necesaria():
+		xp -= xp_necesaria()
+		nivel += 1
+		avisar("¡Subes al nivel %d! Hay objetos nuevos en las tiendas." % nivel)
+	cambio.emit()
+
+
+# Aprende una habilidad pagando a un instructor. Devuelve lo que ha pasado.
+func aprender(id_hab: String) -> String:
+	var datos: Dictionary = DatosHabilidades.LISTA[id_hab]
+	if habilidades.has(id_hab):
+		return "Ya sabes %s." % datos["nombre"]
+	if nivel < datos["nivel"]:
+		return "Necesitas nivel %d para aprender %s." % [datos["nivel"], datos["nombre"]]
+	if not gastar(datos["precio"]):
+		return "No te llega: cuesta %d $." % datos["precio"]
+	habilidades[id_hab] = true
+	cambio.emit()
+	return "¡Has aprendido %s!" % datos["nombre"]
 
 
 # Texto de la hora, por ejemplo "21:05".
@@ -372,6 +403,7 @@ func vender(lista: Array, i: int) -> String:
 	var pago: int = maxi(1, datos["precio"] / 2) * casilla["cantidad"]
 	lista[i] = null
 	cobrar(pago)
+	ganar_xp(maxi(1, pago / 10))
 	return "Has vendido %d %s por %d $." % [casilla["cantidad"], datos["nombre"], pago]
 
 

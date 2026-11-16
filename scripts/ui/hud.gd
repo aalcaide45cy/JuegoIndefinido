@@ -169,7 +169,7 @@ func _process(delta: float) -> void:
 
 func _actualizar_estado() -> void:
 	var lineas: PackedStringArray = []
-	lineas.append("%d $   ·   Nivel %d" % [Juego.dinero, Juego.nivel])
+	lineas.append("%d $   ·   Nivel %d  (%d/%d XP)" % [Juego.dinero, Juego.nivel, Juego.xp, Juego.xp_necesaria()])
 	lineas.append("Vida")
 	_label_estado.text = "\n".join(lineas)
 	_barra_vida.value = Juego.vida
@@ -200,6 +200,10 @@ func abrir_tienda(id_tienda: String, nombre: String) -> void:
 	tienda.tienda = id_tienda
 	tienda.nombre_tienda = nombre
 	_abrir_menu(tienda)
+
+
+func abrir_instructor() -> void:
+	_abrir_menu(Ventanas.Instructor.new())
 
 
 func abrir_caldero() -> void:

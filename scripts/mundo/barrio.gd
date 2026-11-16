@@ -173,7 +173,8 @@ func tapon_de_calle(centro: Vector3, ancho: float, color: Color = Color(0.2, 0.2
 # hacia "angulo" (igual que edificio_visitable).
 func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda: String,
 		nombre: String, texto_hablar: String, color_cartel: Color,
-		color: Color = Color(0.24, 0.22, 0.2), color_interior: Color = Color(0.36, 0.3, 0.26)) -> void:
+		color: Color = Color(0.24, 0.22, 0.2), color_interior: Color = Color(0.36, 0.3, 0.26),
+		es_instructor: bool = false) -> void:
 	var huecos: Array = [
 		{"x": 0.0, "ancho": 1.6, "abajo": 0.0, "arriba": 2.5},
 		{"x": -3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
@@ -188,6 +189,7 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 	vendedor.tienda = id_tienda
 	vendedor.nombre_tienda = nombre
 	vendedor.texto_hablar = texto_hablar
+	vendedor.es_instructor = es_instructor
 	vendedor.position = Vector3(0, 1.0, -5.2)
 	tienda.add_child(vendedor)
 	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
