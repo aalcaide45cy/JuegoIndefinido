@@ -12,6 +12,8 @@ paquete, autor, web y licencia. Solo licencias aptas para uso comercial
 | Universal Base Characters (versión Standard gratuita) | Quaternius | https://quaternius.com/packs/universalbasecharacters.html | CC0 1.0 |
 | Downtown City MegaKit (versión Standard gratuita, 153 modelos glTF) | Quaternius | https://quaternius.com/packs/downtowncitymegakit.html (descarga: https://quaternius.itch.io/downtown-city-megakit) | CC0 1.0, según `License_Standard.txt` del zip |
 | Game Icons (213 iconos de interfaz, en blanco y en negro) | Kenney | https://kenney.nl/assets/game-icons | CC0 1.0, según `license.txt` del zip |
+| LowPoly Animated Animals (7 animales de granja animados, FBX: vaca, caballo, llama, cerdo, perro, oveja, cebra) | Quaternius | https://quaternius.itch.io/lowpoly-animated-animals | CC0 1.0, según su página (el zip no trae archivo de licencia) |
+| LowPoly Farm Buildings (13 edificios de granja, FBX: graneros, silos, molinos, vallas, pozo) | Quaternius | https://quaternius.itch.io/lowpoly-farm-buildings | CC0 1.0, según su página (el zip no trae archivo de licencia) |
 | Car Kit 3.1 (coches, furgonetas, camiones, tractores y ruedas, en GLB) | Kenney | https://kenney.nl/assets/car-kit | CC0 1.0, según `License.txt` del zip |
 
 Los archivos están en `assets/quaternius/` y `assets/kenney/` (cada paquete con su archivo
