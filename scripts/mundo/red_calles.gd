@@ -46,7 +46,7 @@ static func limites(margen: float = 20.0) -> Rect2:
 const NODOS: Dictionary = {
 	# (A 12 m del centro: a 15 m chocaban con los barriles, el carro y los puestos
 	# de la plaza y los guardias se quedaban atascados para siempre.)
-	"pne": Vector3(12, 0, -12), "pse": Vector3(12, 0, 12), "psw": Vector3(-12, 0, 12), "pnw": Vector3(-12, 0, -12),
+	"pne": Vector3(12, 0, -12), "pse": Vector3(12, 0, 13.2), "psw": Vector3(-10.5, 0, 14), "pnw": Vector3(-12, 0, -12),
 	"n20": Vector3(16, 0, -22), "mercado": Vector3(16, 0, -58),
 	"e20": Vector3(22, 0, -16), "residencial": Vector3(58, 0, -16),
 	"s20": Vector3(-16, 0, 22), "industrial": Vector3(-16, 0, 58),
