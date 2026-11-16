@@ -96,6 +96,7 @@ func _herboristeria() -> void:
 	var tienda: Node3D = edificio_visitable(Vector3(0, 0, -MITAD), 0.0, ANCHO_HERBORISTERIA, FONDO_CASAS, 9.0,
 			Color(0.2, 0.24, 0.2), Color(0.35, 0.3, 0.22), huecos)
 	cartel_tienda(tienda, "HERBORISTERÍA  La Mandrágora Honrada", Color(0.6, 0.9, 0.6))
+	registrar_poi(tienda, "Herboristería", Color(0.6, 0.9, 0.6))
 	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), Color(0.5, 1.0, 0.6), 1.0, 6.0)
 
 	# Dentro: luz cálida, mostrador con el herbolario y estanterías de frascos.

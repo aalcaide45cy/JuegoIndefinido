@@ -26,6 +26,9 @@ var _label_alerta: Label
 var _label_sigilo: Label
 var _barra_alerta: ProgressBar
 var _barra_rapida: HBoxContainer
+var _panel_estado: PanelEstado
+var _brujula: Brujula
+var _minimapa: Minimapa
 var _mira: ColorRect
 var _negro: ColorRect
 var _menu = null   # La ventana abierta ahora mismo (o null).
@@ -87,7 +90,7 @@ func _ready() -> void:
 	_label_alerta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_label_alerta.offset_left = -380
 	_label_alerta.offset_right = 380
-	_label_alerta.offset_top = 14
+	_label_alerta.offset_top = 70
 	_label_alerta.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_label_alerta.visible = false
 	_raiz.add_child(_label_alerta)
@@ -98,8 +101,8 @@ func _ready() -> void:
 	_barra_alerta.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_barra_alerta.offset_left = -150
 	_barra_alerta.offset_right = 150
-	_barra_alerta.offset_top = 90
-	_barra_alerta.offset_bottom = 100
+	_barra_alerta.offset_top = 170
+	_barra_alerta.offset_bottom = 180
 	_barra_alerta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_barra_alerta.visible = false
 	var relleno_alerta: StyleBoxFlat = StyleBoxFlat.new()
@@ -108,8 +111,33 @@ func _ready() -> void:
 	_raiz.add_child(_barra_alerta)
 	# Debajo de la vida: cómo de visible eres (sigilo).
 	_label_sigilo = crear_label(14, Color(0.85, 0.85, 0.7))
-	_label_sigilo.position = Vector2(20, 96)
+	_label_sigilo.position = Vector2(20, 142)
 	_raiz.add_child(_label_sigilo)
+
+	# Interfaz nueva: panel de vida/dinero/nivel, brújula arriba y minimapa a la derecha.
+	# Sustituyen a los textos y la barra de vida de antes (que quedan ocultos).
+	_label_estado.visible = false
+	_barra_vida.visible = false
+	_label_hora.visible = false
+	_panel_estado = PanelEstado.new()
+	_panel_estado.position = Vector2(16, 12)
+	_raiz.add_child(_panel_estado)
+	_brujula = Brujula.new()
+	_brujula.anchor_left = 0.5
+	_brujula.anchor_right = 0.5
+	_brujula.offset_left = -260.0
+	_brujula.offset_right = 260.0
+	_brujula.offset_top = 10.0
+	_brujula.offset_bottom = 70.0
+	_raiz.add_child(_brujula)
+	_minimapa = Minimapa.new()
+	_minimapa.anchor_left = 1.0
+	_minimapa.anchor_right = 1.0
+	_minimapa.offset_left = -(Minimapa.DIAMETRO + 16.0)
+	_minimapa.offset_right = -16.0
+	_minimapa.offset_top = 12.0
+	_minimapa.offset_bottom = 12.0 + Minimapa.DIAMETRO + 40.0
+	_raiz.add_child(_minimapa)
 
 	# Abajo en el centro: mensajes, la acción disponible, lo que llevas en la mano y la barra rápida.
 	_label_mensaje = crear_label(18, Color(0.85, 0.95, 0.8))
@@ -138,7 +166,7 @@ func _ready() -> void:
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 / rueda: barra rápida · TAB inventario · F1 admin · V cámara · Esc soltar ratón"
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M mapa · TAB inventario · F1 admin · V cámara · Esc pausa"
 	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
@@ -196,6 +224,9 @@ func _process(delta: float) -> void:
 		_label_accion.text = ""
 	_mira.visible = _menu == null
 	_barra_rapida.visible = _menu == null
+	_panel_estado.visible = _menu == null
+	_brujula.visible = _menu == null
+	_minimapa.visible = _menu == null
 	_label_hora.text = "Día %d   %s" % [Juego.dia, Juego.texto_hora()]
 	_actualizar_alerta()
 	# Los mensajes se desvanecen pasados unos segundos.
