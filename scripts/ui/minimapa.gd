@@ -64,10 +64,12 @@ func _ready() -> void:
 
 	var vista: TextureRect = TextureRect.new()
 	vista.texture = _vp.get_texture()
-	vista.custom_minimum_size = Vector2(DIAMETRO, DIAMETRO)
-	vista.size = Vector2(DIAMETRO, DIAMETRO)
+	# (Primero "expand_mode": si no, el cuadro se queda con el tamaño de la textura,
+	# 256, y el mapa se sale del aro.)
 	vista.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vista.stretch_mode = TextureRect.STRETCH_SCALE
+	vista.custom_minimum_size = Vector2(DIAMETRO, DIAMETRO)
+	vista.size = Vector2(DIAMETRO, DIAMETRO)
 	vista.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sombreado: Shader = Shader.new()
 	sombreado.code = SOMBRA_CIRCULO
