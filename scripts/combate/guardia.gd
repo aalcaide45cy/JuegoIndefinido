@@ -39,7 +39,7 @@ func _ready() -> void:
 	_cuerpo = Node3D.new()
 	add_child(_cuerpo)
 	var abrigo: Node3D = Construir.cilindro(_cuerpo, Vector3(0, 0.6, 0), 0.34, 1.2, Color(0.12, 0.14, 0.26), false, 0.0, 0.26)
-	_material = (abrigo as MeshInstance3D).mesh.material
+	_material = Construir.material_propio(abrigo)   # Propio: brilla rojo al recibir daño.
 	Construir.esfera(_cuerpo, Vector3(0, 1.42, 0), 0.2, Color(0.75, 0.62, 0.52))
 	Construir.cilindro(_cuerpo, Vector3(0, 1.68, 0), 0.2, 0.2, Color(0.1, 0.1, 0.18), false, 0.0, 0.16)
 	Construir.caja(_cuerpo, Vector3(0.35, 1.0, -0.1), Vector3(0.05, 0.05, 0.9), Color(0.5, 0.5, 0.55), false)  # Lanza.

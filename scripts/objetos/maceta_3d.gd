@@ -165,9 +165,11 @@ func _crear_planta(id_hierba: String) -> void:
 			var hoja: Node3D = Construir.caja(_planta, Vector3.ZERO, Vector3(0.05, 0.3, 0.01), color, false, 0.3)
 			hoja.rotation = Vector3(0.0, i * TAU / 7.0, 0.7)
 			hoja.position = Vector3(0, 0.3, 0) + hoja.basis * Vector3(0, 0.15, 0)
+	# Materiales propios: la planta lista "respira" brillando, sin tocar a las demás.
 	for hijo in _planta.get_children():
-		var malla: MeshInstance3D = hijo as MeshInstance3D
-		_materiales_planta.append(malla.mesh.material)
+		var mat: StandardMaterial3D = Construir.material_propio(hijo as Node3D)
+		if mat != null:
+			_materiales_planta.append(mat)
 
 
 func _vaciar() -> void:

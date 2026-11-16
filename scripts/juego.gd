@@ -441,7 +441,8 @@ func vender(lista: Array, i: int) -> String:
 	var pago: int = maxi(1, datos["precio"] / 2) * casilla["cantidad"]
 	lista[i] = null
 	cobrar(pago)
-	ganar_xp(maxi(1, pago / 10))
+	# Revender a una tienda no da experiencia: si no, comprar y vender sin parar
+	# subiría de nivel. La XP sale de plantar, cosechar, preparar y vender pociones.
 	return "Has vendido %d %s por %d $." % [casilla["cantidad"], datos["nombre"], pago]
 
 

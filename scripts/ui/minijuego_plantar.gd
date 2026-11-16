@@ -201,6 +201,12 @@ func _elegir_abono(usar_abono: bool) -> void:
 
 # Gasta los materiales y planta de verdad.
 func _finalizar() -> void:
+	# Se comprueba otra vez por si algo ha cambiado mientras jugabas el minijuego.
+	if not Juego.tiene("tierra") or not Juego.tiene("semilla_" + _semilla) \
+			or (_con_abono and not Juego.tiene("abono")):
+		Juego.avisar("Te falta algún material: no se ha plantado nada.")
+		cerrar()
+		return
 	Juego.quitar("tierra")
 	Juego.quitar("semilla_" + _semilla)
 	if _con_abono:

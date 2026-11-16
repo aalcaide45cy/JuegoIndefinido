@@ -10,6 +10,11 @@
 #
 # El mapa gira con el jugador: lo que tienes delante está siempre arriba.
 # La tecla M cambia el zoom (3 niveles). Debajo del círculo va la hora.
+#
+# Para no dibujar la ciudad dos veces en cada fotograma, la cámara de arriba
+# mira siempre al norte y abarca un poco más de lo que se ve; el giro y los
+# pasos pequeños del jugador los hace el shader moviendo la imagen. Solo se
+# vuelve a sacar la "foto" cuando te alejas bastante o cada medio segundo.
 # -----------------------------------------------------------------------------
 class_name Minimapa
 extends Control
@@ -17,13 +22,23 @@ extends Control
 const DIAMETRO: float = 190.0
 const ZOOMS: Array[float] = [70.0, 140.0, 280.0]   # Metros que abarca el círculo.
 const ALTURA_CAMARA: float = 90.0
+const MARGEN: float = 1.25            # La foto abarca un 25 % más que el círculo.
+const DESVIO_MAXIMO: float = 0.07     # Cuánto puede moverse la imagen antes de otra foto.
+const INTERVALO_FOTO: float = 0.5     # Segundos máximos entre fotos (luces, guardias...).
 
 const SOMBRA_CIRCULO: String = """
 shader_type canvas_item;
+uniform float giro = 0.0;
+uniform vec2 desplazamiento = vec2(0.0);
+uniform float escala = 0.8;
 void fragment() {
-	float d = length(UV - vec2(0.5));
-	vec4 c = texture(TEXTURE, UV);
-	COLOR = vec4(c.rgb, c.a * (1.0 - smoothstep(0.495, 0.5, d)));
+	vec2 p = UV - vec2(0.5);
+	float d = length(p);
+	float s = sin(giro);
+	float c = cos(giro);
+	vec2 q = vec2(c * p.x + s * p.y, -s * p.x + c * p.y) * escala + vec2(0.5) + desplazamiento;
+	vec4 col = texture(TEXTURE, q);
+	COLOR = vec4(col.rgb, col.a * (1.0 - smoothstep(0.495, 0.5, d)));
 }
 """
 
@@ -32,6 +47,9 @@ var _vp: SubViewport
 var _camara: Camera3D
 var _jugador: Jugador
 var _marcas: Control
+var _material: ShaderMaterial
+var _t_foto: float = 0.0
+var _forzar_foto: bool = true
 
 
 func _ready() -> void:
@@ -40,14 +58,16 @@ func _ready() -> void:
 
 	_vp = SubViewport.new()
 	_vp.size = Vector2i(256, 256)
-	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_vp.msaa_3d = Viewport.MSAA_DISABLED
 	_vp.gui_disable_input = true
 	add_child(_vp)
 
 	_camara = Camera3D.new()
 	_camara.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camara.size = ZOOMS[0]
+	_camara.size = ZOOMS[0] * MARGEN
+	# Siempre mirando hacia abajo con el norte arriba (el giro lo hace el shader).
+	_camara.basis = Basis(Vector3.RIGHT, -PI / 2.0)
 	_camara.near = 1.0
 	_camara.far = 300.0
 	# Un entorno propio: luz pareja y clara (de noche también se ve el mapa),
@@ -71,9 +91,10 @@ func _ready() -> void:
 	vista.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sombreado: Shader = Shader.new()
 	sombreado.code = SOMBRA_CIRCULO
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = sombreado
-	vista.material = material
+	_material = ShaderMaterial.new()
+	_material.shader = sombreado
+	_material.set_shader_parameter("escala", 1.0 / MARGEN)
+	vista.material = _material
 	add_child(vista)
 
 	# Capa de encima: aro, flecha, norte, puntos de interés y la hora.
@@ -87,22 +108,32 @@ func _ready() -> void:
 func _unhandled_input(evento: InputEvent) -> void:
 	if evento.is_action_pressed("mapa") and not Juego.menu_abierto:
 		_zoom = (_zoom + 1) % ZOOMS.size()
-		_camara.size = ZOOMS[_zoom]
+		_camara.size = ZOOMS[_zoom] * MARGEN
+		_forzar_foto = true
 
 
-func _process(_delta: float) -> void:
-	# Si el mapa no se ve (hay una ventana abierta), no gastamos en dibujarlo.
-	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if is_visible_in_tree() \
-			else SubViewport.UPDATE_DISABLED
+func _process(delta: float) -> void:
 	if _jugador == null:
 		_jugador = get_tree().get_first_node_in_group("jugador") as Jugador
 		if _jugador == null:
 			return
-	# La cámara sigue al jugador desde arriba y gira con él (arriba = hacia donde miras).
+	# Si el mapa no se ve (hay una ventana abierta), no gastamos en dibujarlo.
+	if not is_visible_in_tree():
+		_forzar_foto = true
+		return
 	var p: Vector3 = _jugador.global_position
-	_camara.global_transform = Transform3D(
-			Basis(Vector3.UP, _jugador._giro) * Basis(Vector3.RIGHT, -PI / 2.0),
-			Vector3(p.x, ALTURA_CAMARA, p.z))
+	var metros_foto: float = ZOOMS[_zoom] * MARGEN
+	# Cuánto se ha movido el jugador desde la última foto (en tamaño de la foto).
+	var desvio: Vector2 = Vector2(p.x - _camara.position.x, p.z - _camara.position.z) / metros_foto
+	_t_foto -= delta
+	if _forzar_foto or _t_foto <= 0.0 or desvio.length() > DESVIO_MAXIMO:
+		_forzar_foto = false
+		_t_foto = INTERVALO_FOTO
+		_camara.position = Vector3(p.x, ALTURA_CAMARA, p.z)
+		_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		desvio = Vector2.ZERO
+	_material.set_shader_parameter("giro", _jugador._giro)
+	_material.set_shader_parameter("desplazamiento", desvio)
 	_marcas.queue_redraw()
 
 

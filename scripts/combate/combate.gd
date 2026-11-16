@@ -72,7 +72,7 @@ static func explosion(padre: Node3D, pos: Vector3, radio: float, dano: float) ->
 	var esfera: SphereMesh = SphereMesh.new()
 	esfera.radius = 0.5
 	esfera.height = 1.0
-	var material: StandardMaterial3D = Construir.material(Color(1.0, 0.55, 0.2), 4.0)
+	var material: StandardMaterial3D = Construir.material_unico(Color(1.0, 0.55, 0.2), 4.0)   # Único: se desvanece.
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	esfera.material = material
 	bola.mesh = esfera

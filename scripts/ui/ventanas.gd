@@ -434,7 +434,10 @@ class VentanaCaldero extends Ventana:
 		if c == null:
 			return
 		_slots[i] = null
-		Juego.anadir(c["id"], c["cantidad"])
+		var sobra: int = Juego.anadir(c["id"], c["cantidad"])
+		if sobra > 0:
+			Juego.avisar("No te cabía en el inventario: se han perdido %d %s." % [sobra,
+					DatosObjetos.nombre(c["id"])])
 
 	func _elegir(id_pocion: String) -> void:
 		_receta = id_pocion

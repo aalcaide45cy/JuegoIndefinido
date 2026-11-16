@@ -27,6 +27,10 @@ func _ready() -> void:
 	_anadir_barrio(BarrioIndustrial.new(), Vector3(-16, 0, 64))
 
 	_cerrar_ciudad()
+	# Junta las miles de piezas que no se mueven en pocas mallas grandes (ver
+	# Construir.fusionar_estaticos): muchas menos llamadas de dibujo por fotograma.
+	var fusionadas: int = Construir.fusionar_estaticos(self)
+	print("Mallas fusionadas: %d" % fusionadas)
 
 	var hud: Hud = Hud.new()
 	add_child(hud)
