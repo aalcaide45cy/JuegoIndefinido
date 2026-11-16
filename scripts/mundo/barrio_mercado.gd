@@ -69,7 +69,7 @@ func construir() -> void:
 	Assets.colocar_solido(self, Assets.MEDIEVAL + "Prop_Wagon", Vector3(-2.4, 0, 26.0))
 
 	tapon_de_calle(Vector3(0, 0, -38), 14.0)
-	Construir.texto(self, Vector3(0, 3.5, -35.8), "MERCADO DE LAS ÁNIMAS", 100, Color(0.9, 0.85, 0.65))
+	Construir.texto(self, Vector3(0, 6.0, -35.9), "MERCADO DE LAS ÁNIMAS", 160, Color(0.9, 0.85, 0.65))
 
 	farola(Vector3(-3.2, 0, -30))
 	farola(Vector3(3.2, 0, -14))

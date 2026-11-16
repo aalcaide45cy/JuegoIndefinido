@@ -49,7 +49,7 @@ func construir() -> void:
 	letrero.rotation.y = PI
 
 	tapon_de_calle(Vector3(0, 0, 38), 14.0)
-	var cartel: Label3D = Construir.texto(self, Vector3(0, 3.5, 35.8), "ZONA INDUSTRIAL", 100,
+	var cartel: Label3D = Construir.texto(self, Vector3(0, 6.0, 35.9), "ZONA INDUSTRIAL", 160,
 			Color(0.8, 0.8, 0.75))
 	cartel.rotation.y = PI
 
