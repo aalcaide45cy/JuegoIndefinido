@@ -172,3 +172,13 @@ rendimiento (el renderizador es Compatibilidad):
 - Mapa grande a pantalla completa (tecla N, `scripts/ui/mapa_grande.gd`); icono del juego nuevo (poción) en `icon.svg`. SIN PROBAR en Godot.
 - Pendiente: iconos de interfaz de un pack gratuito (Kenney no es accesible desde la nube; hace falta que Alfonso descargue un pack CC0 como "Game Icons" a assets/ui/).
 - Finales de calle: muro de ladrillo con almenas, portón de madera con herrajes y antorchas de noche; marcos y carteles de tienda en madera lisa (sin rayas); sol de día algo más suave. SIN PROBAR en Godot.
+
+## Cola grande (pedida el 2026-11-16) — orden y diseño
+Orden de fases (cada una se sube al PR y el PC la prueba):
+1. Estilo moderno (materiales, texturas, interfaz) + minijuegos de sembrar/cocinar con calidad que afecta al precio.
+2. Vehículos y conducción (`scripts/vehiculos/vehiculo.gd`, VehicleBody3D con Jolt; entrar/salir con E, cámara propia, gasolina, daño).
+3. Concesionarios, tiendas de alquiler de coches, coches aparcados que se pueden robar (la policía te busca) y comprar.
+4. Ciudad grande por zonas: la ciudad actual pasa a ser la "zona 0"; el resto se divide en chunks de ~160 m que se construyen al acercarte (hilo/por trozos) y se liberan al alejarte. Mallas fusionadas por chunk, sombras solo cerca, tráfico y peatones simplificados a lo lejos (solo se simulan los cercanos). Mapa grande por zonas con carreteras.
+5. Campo, casas grandes o en el campo, tractores.
+6. Macetas mejorables (niveles), riego automático, abono y abono mejorado, máquinas de empaquetar, varios locales en alquiler.
+Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola escena; se hará con chunks cargados según distancia. Hoy rinde 220-430 FPS, hay margen pero no para 100x sin streaming.
