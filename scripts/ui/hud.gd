@@ -272,7 +272,7 @@ func abrir_instructor() -> void:
 
 
 func abrir_caldero() -> void:
-	_abrir_menu(Ventanas.Caldero.new())
+	_abrir_menu(Ventanas.VentanaCaldero.new())
 
 
 func abrir_estanteria() -> void:
