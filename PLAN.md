@@ -169,3 +169,5 @@ rendimiento (el renderizador es Compatibilidad):
 - Armas en mano con modelos Quaternius (escala de cuchillo/granada ajustada).
 - Sonido: `Sonido.tocar()` genera disparo/explosión por código; si se ponen archivos CC0 en `assets/sonidos/NOMBRE.ogg|wav` se usan solos. Pendiente: sonido ambiente y pasos.
 - Pendiente: más partículas, sustituir cajas de edificios por piezas Medieval Village, revisión de huecos.
+- Mapa grande a pantalla completa (tecla N, `scripts/ui/mapa_grande.gd`); icono del juego nuevo (poción) en `icon.svg`. SIN PROBAR en Godot.
+- Pendiente: iconos de interfaz de un pack gratuito (Kenney no es accesible desde la nube; hace falta que Alfonso descargue un pack CC0 como "Game Icons" a assets/ui/).
