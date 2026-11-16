@@ -228,6 +228,8 @@ func entregar(id: int) -> String:
 		elif not Juego.tiene(item, cant):
 			return "Te faltan pociones: necesitas %d x %s (mejor si van empaquetadas)." % [cant, GameData.POCIONES[e["pocion"]]["nombre"]]
 		Juego.quitar(item, cant)
+		if Juego.interiores == 0:
+			Juego.delito_visto = 30.0   # Vender ilegal en la calle: los guardias cercanos lo notan.
 		e["pago"] = int(int(e["pago"]) * bonus)
 		Juego.cobrar(int(e["pago"]))
 		Juego.ganar_xp(15 * cant)

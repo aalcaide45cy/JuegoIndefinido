@@ -38,6 +38,8 @@ var ha_ganado: bool = false
 var alerta: float = 0.0              # 0-100: cuánto te buscan los guardias (100 = te están viendo).
 var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pantalla).
 var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
+var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
+var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
@@ -91,6 +93,8 @@ func reiniciar() -> void:
 
 func _process(delta: float) -> void:
 	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
+	delito_visto = maxf(0.0, delito_visto - delta)
+	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	if alerta > 0.0:
 		alerta = maxf(0.0, alerta - delta * (30.0 if interiores > 0 else 6.0))
 	hora += delta * 24.0 / (maxf(1.0, duracion_dia_min) * 60.0) * velocidad_tiempo

@@ -39,3 +39,30 @@ static func limites(margen: float = 20.0) -> Rect2:
 	for t in TRAMOS:
 		r = r.expand(t[0]).expand(t[1])
 	return r.grow(margen)
+
+
+# Nodos por los que caminan los guardias (mundo, y = 0) y con qué nodos se unen.
+# Dentro de la plaza van por las esquinas (la fuente está en el centro).
+const NODOS: Dictionary = {
+	"pne": Vector3(15, 0, -15), "pse": Vector3(15, 0, 15), "psw": Vector3(-15, 0, 15), "pnw": Vector3(-15, 0, -15),
+	"n20": Vector3(16, 0, -22), "mercado": Vector3(16, 0, -58),
+	"e20": Vector3(22, 0, -16), "residencial": Vector3(58, 0, -16),
+	"s20": Vector3(-16, 0, 22), "industrial": Vector3(-16, 0, 58),
+}
+const VECINOS: Dictionary = {
+	"pne": ["pse", "pnw", "n20", "e20"], "pse": ["pne", "psw"], "psw": ["pse", "pnw", "s20"], "pnw": ["psw", "pne"],
+	"n20": ["pne", "mercado"], "mercado": ["n20"],
+	"e20": ["pne", "residencial"], "residencial": ["e20"],
+	"s20": ["psw", "industrial"], "industrial": ["s20"],
+}
+
+
+static func nodo_mas_cercano(p: Vector3) -> String:
+	var mejor: String = "pne"
+	var d_mejor: float = INF
+	for id in NODOS:
+		var d: float = (NODOS[id] as Vector3).distance_squared_to(p)
+		if d < d_mejor:
+			d_mejor = d
+			mejor = id
+	return mejor

@@ -15,6 +15,10 @@ const VIDA_MAXIMA: float = 60.0
 
 # Puntos por los que patrulla (posiciones del mundo). Los pone quien lo crea.
 var ruta: Array[Vector3] = []
+# true: solo existe de noche (los refuerzos nocturnos). false: también de día (en modo tranquilo).
+var solo_noche: bool = false
+# true: pasea por toda la ciudad por la red de calles (como una persona), en vez de su ruta fija.
+var pasea_ciudad: bool = true
 
 var _vida: float = VIDA_MAXIMA
 var _punto: int = 0
@@ -24,6 +28,8 @@ var _golpe: float = 0.0
 var _muerto: bool = false
 var _cuerpo: Node3D
 var _material: StandardMaterial3D
+var _nodo_destino: String = ""
+var _espera: float = 0.0
 var _modelo: Node3D   # Personaje de Quaternius (null = muñeco de cajas).
 
 
@@ -66,23 +72,27 @@ func _poner_activo(activo: bool) -> void:
 func _physics_process(delta: float) -> void:
 	if _muerto:
 		return
-	var noche: bool = Juego.es_de_noche() and Juego.policia_activa
-	if noche != visible:
-		_poner_activo(noche)
+	var de_noche: bool = Juego.es_de_noche()
+	var activo: bool = Juego.policia_activa and (de_noche or not solo_noche)
+	if activo != visible:
+		_poner_activo(activo)
 		_persiguiendo = false
-	if not noche:
+	if not activo:
 		return
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	_golpe -= delta
 
 	var jugador: Node3D = _buscar_jugador()
-	var ve: bool = jugador != null and _ve_ilegal(jugador)
+	var ve: bool = jugador != null and _ve_ilegal(jugador, de_noche)
 	if ve:
 		_persiguiendo = true
 		_ultima_pos = jugador.global_position
 		Juego.alerta = 100.0
-		Juego.motivo_alerta = "Un guardia te ha visto con: " + ", ".join(Juego.motivos_ilegales())
+		if de_noche:
+			Juego.motivo_alerta = "Un guardia te ha visto con: " + ", ".join(Juego.motivos_ilegales())
+		else:
+			Juego.motivo_alerta = "Te han visto vender cosas ilegales en la calle"
 	# Sigue buscando mientras la alerta no baje a cero (ver Juego._process).
 	if _persiguiendo and Juego.alerta <= 0.0:
 		_persiguiendo = false
@@ -100,6 +110,23 @@ func _physics_process(delta: float) -> void:
 				_golpe = 1.0
 				Juego.cambiar_vida(-8.0)
 				Juego.avisar("¡Un guardia te golpea!")
+	elif pasea_ciudad:
+		velocidad = VELOCIDAD_PATRULLA
+		if _espera > 0.0:
+			_espera -= delta
+			velocidad = 0.0
+			_mirar_cacheo(jugador, de_noche)
+		else:
+			if _nodo_destino == "":
+				_nodo_destino = RedCalles.nodo_mas_cercano(global_position)
+			destino = RedCalles.NODOS[_nodo_destino]
+			if global_position.distance_to(Vector3(destino.x, global_position.y, destino.z)) < 0.8:
+				var vecinos: Array = RedCalles.VECINOS[_nodo_destino]
+				_nodo_destino = vecinos[randi() % vecinos.size()]
+				if randf() < 0.5:
+					_espera = randf_range(2.0, 7.0)   # Se para a mirar a su alrededor.
+			else:
+				_mirar_cacheo(jugador, de_noche)
 	elif not ruta.is_empty():
 		destino = ruta[_punto]
 		velocidad = VELOCIDAD_PATRULLA
@@ -128,13 +155,17 @@ func _buscar_jugador() -> Node3D:
 
 
 # true si el jugador está cerca, a la vista y lleva algo ilegal.
-func _ve_ilegal(jugador: Node3D) -> bool:
+func _ve_ilegal(jugador: Node3D, de_noche: bool = true) -> bool:
 	var alcance: float = DISTANCIA_MINIMA
 	if jugador.has_method("radio_deteccion"):
 		alcance = maxf(DISTANCIA_MINIMA, jugador.radio_deteccion())
 	if global_position.distance_to(jugador.global_position) > alcance:
 		return false
-	if not Juego.lleva_ilegal():
+	# De noche basta con llevar algo ilegal; de día solo si te vieron vender en la calle.
+	if de_noche:
+		if not Juego.lleva_ilegal():
+			return false
+	elif Juego.delito_visto <= 0.0:
 		return false
 	var desde: Vector3 = global_position + Vector3(0, 1.5, 0)
 	var hasta: Vector3 = jugador.global_position + Vector3(0, 1.2, 0)
@@ -142,6 +173,23 @@ func _ve_ilegal(jugador: Node3D) -> bool:
 	consulta.exclude = [get_rid()]
 	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
 	return choque.is_empty() or choque["collider"] == jugador
+
+
+# Con probabilidad baja (más alta de noche y si llevas algo ilegal) te pide un cacheo.
+func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
+	if jugador == null or Juego.menu_abierto or Juego.enfriamiento_cacheo > 0.0 or Juego.interiores > 0:
+		return
+	if global_position.distance_to(jugador.global_position) > 5.0:
+		return
+	var prob: float = 0.004   # Por fotograma físico a 60 FPS: ~ una vez cada 4 minutos de día.
+	if de_noche:
+		prob = 0.012
+	if Juego.lleva_ilegal():
+		prob *= 1.5
+	if randf() < prob / 6.0 and "hud" in jugador and jugador.hud != null:
+		Juego.enfriamiento_cacheo = 150.0
+		Juego.avisar("¡Alto! Un guardia quiere registrarte.")
+		jugador.hud.abrir_cacheo()
 
 
 func recibir_dano(cantidad: float) -> void:

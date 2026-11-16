@@ -89,6 +89,9 @@ func usar(_jugador: Node) -> void:
 				GameData.texto_receta(pedido)])
 		return
 	Juego.quitar("pocion_" + pedido)
+	if Juego.es_de_noche() and Juego.policia_activa:
+		Juego.alerta = 100.0   # De noche, vender por la ventana sí te puede costar una detención.
+		Juego.motivo_alerta = "Te vieron vender de noche por la ventana"
 	var precio: int = GameData.POCIONES[pedido]["precio"]
 	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
 	Juego.cobrar(precio)

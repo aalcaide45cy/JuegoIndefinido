@@ -26,6 +26,7 @@ func _ready() -> void:
 	_anadir_barrio(BarrioResidencial.new(), Vector3(64, 0, -16))
 	_anadir_barrio(BarrioIndustrial.new(), Vector3(-16, 0, 64))
 
+	_guardias_nocturnos()
 	_cerrar_ciudad()
 	# Junta las miles de piezas que no se mueven en pocas mallas grandes (ver
 	# Construir.fusionar_estaticos): muchas menos llamadas de dibujo por fotograma.
@@ -70,6 +71,18 @@ func _polvo_en_el_aire(jugador: Node3D) -> void:
 	malla.material = mat
 	p.mesh = malla
 	jugador.add_child(p)
+
+
+# Refuerzos de noche: guardias extra que solo existen de noche y recorren toda la ciudad.
+func _guardias_nocturnos() -> void:
+	var nodos: Array = RedCalles.NODOS.keys()
+	for i in 4:
+		var g: Guardia = Guardia.new()
+		g.solo_noche = true
+		add_child(g)
+		var inicio: String = nodos[randi() % nodos.size()]
+		g.global_position = RedCalles.NODOS[inicio]
+		g._nodo_destino = inicio
 
 
 # Cierra la ciudad: calcula el rectángulo que ocupan todos los barrios y pone

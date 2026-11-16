@@ -324,6 +324,10 @@ func abrir_estanteria() -> void:
 	_abrir_menu(Ventanas.Estanteria.new())
 
 
+func abrir_cacheo() -> void:
+	_abrir_menu(Cacheo.new())
+
+
 func abrir_mortero(id_hierba: String) -> void:
 	var m: MinijuegoMachacar = MinijuegoMachacar.new()
 	m.hierba = id_hierba
