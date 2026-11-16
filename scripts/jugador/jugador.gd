@@ -80,6 +80,8 @@ func _unhandled_input(evento: InputEvent) -> void:
 	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
 			and evento.button_index == MOUSE_BUTTON_RIGHT:
 		_alternar_zoom()
+	elif _tecla_barra(evento) >= 0:
+		Juego.seleccionar(_tecla_barra(evento))
 	elif evento.is_action_pressed("recargar"):
 		_recargar()
 	elif evento is InputEventMouseButton and evento.pressed and not raton_capturado:
@@ -91,6 +93,14 @@ func _unhandled_input(evento: InputEvent) -> void:
 		_aplicar_camara()
 	elif evento.is_action_pressed("usar") and objetivo != null and not _bloqueado:
 		objetivo.usar(self)
+
+
+# Devuelve 0-8 si se ha pulsado una tecla del 1 al 9, o -1 si no.
+func _tecla_barra(evento: InputEvent) -> int:
+	for i in Juego.TAM_BARRA:
+		if evento.is_action_pressed("barra_%d" % (i + 1)):
+			return i
+	return -1
 
 
 # --------------------------------- Movimiento ---------------------------------
