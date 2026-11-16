@@ -16,6 +16,8 @@ const TIPOS: Dictionary = {
 	"foco_cultivo": {"nombre": "Foco de cultivo", "color": Color(0.8, 0.45, 1.0)},
 }
 
+const MAXIMO: int = 12   # Objetos montados a la vez (cada uno lleva una luz, y las luces cuestan).
+
 var tipo: String = "lampara"
 var nivel: int = 1
 var _luz: OmniLight3D
@@ -70,7 +72,15 @@ func usar(_jugador: Node) -> void:
 		return
 	Juego.anadir(tipo, 1)
 	if nivel > 1:
-		Juego.anadir("mejora_equipo", nivel - 1)   # Las mejoras puestas se recuperan.
+		# Las mejoras puestas se recuperan; si no caben todas, el objeto se queda
+		# montado con las que no has podido llevarte (antes se perdían).
+		var sobra: int = Juego.anadir("mejora_equipo", nivel - 1)
+		if sobra > 0:
+			Juego.quitar(tipo, 1)
+			nivel = 1 + sobra
+			_actualizar()
+			Juego.avisar("No te caben todas las mejoras: haz sitio en la mochila y vuelve a recogerlo.")
+			return
 	queue_free()
 
 
@@ -80,6 +90,8 @@ static func colocar_desde(jugador: Node3D, id: String) -> String:
 		return ""
 	if not Juego.tiene_vivienda() or Juego.interiores == 0:
 		return "Solo puedes montar cosas dentro de una casa tuya."
+	if jugador.get_tree().get_nodes_in_group("colocables").size() >= MAXIMO:
+		return "Ya tienes %d objetos montados: recoge alguno antes de poner más." % MAXIMO
 	var camara: Camera3D = jugador.get_viewport().get_camera_3d()
 	var desde: Vector3 = camara.global_position
 	var hasta: Vector3 = desde + (-camara.global_basis.z) * 5.0
@@ -90,12 +102,29 @@ static func colocar_desde(jugador: Node3D, id: String) -> String:
 		return "Apunta al suelo para colocarlo."
 	var pos: Vector3 = choque["position"]
 	pos = Vector3(snappedf(pos.x, 0.25), pos.y, snappedf(pos.z, 0.25))
+	# Tiene que caer dentro de una casa que tengas alquilada (antes valía cualquier
+	# interior, así que se podían montar lámparas dentro de las tiendas).
+	if not _dentro_de_casa_propia(jugador.get_tree(), pos):
+		return "Solo puedes montar cosas dentro de una casa tuya."
 	for otro in jugador.get_tree().get_nodes_in_group("colocables"):
 		if (otro as Node3D).global_position.distance_to(pos) < 0.6:
 			return "Ahí ya hay algo."
 	Juego.quitar(id, 1)
 	crear(jugador.get_tree().current_scene, id, 1, pos)
 	return "%s colocada. E la recoge o la mejora." % TIPOS[id]["nombre"]
+
+
+# true si "pos" (mundo) está dentro de la planta de una vivienda alquilada. Cada
+# casa mide 10 x 8 m: en sus coordenadas, x de -5 a 5 y z de -8 a 0 (ver Barrio.vivienda).
+static func _dentro_de_casa_propia(arbol: SceneTree, pos: Vector3) -> bool:
+	for nodo in arbol.get_nodes_in_group("puertas"):
+		var puerta: PuertaCasa = nodo as PuertaCasa
+		if puerta == null or not Juego.alquilada(puerta.id_casa):
+			continue
+		var local: Vector3 = (puerta.get_parent() as Node3D).to_local(pos)
+		if absf(local.x) < 4.8 and local.z < -0.2 and local.z > -7.8:
+			return true
+	return false
 
 
 static func crear(padre: Node, id: String, nivel_inicial: int, pos: Vector3) -> Colocable:
