@@ -115,4 +115,4 @@ func fila_edificios(origen: Vector3, angulo: float, desde: float, hasta: float,
 func farola(pos: Vector3) -> void:
 	Construir.cilindro(self, pos + Vector3(0, 1.6, 0), 0.08, 3.2, Color(0.1, 0.1, 0.1), true)
 	Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.35, 0.45, 0.35), Color(1.0, 0.75, 0.4), false, 3.0)
-	Construir.luz(self, pos + Vector3(0, 3.2, 0), Color(1.0, 0.7, 0.4), 1.6, 11.0)
+	Construir.luz_noche(self, pos + Vector3(0, 3.2, 0), Color(1.0, 0.7, 0.4), 1.6, 11.0)

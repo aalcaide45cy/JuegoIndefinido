@@ -75,7 +75,7 @@ func _herboristeria() -> void:
 			Color(0.2, 0.24, 0.2), Color(0.35, 0.3, 0.22), huecos)
 	Construir.texto(tienda, Vector3(0, 3.05, 0.12), "HERBORISTERÍA  La Mandrágora Honrada", 90,
 			Color(0.6, 0.9, 0.6))
-	Construir.luz(tienda, Vector3(0, 2.9, 1.2), Color(0.5, 1.0, 0.6), 1.0, 6.0)
+	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), Color(0.5, 1.0, 0.6), 1.0, 6.0)
 
 	# Dentro: luz cálida, mostrador con el herbolario y estanterías de frascos.
 	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.8, 0.5), 1.4, 8.0)
@@ -121,7 +121,7 @@ func _vivienda() -> void:
 			"SE ALQUILA  %d $" % GameData.PRECIO_ALQUILER, 56, Color(1.0, 0.85, 0.5))
 	# Farolillo junto a la puerta.
 	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(1.0, 0.75, 0.4), false, 3.0)
-	Construir.luz(casa, Vector3(-4.0, 2.4, 0.6), Color(1.0, 0.7, 0.4), 0.9, 5.0)
+	Construir.luz_noche(casa, Vector3(-4.0, 2.4, 0.6), Color(1.0, 0.7, 0.4), 0.9, 5.0)
 	var puerta: PuertaCasa = PuertaCasa.new()
 	puerta.position = Vector3(-3.0, 1.0, -0.1)
 	puerta.cartel = cartel

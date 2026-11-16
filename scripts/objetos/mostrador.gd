@@ -70,7 +70,7 @@ func texto_accion() -> String:
 	if not presente:
 		return "No hay nadie en el mostrador"
 	var datos: Dictionary = GameData.POCIONES[pedido]
-	if Juego.pociones[pedido] > 0:
+	if Juego.tiene("pocion_" + pedido):
 		return "Vender %s (%d $)" % [datos["nombre"], datos["precio"]]
 	return "Te pide %s (prepárala en el caldero)" % datos["nombre"]
 
@@ -78,11 +78,11 @@ func texto_accion() -> String:
 func usar(_jugador: Node) -> void:
 	if not presente:
 		return
-	if Juego.pociones[pedido] <= 0:
+	if not Juego.tiene("pocion_" + pedido):
 		Juego.avisar("No tienes %s. Receta: %s." % [GameData.POCIONES[pedido]["nombre"],
 				GameData.texto_receta(pedido)])
 		return
-	Juego.pociones[pedido] -= 1
+	Juego.quitar("pocion_" + pedido)
 	var precio: int = GameData.POCIONES[pedido]["precio"]
 	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
 	Juego.cobrar(precio)

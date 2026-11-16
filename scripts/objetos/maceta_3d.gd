@@ -77,10 +77,13 @@ func usar(jugador: Node) -> void:
 		Estado.CRECIENDO:
 			Juego.avisar("Todavía está creciendo. Puedes dormir en la cama para que pase el tiempo.")
 		Estado.LISTA:
-			Juego.hierbas[tipo_hierba] += cosecha
+			var id_hierba: String = "hierba_" + tipo_hierba
+			if not Juego.cabe(id_hierba, cosecha):
+				Juego.avisar("No te cabe la cosecha. Haz sitio en el inventario.")
+				return
+			Juego.anadir(id_hierba, cosecha)
 			Juego.avisar("Has cosechado %d %s." % [cosecha, GameData.HIERBAS[tipo_hierba]["nombre"]])
 			_vaciar()
-			Juego.cambio.emit()
 
 
 # Devuelve lo que falta para poder plantar ("" si no falta nada).
@@ -94,9 +97,9 @@ func _que_falta() -> String:
 			alguna_semilla = true
 	if not alguna_semilla:
 		faltas.append("alguna semilla")
-	if not Juego.tiene("jarra"):
+	if not Juego.tiene_recipiente():
 		faltas.append("una jarra de agua")
-	elif Juego.agua_jarra <= 0:
+	elif Juego.recipiente_de_agua() == null:
 		faltas.append("agua en la jarra (llénala en el grifo de la cocina)")
 	return ", ".join(faltas)
 
@@ -119,6 +122,30 @@ func plantar(id_hierba: String, nota: float, con_abono: bool) -> void:
 	_tierra.visible = true
 	_crear_planta(id_hierba)
 	_planta.scale = Vector3.ONE * 0.15
+
+
+# Datos para guardar la partida.
+func exportar() -> Dictionary:
+	return {"estado": int(estado), "tipo": tipo_hierba, "progreso": progreso,
+			"cosecha": cosecha, "calidad": calidad, "velocidad": velocidad}
+
+
+# Restaura una maceta guardada (lo inverso de exportar).
+func importar(d: Dictionary) -> void:
+	_vaciar()
+	var guardado: int = int(d.get("estado", 0))
+	if guardado == int(Estado.VACIA) or not GameData.HIERBAS.has(str(d.get("tipo", ""))):
+		return
+	plantar(str(d["tipo"]), float(d.get("calidad", 0.5)), false)
+	velocidad = float(d.get("velocidad", 1.0))
+	cosecha = int(d.get("cosecha", 1))
+	progreso = clampf(float(d.get("progreso", 0.0)), 0.0, 1.0)
+	if guardado == int(Estado.LISTA):
+		progreso = 1.0
+		estado = Estado.LISTA
+	else:
+		estado = Estado.CRECIENDO
+	_planta.scale = Vector3.ONE * lerpf(0.15, 1.0, progreso)
 
 
 func _crear_planta(id_hierba: String) -> void:

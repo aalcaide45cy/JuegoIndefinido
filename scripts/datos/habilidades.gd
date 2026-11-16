@@ -5,7 +5,6 @@
 # En la fase 3 se aprenderán pagando a instructores; de momento se activan
 # desde el panel de administrador (F1).
 # -----------------------------------------------------------------------------
-class_name DatosHabilidades
 extends RefCounted
 
 const LISTA: Dictionary = {

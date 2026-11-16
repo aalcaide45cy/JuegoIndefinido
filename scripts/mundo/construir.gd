@@ -127,6 +127,15 @@ static func luz(padre: Node3D, pos: Vector3, color: Color, energia: float,
 	return foco
 
 
+# Como luz(), pero se enciende al anochecer y se apaga de día (ver ciclo_dia.gd).
+static func luz_noche(padre: Node3D, pos: Vector3, color: Color, energia: float,
+		alcance: float) -> OmniLight3D:
+	var foco: OmniLight3D = luz(padre, pos, color, energia, alcance)
+	foco.set_meta("energia_base", energia)
+	foco.add_to_group("luces_noche")
+	return foco
+
+
 # Un cartel de texto flotando en el mundo. Por defecto mira hacia +Z.
 static func texto(padre: Node3D, pos: Vector3, contenido: String,
 		tam: int = 48, color: Color = Color(0.9, 0.88, 0.8)) -> Label3D:

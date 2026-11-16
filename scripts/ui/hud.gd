@@ -1,8 +1,9 @@
 # hud.gd
 # -----------------------------------------------------------------------------
 # Lo que se dibuja encima del mundo 3D: dinero, el texto de "[E] Usar...",
-# los mensajes, el fundido a negro y las ventanas (tienda, inventario,
-# estantería y minijuego de plantar).
+# la barra de vida, la barra rápida (teclas 1-9), la hora, los mensajes, el
+# fundido a negro y las ventanas (tienda, inventario, estantería, panel de
+# administrador y minijuego de plantar).
 #
 # Todo está pensado para una pantalla de 1280x720 y se escala solo a la
 # resolución real (por ejemplo, 4K), para que los textos no salgan diminutos.
@@ -18,13 +19,18 @@ var _raiz: Control      # Todo cuelga de aquí; se escala según la pantalla.
 var _label_estado: Label
 var _label_accion: Label
 var _label_mensaje: Label
+var _label_mano: Label
+var _label_hora: Label
+var _barra_vida: ProgressBar
+var _barra_rapida: HBoxContainer
 var _mira: ColorRect
 var _negro: ColorRect
-var _menu: Control = null   # La ventana abierta ahora mismo (o null).
+var _menu = null   # La ventana abierta ahora mismo (o null).
 var _tiempo_mensaje: float = 0.0
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS   # Sigue funcionando con el juego en pausa.
 	_raiz = Control.new()
 	_raiz.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_raiz)
@@ -45,16 +51,60 @@ func _ready() -> void:
 	_mira.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_raiz.add_child(_mira)
 
-	# Abajo en el centro: mensajes y la acción disponible.
+	# Arriba a la derecha: hora y día.
+	_label_hora = crear_label(20, Color(0.9, 0.9, 0.7))
+	_label_hora.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_label_hora.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_label_hora.offset_left = -300
+	_label_hora.offset_right = -20
+	_label_hora.offset_top = 16
+	_raiz.add_child(_label_hora)
+
+	# Barra de vida, debajo del dinero.
+	_barra_vida = ProgressBar.new()
+	_barra_vida.max_value = Juego.VIDA_MAX
+	_barra_vida.show_percentage = false
+	_barra_vida.custom_minimum_size = Vector2(220, 14)
+	_barra_vida.size = Vector2(220, 14)
+	_barra_vida.position = Vector2(20, 76)
+	_barra_vida.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fondo_vida: StyleBoxFlat = StyleBoxFlat.new()
+	fondo_vida.bg_color = Color(0.1, 0.05, 0.05, 0.85)
+	var relleno_vida: StyleBoxFlat = StyleBoxFlat.new()
+	relleno_vida.bg_color = Color(0.8, 0.15, 0.15)
+	_barra_vida.add_theme_stylebox_override("background", fondo_vida)
+	_barra_vida.add_theme_stylebox_override("fill", relleno_vida)
+	_raiz.add_child(_barra_vida)
+
+	# Abajo en el centro: mensajes, la acción disponible, lo que llevas en la mano y la barra rápida.
 	_label_mensaje = crear_label(18, Color(0.85, 0.95, 0.8))
-	_colocar_abajo(_label_mensaje, 120)
+	_colocar_abajo(_label_mensaje, 190)
 	_label_accion = crear_label(22, Color(1, 0.92, 0.6))
-	_colocar_abajo(_label_accion, 62)
+	_colocar_abajo(_label_accion, 150)
+	_label_mano = crear_label(16, Color(0.9, 0.9, 0.85))
+	_colocar_abajo(_label_mano, 100)
+
+	_barra_rapida = HBoxContainer.new()
+	_barra_rapida.add_theme_constant_override("separation", 4)
+	_barra_rapida.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_rapida.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_barra_rapida.offset_left = -234
+	_barra_rapida.offset_right = 234
+	_barra_rapida.offset_top = -74
+	_barra_rapida.offset_bottom = -26
+	_barra_rapida.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_raiz.add_child(_barra_rapida)
+	for i in Juego.TAM_BARRA:
+		var casilla: CasillaUI = CasillaUI.new(Juego.inventario, i, 48.0)
+		casilla.numero = str(i + 1)
+		casilla.arrastrable = false
+		casilla.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_barra_rapida.add_child(casilla)
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · TAB inventario · Q hierba en la mano · V primera/tercera persona · Esc soltar ratón"
-	_colocar_abajo(ayuda, 26)
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · 1-9 / rueda: barra rápida · TAB inventario · F1 admin · V cámara · Esc soltar ratón"
+	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
 	_negro = ColorRect.new()
@@ -66,8 +116,10 @@ func _ready() -> void:
 	Juego.cambio.connect(_actualizar_estado)
 	Juego.mensaje.connect(_mostrar_mensaje)
 	_actualizar_estado()
-	_mostrar_mensaje("Medianoche en la Plaza del Ahorcado. Tienes 200 $. La herboristería (luz verde) vende de todo; " +
-			"la casa con el cartel SE ALQUILA puede ser tu escondite.")
+	_mostrar_mensaje("Plaza del Ahorcado. Tienes 200 $. La herboristería (luz verde) vende de todo; " +
+			"la casa con el cartel SE ALQUILA puede ser tu escondite. TAB abre el inventario.")
+	# Al arrancar: menú de Continuar / Nueva partida.
+	call_deferred("_abrir_inicio")
 
 
 func _ajustar_escala() -> void:
@@ -80,13 +132,24 @@ func _ajustar_escala() -> void:
 # TAB y Esc se miran aquí, antes que nadie, para que funcionen con menús abiertos.
 func _input(evento: InputEvent) -> void:
 	if evento.is_action_pressed("inventario"):
-		if _menu is Menus.Inventario:
+		if _menu is Ventanas.Inventario:
 			_menu.cerrar()
 		elif _menu == null:
-			_abrir_menu(Menus.Inventario.new())
+			_abrir_menu(Ventanas.Inventario.new())
 		get_viewport().set_input_as_handled()
-	elif evento.is_action_pressed("liberar_raton") and _menu != null:
-		_menu.cerrar()
+	elif evento.is_action_pressed("admin"):
+		if _menu is Ventanas.Admin:
+			_menu.cerrar()
+		elif _menu == null:
+			_abrir_menu(Ventanas.Admin.new())
+		get_viewport().set_input_as_handled()
+	elif evento.is_action_pressed("liberar_raton"):
+		if _menu == null:
+			var pausa: Ventanas.Pausa = Ventanas.Pausa.new()
+			pausa.jugador = jugador
+			_abrir_menu(pausa)
+		elif not _menu is Ventanas.Inicio:
+			_menu.cerrar()
 		get_viewport().set_input_as_handled()
 
 
@@ -97,6 +160,8 @@ func _process(delta: float) -> void:
 	else:
 		_label_accion.text = ""
 	_mira.visible = _menu == null
+	_barra_rapida.visible = _menu == null
+	_label_hora.text = "Día %d   %s" % [Juego.dia, Juego.texto_hora()]
 	# Los mensajes se desvanecen pasados unos segundos.
 	_tiempo_mensaje -= delta
 	_label_mensaje.modulate.a = clampf(_tiempo_mensaje, 0.0, 1.0)
@@ -104,13 +169,17 @@ func _process(delta: float) -> void:
 
 func _actualizar_estado() -> void:
 	var lineas: PackedStringArray = []
-	lineas.append("%d $  (alquiler del Prefecto: %d $)" % [Juego.dinero, GameData.OBJETIVO_DINERO])
-	var en_mano: String = Juego.hierba_seleccionada()
-	lineas.append("En la mano [Q]: %s (%d)" % [GameData.HIERBAS[en_mano]["nombre"], Juego.hierbas[en_mano]])
-	if Juego.tiene("jarra"):
-		lineas.append("Jarra: %d/%d riegos" % [Juego.agua_jarra, GameData.CARGAS_JARRA])
-	lineas.append("[TAB] Inventario")
+	lineas.append("%d $   ·   Nivel %d" % [Juego.dinero, Juego.nivel])
+	lineas.append("Vida")
 	_label_estado.text = "\n".join(lineas)
+	_barra_vida.value = Juego.vida
+	var mano = Juego.en_mano()
+	if mano == null:
+		_label_mano.text = ""
+	else:
+		_label_mano.text = Juego.DatosObjetos.nombre(mano["id"])
+		if mano.has("agua"):
+			_label_mano.text += "  (agua %d)" % mano["agua"]
 
 
 func _mostrar_mensaje(texto: String) -> void:
@@ -120,12 +189,21 @@ func _mostrar_mensaje(texto: String) -> void:
 
 # ------------------------------- Ventanas -------------------------------------
 
-func abrir_tienda() -> void:
-	_abrir_menu(Menus.Tienda.new())
+func _abrir_inicio() -> void:
+	var inicio: Ventanas.Inicio = Ventanas.Inicio.new()
+	inicio.jugador = jugador
+	_abrir_menu(inicio)
 
 
-func abrir_almacen() -> void:
-	_abrir_menu(Menus.Almacen.new())
+func abrir_tienda(id_tienda: String, nombre: String) -> void:
+	var tienda: Ventanas.Tienda = Ventanas.Tienda.new()
+	tienda.tienda = id_tienda
+	tienda.nombre_tienda = nombre
+	_abrir_menu(tienda)
+
+
+func abrir_estanteria() -> void:
+	_abrir_menu(Ventanas.Estanteria.new())
 
 
 func abrir_minijuego(maceta: Maceta3D) -> void:

@@ -13,6 +13,11 @@
 # -----------------------------------------------------------------------------
 extends Node
 
+# Datos de objetos y habilidades (se cargan con preload para no depender de
+# que el editor haya registrado los nombres de clase).
+const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
+
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
 
@@ -169,26 +174,59 @@ func seleccionar(indice: int) -> void:
 	cambio.emit()
 
 
-# Busca la mejor herramienta para regar: la de la mano si riega; si no, la
-# primera que tenga agua. Devuelve la casilla o null.
+# Busca la mejor herramienta para regar: la de la mano si riega y tiene agua;
+# si no, la primera que tenga agua. Devuelve la casilla o null.
 func recipiente_de_agua():
 	var mano = en_mano()
-	if mano != null and mano.has("agua"):
+	if mano != null and mano.has("agua") and mano["agua"] > 0:
 		return mano
 	for casilla in inventario:
-		if casilla != null and casilla.has("agua"):
+		if casilla != null and casilla.has("agua") and casilla["agua"] > 0:
 			return casilla
 	return null
+
+
+# ¿Llevas algo donde guardar agua (jarra, regadera...)?
+func tiene_recipiente() -> bool:
+	for casilla in inventario:
+		if casilla != null and casilla.has("agua"):
+			return true
+	return false
+
+
+# Rellena todos tus recipientes en el grifo. Devuelve cuántos había.
+func rellenar_agua() -> int:
+	var total: int = 0
+	for casilla in inventario:
+		if casilla != null and casilla.has("agua"):
+			casilla["agua"] = DatosObjetos.datos(casilla["id"])["agua_max"]
+			total += 1
+	cambio.emit()
+	return total
+
+
+# ¿Caben "cantidad" unidades de "id" en tu inventario?
+func cabe(id: String, cantidad: int = 1) -> bool:
+	var maximo: int = DatosObjetos.pila(id)
+	var hueco: int = 0
+	for casilla in inventario:
+		if casilla == null:
+			hueco += maximo
+		elif casilla["id"] == id and not casilla.has("agua"):
+			hueco += maximo - casilla["cantidad"]
+	return hueco >= cantidad
 
 
 # Intercambia (o junta, si son del mismo objeto) dos casillas. Sirve para
 # mover cosas dentro del inventario o entre el inventario y la estantería.
 func mover(lista_a: Array, i: int, lista_b: Array, j: int) -> void:
-	if lista_a == lista_b and i == j:
+	if is_same(lista_a, lista_b) and i == j:
 		return
 	var a = lista_a[i]
 	var b = lista_b[j]
-	if a != null and b != null and a["id"] == b["id"] and not a.has("agua"):
+	var juntar: bool = a != null and b != null and a["id"] == b["id"] and not a.has("agua") \
+			and b["cantidad"] < DatosObjetos.pila(b["id"])
+	if juntar:
 		var maximo: int = DatosObjetos.pila(a["id"])
 		var pasa: int = mini(a["cantidad"], maximo - b["cantidad"])
 		b["cantidad"] += pasa
@@ -312,11 +350,12 @@ func comprar(id: String) -> String:
 	var motivo: String = motivo_no_compra(id)
 	if motivo != "":
 		return motivo + " para comprar %s." % datos["nombre"]
-	if not gastar(datos["precio"]):
+	if dinero < datos["precio"]:
 		return "No te llega: %s cuesta %d $." % [datos["nombre"], datos["precio"]]
-	if anadir(id) > 0:
-		cobrar(datos["precio"])  # No cabía: te devuelven el dinero.
+	if not cabe(id):
 		return "No te cabe nada más en el inventario."
+	gastar(datos["precio"])
+	anadir(id)
 	return "Has comprado %s por %d $." % [datos["nombre"], datos["precio"]]
 
 

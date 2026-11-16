@@ -12,6 +12,11 @@ extends Interactuable
 # Dónde está el muñeco respecto al nodo (detrás del mostrador y en el suelo).
 const POS_MUNECO: Vector3 = Vector3(0, -1.0, -0.9)
 
+# Qué vende (campo "tienda" en scripts/datos/objetos.gd) y cómo se llama el negocio.
+var tienda: String = "herbolario"
+var nombre_tienda: String = "Herboristería La Mandrágora Honrada"
+var texto_hablar: String = "Hablar con el herbolario (comprar)"
+
 
 func _ready() -> void:
 	distancia = 2.4
@@ -25,8 +30,8 @@ func _ready() -> void:
 
 
 func texto_accion() -> String:
-	return "Hablar con el herbolario (comprar)"
+	return texto_hablar
 
 
 func usar(jugador: Node) -> void:
-	jugador.hud.abrir_tienda()
+	jugador.hud.abrir_tienda(tienda, nombre_tienda)

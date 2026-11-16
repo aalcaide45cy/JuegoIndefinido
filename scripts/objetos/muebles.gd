@@ -44,17 +44,16 @@ class Grifo extends Interactuable:
 		Construir.cilindro(self, Vector3(0.6, 1.02, 0), 0.15, 0.16, Color(0.4, 0.25, 0.15))
 
 	func texto_accion() -> String:
-		if not Juego.tiene("jarra"):
+		if not Juego.tiene_recipiente():
 			return "Grifo (compra una jarra en la herboristería)"
-		return "Llenar la jarra (%d/%d)" % [Juego.agua_jarra, GameData.CARGAS_JARRA]
+		return "Llenar tus jarras y regaderas"
 
 	func usar(_jugador: Node) -> void:
-		if not Juego.tiene("jarra"):
+		if not Juego.tiene_recipiente():
 			Juego.avisar("Necesitas una jarra. La venden en la herboristería.")
 			return
-		Juego.agua_jarra = GameData.CARGAS_JARRA
-		Juego.cambio.emit()
-		Juego.avisar("Jarra llena. Te da para %d riegos." % GameData.CARGAS_JARRA)
+		Juego.rellenar_agua()
+		Juego.avisar("Recipientes llenos.")
 
 
 class Estanteria extends Interactuable:
@@ -71,7 +70,7 @@ class Estanteria extends Interactuable:
 		return "Estantería (guardar y sacar cosas)"
 
 	func usar(jugador: Node) -> void:
-		jugador.hud.abrir_almacen()
+		jugador.hud.abrir_estanteria()
 
 
 class HuecoMaceta extends Interactuable:
@@ -79,23 +78,26 @@ class HuecoMaceta extends Interactuable:
 
 	func _ready() -> void:
 		distancia = 1.8
+		add_to_group("huecos_maceta")
 		# Un platillo vacío: aquí cabe una maceta.
 		_marca = Construir.cilindro(self, Vector3(0, 0.02, 0), 0.24, 0.04, Color(0.35, 0.3, 0.25))
 
 	func texto_accion() -> String:
-		return "Colocar maceta (tienes %d)" % Juego.objetos["maceta"]
+		return "Colocar maceta (tienes %d)" % Juego.cuenta("maceta")
 
 	func usar(_jugador: Node) -> void:
 		if not Juego.tiene("maceta"):
 			Juego.avisar("No tienes macetas. Cómpralas en la herboristería.")
 			return
-		Juego.usar_objeto("maceta")
+		Juego.quitar("maceta")
 		poner_maceta()
 		Juego.avisar("Has colocado una maceta. Acércate y pulsa E para plantar.")
 
 	# Cambia el hueco por una maceta de verdad (también lo usa la casa al empezar).
-	func poner_maceta() -> void:
+	func poner_maceta() -> Maceta3D:
 		var maceta: Maceta3D = Maceta3D.new()
 		maceta.position = position
 		get_parent().add_child(maceta)
+		remove_from_group("huecos_maceta")
 		queue_free()
+		return maceta

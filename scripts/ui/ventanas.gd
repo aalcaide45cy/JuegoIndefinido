@@ -11,6 +11,9 @@
 class_name Ventanas
 extends RefCounted
 
+const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
+
 const CATEGORIAS: Dictionary = {
 	"semilla": "Semillas", "material": "Cultivo", "herramienta": "Herramientas",
 	"arma_cc": "Cuerpo a cuerpo", "arma_fuego": "Armas de fuego",
@@ -32,6 +35,101 @@ static func montar_inventario(v: Ventana, caja: Container, tam: float, al_enviar
 	v.rejilla(caja, Juego.inventario, Juego.TAM_BARRA, Juego.TAM_INVENTARIO, 9, tam, al_enviar)
 	v.subtitulo(caja, "Barra rápida (teclas 1-9)")
 	v.rejilla(caja, Juego.inventario, 0, Juego.TAM_BARRA, 9, tam, al_enviar, true)
+
+
+# Un botón grande para los menús de pausa e inicio.
+static func boton_grande(texto: String, al_pulsar: Callable) -> Button:
+	var boton: Button = Hud.crear_boton(texto, al_pulsar)
+	boton.add_theme_font_size_override("font_size", 22)
+	boton.custom_minimum_size = Vector2(0, 46)
+	return boton
+
+
+# ==============================================================================
+# Menú de pausa (Esc): el juego se para mientras está abierto.
+class Pausa extends Ventana:
+	var jugador: Node3D = null
+	var _aviso: Label
+
+	func construir() -> void:
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		get_tree().paused = true
+		var caja: VBoxContainer = panel_centrado(Vector2(380, 380))
+		var titulo: Label = Hud.crear_label(32, Color(0.6, 0.9, 0.6))
+		titulo.text = "Pausa"
+		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caja.add_child(titulo)
+		caja.add_child(Ventanas.boton_grande("Reanudar", cerrar))
+		caja.add_child(Ventanas.boton_grande("Guardar partida", _guardar))
+		var cargar: Button = Ventanas.boton_grande("Cargar partida", _cargar)
+		cargar.disabled = not Guardado.existe()
+		caja.add_child(cargar)
+		caja.add_child(Ventanas.boton_grande("Salir del juego", _salir))
+		_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
+		_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caja.add_child(_aviso)
+
+	func cerrar() -> void:
+		get_tree().paused = false
+		super()
+
+	func _guardar() -> void:
+		if Guardado.guardar(get_tree(), jugador):
+			_aviso.text = "Partida guardada."
+		else:
+			_aviso.text = "No se pudo guardar."
+
+	func _cargar() -> void:
+		if Guardado.cargar(get_tree(), jugador):
+			Juego.avisar("Partida cargada.")
+			cerrar()
+		else:
+			_aviso.text = "No se pudo cargar."
+
+	func _salir() -> void:
+		get_tree().paused = false
+		get_tree().quit()
+
+
+# ==============================================================================
+# Menú al arrancar: Continuar (si hay partida guardada) o Nueva partida.
+class Inicio extends Ventana:
+	var jugador: Node3D = null
+
+	func construir() -> void:
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		get_tree().paused = true
+		var caja: VBoxContainer = panel_centrado(Vector2(420, 360))
+		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
+		titulo.text = "Elixir Clandestino"
+		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caja.add_child(titulo)
+		var lema: Label = Hud.crear_label(15, Color(0.75, 0.8, 0.72))
+		lema.text = "La magia está prohibida. Tú, no."
+		lema.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caja.add_child(lema)
+		var continuar: Button = Ventanas.boton_grande("Continuar", _continuar)
+		continuar.disabled = not Guardado.existe()
+		caja.add_child(continuar)
+		caja.add_child(Ventanas.boton_grande("Nueva partida", _nueva))
+		caja.add_child(Ventanas.boton_grande("Salir", _salir))
+
+	func cerrar() -> void:
+		get_tree().paused = false
+		super()
+
+	func _continuar() -> void:
+		if Guardado.cargar(get_tree(), jugador):
+			Juego.avisar("Partida cargada.")
+			cerrar()
+
+	func _nueva() -> void:
+		Juego.reiniciar()
+		cerrar()
+
+	func _salir() -> void:
+		get_tree().paused = false
+		get_tree().quit()
 
 
 # ==============================================================================
@@ -62,9 +160,11 @@ class Inventario extends Ventana:
 			_a_barra(casilla.indice)
 
 	func _a_barra(i: int) -> void:
-		var hueco: int = Juego.inventario.find(null)
-		if hueco != -1 and hueco < Juego.TAM_BARRA:
-			Juego.mover(Juego.inventario, i, Juego.inventario, hueco)
+		for hueco in Juego.TAM_BARRA:
+			if Juego.inventario[hueco] == null:
+				Juego.mover(Juego.inventario, i, Juego.inventario, hueco)
+				return
+		Juego.avisar("La barra rápida está llena.")
 
 
 # ==============================================================================

@@ -12,6 +12,8 @@
 class_name CasillaUI
 extends Control
 
+const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+
 # Se emite con Mayúsculas + clic; quien crea la casilla decide adónde va.
 signal envio_rapido(casilla: CasillaUI)
 
@@ -48,7 +50,7 @@ func _al_cambiar() -> void:
 
 
 func _es_seleccionada() -> bool:
-	return lista == Juego.inventario and indice == Juego.seleccion
+	return is_same(lista, Juego.inventario) and indice == Juego.seleccion
 
 
 func _draw() -> void:

@@ -5,8 +5,9 @@
 #
 #   WASD / flechas  moverse        Ratón   mirar
 #   Shift           correr         Espacio saltar
-#   E               usar           Q       cambiar hierba en la mano
-#   V               primera/tercera persona   TAB  inventario   Esc soltar el ratón
+#   E               usar           1-9 / rueda   elegir objeto de la barra rápida
+#   V               primera/tercera persona   TAB  inventario   F1  administrador
+#   Esc             soltar el ratón
 #
 # Estructura (se crea sola en _ready):
 #   Jugador (CharacterBody3D)  <- se mueve, pero nunca gira
@@ -40,13 +41,18 @@ var _cuerpo: Node3D
 var _pivote: Node3D
 var _brazo: SpringArm3D
 var _camara: Camera3D
+var _mano: Node3D = null       # El objeto que llevas en la mano (lo dibuja ModeloMano).
+var _id_mano: String = "~"     # Qué objeto se está dibujando ("~" = todavía ninguno).
 
 
 func _ready() -> void:
 	_crear_cuerpo()
 	_crear_camara()
 	_aplicar_camara()
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not Juego.menu_abierto:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Juego.cambio.connect(_actualizar_mano)
+	_actualizar_mano()
 
 
 # ------------------------------- Ratón y teclas -------------------------------
@@ -60,6 +66,10 @@ func _unhandled_input(evento: InputEvent) -> void:
 		_giro -= movimiento.relative.x * SENSIBILIDAD_RATON
 		_inclinacion -= movimiento.relative.y * SENSIBILIDAD_RATON
 		_inclinacion = clampf(_inclinacion, -1.3, 1.0)
+	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
+			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		var paso: int = -1 if evento.button_index == MOUSE_BUTTON_WHEEL_UP else 1
+		Juego.seleccionar(Juego.seleccion + paso)
 	elif evento is InputEventMouseButton and evento.pressed and not raton_capturado:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED  # Clic para volver a jugar.
 	elif evento.is_action_pressed("liberar_raton"):
@@ -67,8 +77,6 @@ func _unhandled_input(evento: InputEvent) -> void:
 	elif evento.is_action_pressed("cambiar_camara"):
 		primera_persona = not primera_persona
 		_aplicar_camara()
-	elif evento.is_action_pressed("cambiar_hierba"):
-		Juego.siguiente_hierba()
 	elif evento.is_action_pressed("usar") and objetivo != null and not _bloqueado:
 		objetivo.usar(self)
 
@@ -112,6 +120,36 @@ func _aplicar_camara() -> void:
 	_brazo.spring_length = 0.0 if primera_persona else DISTANCIA_CAMARA
 	_brazo.position.x = 0.0 if primera_persona else DESPLAZAMIENTO_HOMBRO
 	_cuerpo.visible = not primera_persona
+	_colocar_mano()
+
+
+# Dibuja de nuevo la mano solo si ha cambiado el objeto elegido.
+func _actualizar_mano() -> void:
+	var id: String = Juego.id_en_mano()
+	if id == _id_mano:
+		return
+	_id_mano = id
+	if _mano != null:
+		_mano.queue_free()
+		_mano = null
+	_mano = ModeloMano.crear(id)
+	_colocar_mano()
+
+
+# En primera persona el objeto cuelga de la cámara; en tercera, del muñeco.
+func _colocar_mano() -> void:
+	if _mano == null:
+		return
+	if _mano.get_parent() != null:
+		_mano.get_parent().remove_child(_mano)
+	if primera_persona:
+		_camara.add_child(_mano)
+		_mano.position = Vector3(0.28, -0.26, -0.55)
+		_mano.rotation = Vector3(0.0, deg_to_rad(-8.0), 0.0)
+	else:
+		_cuerpo.add_child(_mano)
+		_mano.position = Vector3(0.38, 0.95, -0.35)
+		_mano.rotation = Vector3.ZERO
 
 
 # Busca el objeto usable más cercano que esté delante de la cámara.

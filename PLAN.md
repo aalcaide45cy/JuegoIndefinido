@@ -16,52 +16,46 @@ tocar el resto del código.
 - **0.3 Escondite**: herboristería con interior, casa en alquiler, minijuego de
   plantar, caldero y ventanilla de venta.
 
-## Estado de la fase 1 (importante para quien siga)
+## Estado de la fase 1 (rama `claude/project-thread-bxnc21`)
 
-La rama `claude/project-thread-s1xxaq` tiene la versión **jugable** (0.3). El
-trabajo a medias de la fase 1 está en la rama **`wip/fase1-inventario`**
-y **todavía no arranca**. Lo que hay allí:
+Escrita en la nube **sin poder ejecutar Godot**: hay que probarla en el PC.
+Incluye:
 
-- Hecho: datos de objetos (`scripts/datos/objetos.gd`, `habilidades.gd`),
-  inventario por casillas con montones, dividir, ordenar y mover
-  (`scripts/juego.gd`), casilla con arrastrar y soltar (`ui/casilla_ui.gd`),
-  base de ventanas (`ui/ventana.gd`) y las ventanas Inventario, Tienda (con
-  pestañas y tu inventario al lado), Estantería y Admin (`ui/ventanas.gd`).
-- Error al arrancar: `juego.gd` da "Parse error" (probablemente por una
-  llamada mal escrita en `_nueva_casilla`/`_anadir_en`; las clases
-  `DatosObjetos` y `DatosHabilidades` salen como no declaradas por esa
-  cascada: abrir el proyecto en el editor para refrescar `class_name`).
-- Falta adaptar al inventario nuevo (siguen usando `Juego.objetos`,
-  `Juego.hierbas`, `Juego.pociones`, `GameData.CARGAS_JARRA`): `maceta_3d.gd`,
-  `caldero_3d.gd`, `mostrador.gd`, `muebles.gd`, `tendero.gd`, `hud.gd` (que
-  abra las ventanas nuevas y borre `menus.gd`/`menu_base.gd`) y
-  `minijuego_plantar.gd`.
-- Falta: barra rápida dibujada en el HUD con teclas 1-9 y rueda del ratón,
-  objeto en la mano, barra de vida, ciclo de día y noche con el sol, F1 para
-  el panel de administrador.
-- Además, Alfonso pidió: **más tiendas con interior visible** (ferretería y
-  armería, además de la herboristería) y que al comprar se vean a la vez su
-  inventario y el del vendedor, con pestañas. Eso ya está planteado en
-  `Ventanas.Tienda`.
+- Datos de objetos y habilidades en `scripts/datos/` (se cargan con `preload`,
+  sin depender de `class_name`, para evitar errores de "clase no declarada").
+- Inventario de 63 casillas (9 de barra + 54 de mochila) con montones de 1 o
+  hasta 20, arrastrar y soltar, dividir (clic derecho), ordenar y Mayús+clic.
+- Barra rápida dibujada en el HUD (teclas 1-9 y rueda del ratón) y objeto en
+  la mano en 3D (`scripts/jugador/modelo_mano.gd`).
+- Tienda con pestañas por categoría, tu inventario al lado y zona para vender
+  arrastrando. Estantería de casa por casillas.
+- Dinero (200 $ al empezar), vida con barra, hora y día en el HUD.
+- Panel de administrador (F1): hora, velocidad del tiempo, dinero, vida,
+  nivel, habilidades y darse objetos.
+- Ciclo de día y noche (`scripts/mundo/ciclo_dia.gd`): sol, luna, cielo,
+  niebla y farolas que se encienden solas.
+- Guardar y cargar (`scripts/guardado.gd`, archivo `user://partida.json`):
+  inventario, dinero, nivel, habilidades, hora, casa alquilada, macetas y
+  posición. Esc abre el menú de pausa (Reanudar, Guardar, Cargar, Salir) y al
+  arrancar hay menú de Continuar / Nueva partida.
+- Plantar, caldero, ventanilla y muebles adaptados al inventario nuevo. El
+  caldero usa la hierba que llevas en la mano.
 
-## Fase 1: el núcleo (inventario, barra rápida, tiempo, admin)
+Pendiente de la fase 1: probar en Godot y corregir lo que falle. El tendero
+solo existe en la herboristería; ferretería y armería llegan en la fase 2.
 
-- Datos de todos los objetos en `scripts/datos/objetos.gd`: nombre, tipo,
-  precio, cuántos caben por casilla (1 o hasta 20) y qué nivel o habilidad
-  hacen falta para comprarlos.
-- Inventario por casillas con montones (stacks): herramientas y armas de 1 en
-  1; semillas, tierra, munición, hierbas y pociones hasta 20 por casilla.
-- Barra rápida abajo con 9 casillas: teclas 1 a 9 o rueda del ratón. Lo que
-  eliges se ve en la mano (jarra, regadera, palo, bate, pistola...).
-- Inventario con TAB y estantería de casa por casillas (clic para mover).
-- Vida del jugador con su barra.
-- Ciclo de día y noche: sol que se mueve, cielo que cambia de color, farolas
-  que se encienden al anochecer y mejor iluminación general.
-- Panel de administrador (F1): cambiar la hora y la velocidad del tiempo,
-  botón de +100 $, cambiar la vida y darse cualquier objeto para probar.
+## Peticiones nuevas de Alfonso (2026-11-16)
+
+- Guardado y carga de partida, con menú de Esc y menú inicial (hecho, fase 1).
+- Ciudad más grande y con más tiendas (fase 2).
+- Llevar a cabo todo el plan y que el juego sea **bonito**: ahora se ve básico
+  (fase de calidad visual, abajo).
 
 ## Fase 2: la ciudad
 
+- Ciudad grande, construida barrio a barrio (cada uno en su script de
+  `scripts/mundo/`), con muchas más tiendas: herboristería, ferretería,
+  armería, mercado, taberna, instructores...
 - Varios barrios unidos por calles: plaza, mercado, barrio residencial y
   zona industrial (de momento con edificios de cajas).
 - Varias viviendas con cartel "Disponible para alquilar" y precio distinto.
@@ -95,8 +89,25 @@ y **todavía no arranca**. Lo que hay allí:
   persigue.
 - Daño, muerte y reaparición en casa (perdiendo algo de dinero).
 
+## Fase 7: calidad visual (que se vea bonito)
+
+Se hace por partes, en paralelo a las fases anteriores, cuidando el
+rendimiento (el renderizador es Compatibilidad):
+
+- Iluminación y sombras: sol y luna con sombras suaves, luces cálidas en
+  interiores, brillo (glow) y niebla de ambiente; amanecer y atardecer con
+  color.
+- Materiales con detalle: texturas CC0 para suelo, paredes, madera y metal en
+  lugar de colores planos.
+- Modelos de verdad con licencia libre (CC0, por ejemplo Kenney o Quaternius)
+  en vez de cajas: edificios, mobiliario, farolas, armas. Se apunta la
+  licencia y el autor de cada paquete en `CREDITOS.md`.
+- Efectos: partículas (humo del caldero, polvo, chispas, agua), huellas y
+  marcas de bala, destellos de disparo.
+- Sonido ambiente (ciudad de noche, pasos, tienda) y música suave.
+- Interfaz con estilo coherente (tema de Godot propio: tipografía, colores,
+  bordes y botones iguales en todas las ventanas).
+
 ## Más adelante
 
-- Guardar y cargar partida.
-- Modelos de verdad con licencia CC0 (por ejemplo, Kenney) en lugar de cajas.
-- Sonido y música.
+- Varias partidas guardadas (ahora hay una sola).

@@ -135,7 +135,7 @@ func _ir_a(paso: Paso) -> void:
 			for id_hierba in GameData.HIERBAS:
 				var id_objeto: String = "semilla_" + id_hierba
 				if Juego.tiene(id_objeto):
-					_boton("%s (%d)" % [GameData.OBJETOS[id_objeto]["nombre"], Juego.objetos[id_objeto]],
+					_boton("%s (%d)" % [Juego.DatosObjetos.nombre(id_objeto), Juego.cuenta(id_objeto)],
 							_elegir_semilla.bind(id_hierba))
 		Paso.AGUA:
 			_titulo.text = "3/4  Riega"
@@ -144,7 +144,7 @@ func _ir_a(paso: Paso) -> void:
 		Paso.ABONO:
 			_titulo.text = "4/4  Abono (opcional)"
 			_explicacion.text = "El abono hace que crezca más rápido y dé una hierba más."
-			_boton("Echar abono (tienes %d)" % Juego.objetos["abono"], _elegir_abono.bind(true))
+			_boton("Echar abono (tienes %d)" % Juego.cuenta("abono"), _elegir_abono.bind(true))
 			_boton("Sin abono", _elegir_abono.bind(false))
 		Paso.RESULTADO:
 			var nota: float = _nota_media()
@@ -201,15 +201,19 @@ func _elegir_abono(usar_abono: bool) -> void:
 
 # Gasta los materiales y planta de verdad.
 func _finalizar() -> void:
-	Juego.usar_objeto("tierra")
-	Juego.usar_objeto("semilla_" + _semilla)
+	Juego.quitar("tierra")
+	Juego.quitar("semilla_" + _semilla)
 	if _con_abono:
-		Juego.usar_objeto("abono")
-	Juego.agua_jarra -= 1
+		Juego.quitar("abono")
+	var recipiente = Juego.recipiente_de_agua()
+	var quedan: int = 0
+	if recipiente != null:
+		recipiente["agua"] -= 1
+		quedan = recipiente["agua"]
 	Juego.cambio.emit()
 	maceta.plantar(_semilla, _nota_media(), _con_abono)
-	Juego.avisar("Has plantado %s. Te quedan %d riegos en la jarra." % [
-			GameData.HIERBAS[_semilla]["nombre"], Juego.agua_jarra])
+	Juego.avisar("Has plantado %s. Te quedan %d riegos en el recipiente." % [
+			GameData.HIERBAS[_semilla]["nombre"], quedan])
 	cerrar()
 
 

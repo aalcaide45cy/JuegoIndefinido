@@ -17,7 +17,6 @@
 #   descripcion  una frase para la tienda.
 # Algunos tienen datos extra (agua, daño, munición...) que usa su propio código.
 # -----------------------------------------------------------------------------
-class_name DatosObjetos
 extends RefCounted
 
 const PILA_MAXIMA: int = 20
