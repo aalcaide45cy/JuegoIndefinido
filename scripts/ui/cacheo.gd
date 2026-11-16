@@ -31,6 +31,14 @@ func construir() -> void:
 	_pintar()
 
 
+# Cerrar la ventana (Esc o el botón) no libra del cacheo: se resuelve en ese momento
+# con lo que hayas conseguido esconder. Antes bastaba pulsar Esc para irse de rositas.
+func cerrar() -> void:
+	if not _acabado:
+		_terminar()
+	super()
+
+
 func _ilegales() -> Array:
 	var r: Array = []
 	for i in Juego.inventario.size():

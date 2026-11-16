@@ -44,7 +44,9 @@ static func limites(margen: float = 20.0) -> Rect2:
 # Nodos por los que caminan los guardias (mundo, y = 0) y con qué nodos se unen.
 # Dentro de la plaza van por las esquinas (la fuente está en el centro).
 const NODOS: Dictionary = {
-	"pne": Vector3(15, 0, -15), "pse": Vector3(15, 0, 15), "psw": Vector3(-15, 0, 15), "pnw": Vector3(-15, 0, -15),
+	# (A 12 m del centro: a 15 m chocaban con los barriles, el carro y los puestos
+	# de la plaza y los guardias se quedaban atascados para siempre.)
+	"pne": Vector3(12, 0, -12), "pse": Vector3(12, 0, 12), "psw": Vector3(-12, 0, 12), "pnw": Vector3(-12, 0, -12),
 	"n20": Vector3(16, 0, -22), "mercado": Vector3(16, 0, -58),
 	"e20": Vector3(22, 0, -16), "residencial": Vector3(58, 0, -16),
 	"s20": Vector3(-16, 0, 22), "industrial": Vector3(-16, 0, 58),

@@ -31,11 +31,19 @@ var _material: StandardMaterial3D
 var _t_puertas: float = 0.0
 var _nodo_destino: String = ""
 var _espera: float = 0.0
+var _t_atasco: float = 0.0            # Segundos intentando andar sin avanzar.
+var _pos_atasco: Vector3 = Vector3.ZERO
 var _modelo: Node3D   # Personaje de Quaternius (null = muñeco de cajas).
 
 
 func _ready() -> void:
 	add_to_group("danable")
+	# Los guardias no chocan entre sí: si no, dos que se cruzan de frente en una
+	# calle se quedan empujándose sin avanzar.
+	for otro in get_tree().get_nodes_in_group("guardias"):
+		add_collision_exception_with(otro)
+		(otro as PhysicsBody3D).add_collision_exception_with(self)
+	add_to_group("guardias")
 	var forma: CollisionShape3D = CollisionShape3D.new()
 	var capsula: CapsuleShape3D = CapsuleShape3D.new()
 	capsula.radius = 0.35
@@ -150,9 +158,33 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 	move_and_slide()
+	_vigilar_atasco(delta, velocidad > 0.0 and hacia.length() > 0.1)
 	if _modelo != null:
 		var corre: bool = velocity.length() > 0.2
 		Assets.poner_animacion(_modelo, "Run" if velocity.length() > 3.0 else ("Walk" if corre else "Idle"))
+
+
+# Red de seguridad: si intenta andar y no avanza (un mueble, una esquina, una pared
+# entre él y su destino tras una persecución), primero prueba otro camino y, si
+# sigue igual, vuelve de golpe al punto de la red de calles más cercano.
+func _vigilar_atasco(delta: float, intenta_andar: bool) -> void:
+	if not intenta_andar or global_position.distance_to(_pos_atasco) > 0.6:
+		_pos_atasco = global_position
+		_t_atasco = 0.0
+		return
+	_t_atasco += delta
+	if _t_atasco > 8.0:
+		_nodo_destino = RedCalles.nodo_mas_cercano(global_position)
+		global_position = RedCalles.NODOS[_nodo_destino] + Vector3(0, 0.1, 0)
+		velocity = Vector3.ZERO
+		_persiguiendo = false
+		_t_atasco = 0.0
+		_pos_atasco = global_position
+	elif _t_atasco > 2.5 and pasea_ciudad and not _persiguiendo and _nodo_destino != "":
+		# Cambia de destino a otro vecino (una sola vez por atasco).
+		if _t_atasco - delta <= 2.5:
+			var vecinos: Array = RedCalles.VECINOS[_nodo_destino]
+			_nodo_destino = vecinos[randi() % vecinos.size()]
 
 
 func _buscar_jugador() -> Node3D:
@@ -243,6 +275,9 @@ func _caer() -> void:
 	await get_tree().create_timer(90.0).timeout
 	_vida = VIDA_MAXIMA
 	_persiguiendo = false
-	if not ruta.is_empty():
+	if pasea_ciudad:
+		_nodo_destino = RedCalles.nodo_mas_cercano(global_position)
+		global_position = RedCalles.NODOS[_nodo_destino]
+	elif not ruta.is_empty():
 		global_position = ruta[0]
 	_muerto = false
