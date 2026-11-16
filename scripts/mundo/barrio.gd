@@ -24,6 +24,19 @@ func construir() -> void:
 	pass
 
 
+# Material compartido de las ventanas con luz: CicloDia lo enciende al anochecer.
+static var _mat_ventana_luz: StandardMaterial3D
+
+static func material_ventana_luz() -> StandardMaterial3D:
+	if _mat_ventana_luz == null:
+		_mat_ventana_luz = StandardMaterial3D.new()
+		_mat_ventana_luz.albedo_color = Color(0.1, 0.09, 0.07)
+		_mat_ventana_luz.emission_enabled = true
+		_mat_ventana_luz.emission = Color(1.0, 0.7, 0.35)
+		_mat_ventana_luz.emission_energy_multiplier = 0.0
+	return _mat_ventana_luz
+
+
 # Un edificio genérico de cajas: fachada con ventanas, puerta y cornisa.
 # Se coloca con la fachada en "pos" mirando hacia "angulo"
 # (0 = la fachada mira al sur, +Z; PI = mira al norte; PI/2 = al este; -PI/2 = al oeste).
@@ -44,10 +57,12 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 	for piso in range(1, pisos):
 		for col in columnas:
 			var x: float = (col - (columnas - 1) / 2.0) * (ancho / columnas)
-			var encendida: bool = rng.randf() < 0.3
-			var color_ventana: Color = Color(1.0, 0.7, 0.35) if encendida else Color(0.05, 0.06, 0.09)
-			Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.05), Vector3(0.9, 1.3, 0.1),
-					color_ventana, false, 1.2 if encendida else 0.0)
+			var encendida: bool = rng.randf() < 0.55
+			var ventana: Node3D = Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.05), Vector3(0.9, 1.3, 0.1),
+					Color(0.05, 0.06, 0.09), false)
+			if encendida:
+				# Esta ventana se ilumina por la noche (la controla CicloDia).
+				(ventana as MeshInstance3D).mesh.material = material_ventana_luz()
 	# Puerta de madera en la planta baja.
 	Construir.caja(casa, Vector3(rng.randf_range(-ancho / 4.0, ancho / 4.0), 1.1, 0.05),
 			Vector3(1.1, 2.2, 0.1), Color(0.2, 0.13, 0.09), false)

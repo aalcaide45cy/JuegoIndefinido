@@ -28,6 +28,17 @@ func _ready() -> void:
 	Construir.esfera(self, m + Vector3(0, 1.48, 0), 0.19, Color(0.8, 0.68, 0.58))
 	Construir.caja(self, m + Vector3(0, 1.52, 0.18), Vector3(0.24, 0.05, 0.03), Color(0.1, 0.1, 0.1), false)
 	Construir.esfera(self, m + Vector3(0, 1.62, -0.02), 0.17, Color(0.85, 0.85, 0.85), Vector3(1, 0.5, 1))
+	# Con el modelo de Quaternius puesto, el muñeco de cajas se oculta.
+	var tendero_3d: Node3D = Assets.modelo(Assets.PERSONAJES + "base-characters/Superhero_Male_FullBody")
+	if tendero_3d != null:
+		for h in get_children():
+			if h is MeshInstance3D:
+				(h as MeshInstance3D).visible = false
+		tendero_3d.position = m
+		add_child(tendero_3d)
+		var pelo: Node3D = Assets.modelo(Assets.PERSONAJES + "hairstyles-origin-0/Hair_Buzzed")
+		if pelo != null:
+			tendero_3d.add_child(pelo)
 
 
 func texto_accion() -> String:

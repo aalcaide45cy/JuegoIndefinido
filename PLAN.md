@@ -162,3 +162,10 @@ rendimiento (el renderizador es Compatibilidad):
 ## Más adelante
 
 - Varias partidas guardadas (ahora hay una sola).
+
+## Estado extra (sin probar en Godot: el hilo del PC debe revisarlo)
+- Ventanas de las casas se iluminan de noche (material compartido `Barrio.material_ventana_luz`, lo controla `CicloDia`).
+- Personajes Quaternius: guardias (Soldier, anima Idle/Walk/Run), clientes (Hazmat) y tenderos (Superhero + pelo). Si algo sale gigante, torcido o con armas de más, ajustar `Assets.personaje()`. Si no carga el modelo, se usa el muñeco de cajas.
+- Armas en mano con modelos Quaternius (escala de cuchillo/granada ajustada).
+- Sonido: `Sonido.tocar()` genera disparo/explosión por código; si se ponen archivos CC0 en `assets/sonidos/NOMBRE.ogg|wav` se usan solos. Pendiente: sonido ambiente y pasos.
+- Pendiente: más partículas, sustituir cajas de edificios por piezas Medieval Village, revisión de huecos.

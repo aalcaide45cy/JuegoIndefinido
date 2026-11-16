@@ -91,6 +91,7 @@ func actualizar() -> void:
 
 	# Luces de la ciudad: encendidas de noche, apagadas de día.
 	var encendido: float = 1.0 - smoothstep(0.0, 0.35, altura)
+	Barrio.material_ventana_luz().emission_energy_multiplier = 1.6 * encendido
 	for luz in get_tree().get_nodes_in_group("luces_noche"):
 		var foco: Light3D = luz as Light3D
 		if foco != null:

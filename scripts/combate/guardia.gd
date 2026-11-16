@@ -24,6 +24,7 @@ var _golpe: float = 0.0
 var _muerto: bool = false
 var _cuerpo: Node3D
 var _material: StandardMaterial3D
+var _modelo: Node3D   # Personaje de Quaternius (null = muñeco de cajas).
 
 
 func _ready() -> void:
@@ -43,6 +44,13 @@ func _ready() -> void:
 	Construir.cilindro(_cuerpo, Vector3(0, 1.68, 0), 0.2, 0.2, Color(0.1, 0.1, 0.18), false, 0.0, 0.16)
 	Construir.caja(_cuerpo, Vector3(0.35, 1.0, -0.1), Vector3(0.05, 0.05, 0.9), Color(0.5, 0.5, 0.55), false)  # Lanza.
 	Construir.caja(_cuerpo, Vector3(0, 1.42, -0.2), Vector3(0.06, 0.06, 0.1), Color(0.7, 0.55, 0.45), false)
+	# Si está el modelo de Quaternius, sustituye al muñeco de cajas.
+	var soldado: Node3D = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/Character_Soldier", "Shotgun", "Walk")
+	if soldado != null:
+		for h in _cuerpo.get_children():
+			(h as Node3D).visible = false
+		_cuerpo.add_child(soldado)
+		_modelo = soldado
 	if not ruta.is_empty():
 		global_position = ruta[0]
 	_poner_activo(false)
@@ -109,6 +117,9 @@ func _physics_process(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 	move_and_slide()
+	if _modelo != null:
+		var corre: bool = velocity.length() > 0.2
+		Assets.poner_animacion(_modelo, "Run" if velocity.length() > 3.0 else ("Walk" if corre else "Idle"))
 
 
 func _buscar_jugador() -> Node3D:

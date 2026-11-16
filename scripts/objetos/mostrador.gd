@@ -42,6 +42,11 @@ func _ready() -> void:
 	_material_ropa = (ropa as MeshInstance3D).mesh.material
 	Construir.esfera(_cliente, Vector3(0, 1.5, 0), 0.19, Color(0.7, 0.66, 0.6))
 	Construir.cilindro(_cliente, Vector3(0, 1.62, 0), 0.22, 0.25, Color(0.1, 0.1, 0.12), false, 0.0, 0.05)
+	var persona: Node3D = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/Character_Hazmat", "", "Idle")
+	if persona != null:
+		for h in _cliente.get_children():
+			(h as Node3D).visible = false
+		_cliente.add_child(persona)
 	_cartel = Construir.texto(self, posicion_cliente + Vector3(0, 2.1, 0), "", 32)
 	_cartel.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_cliente.visible = false

@@ -59,6 +59,7 @@ static func marca_bala(padre: Node, pos: Vector3, normal: Vector3) -> void:
 
 # Una explosión: luz, bola de fuego, mancha en el suelo y daño en un radio.
 static func explosion(padre: Node3D, pos: Vector3, radio: float, dano: float) -> void:
+	Sonido.tocar(padre, "explosion", 0.0)
 	var arbol: SceneTree = padre.get_tree()
 	# Destello.
 	var luz: OmniLight3D = OmniLight3D.new()

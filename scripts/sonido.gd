@@ -1,0 +1,71 @@
+# sonido.gd
+# -----------------------------------------------------------------------------
+# Efectos de sonido sencillos generados por código (sin archivos). Si más
+# adelante se añaden .wav/.ogg CC0 en assets/sonidos/NOMBRE.wav (o .ogg), se usan
+# en su lugar automáticamente.
+#   Sonido.tocar(self, "disparo")   # nombres: disparo, golpe, compra, explosion, alerta
+# SIN PROBAR en Godot.
+# -----------------------------------------------------------------------------
+class_name Sonido
+extends RefCounted
+
+static var _cache: Dictionary = {}
+
+
+static func tocar(origen: Node, nombre: String, volumen_db: float = -6.0) -> void:
+	if origen == null or not origen.is_inside_tree():
+		return
+	var flujo: AudioStream = _flujo(nombre)
+	if flujo == null:
+		return
+	var p: AudioStreamPlayer = AudioStreamPlayer.new()
+	p.stream = flujo
+	p.volume_db = volumen_db
+	origen.get_tree().root.add_child(p)
+	p.finished.connect(p.queue_free)
+	p.play()
+
+
+static func _flujo(nombre: String) -> AudioStream:
+	if _cache.has(nombre):
+		return _cache[nombre]
+	var flujo: AudioStream = null
+	for ext in ["ogg", "wav"]:
+		var ruta: String = "res://assets/sonidos/%s.%s" % [nombre, ext]
+		if ResourceLoader.exists(ruta):
+			flujo = load(ruta) as AudioStream
+			break
+	if flujo == null:
+		flujo = _generar(nombre)
+	_cache[nombre] = flujo
+	return flujo
+
+
+# nombre -> [duración s, frecuencia Hz (0 = ruido), caída de volumen]
+static func _generar(nombre: String) -> AudioStream:
+	var tabla: Dictionary = {
+		"disparo": [0.18, 0.0, 14.0], "explosion": [0.9, 0.0, 4.0],
+		"golpe": [0.12, 140.0, 20.0], "compra": [0.25, 880.0, 9.0],
+		"alerta": [0.5, 520.0, 3.0],
+	}
+	if not tabla.has(nombre):
+		return null
+	var d: Array = tabla[nombre]
+	var tasa: int = 22050
+	var n: int = int(float(d[0]) * tasa)
+	var datos: PackedByteArray = PackedByteArray()
+	datos.resize(n * 2)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 7
+	for i in n:
+		var t: float = float(i) / tasa
+		var env: float = exp(-float(d[2]) * t)
+		var v: float = rng.randf_range(-1.0, 1.0) if float(d[1]) == 0.0 else sin(TAU * float(d[1]) * t)
+		var m: int = int(clampf(v * env, -1.0, 1.0) * 32000.0)
+		datos.encode_s16(i * 2, m)
+	var w: AudioStreamWAV = AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = tasa
+	w.stereo = false
+	w.data = datos
+	return w

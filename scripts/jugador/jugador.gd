@@ -281,6 +281,7 @@ func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
 		Juego.avisar("Sin balas en el cargador. Pulsa R para recargar.")
 		return
 	casilla["balas"] -= 1
+	Sonido.tocar(self, "disparo")
 	var forma: String = datos["forma"]
 	var pausa: Dictionary = {"pistola": 0.28, "escopeta": 0.9, "rifle": 0.11, "francotirador": 1.4,
 			"lanzagranadas": 1.0}
