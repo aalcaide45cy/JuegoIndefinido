@@ -1,33 +1,45 @@
 # juego.gd  (se carga solo al arrancar, con el nombre "Juego")
 # -----------------------------------------------------------------------------
-# El "cerebro" de la partida: dinero, inventario, hierbas cosechadas y
-# pociones hechas. Como está en Proyecto > Configuración > Autoload, cualquier
-# script puede escribir, por ejemplo, Juego.dinero o Juego.avisar("Hola").
+# El "cerebro" de la partida: dinero, vida, hora del día, inventario por
+# casillas y la estantería de casa. Como está en Autoload, cualquier script
+# puede escribir, por ejemplo, Juego.dinero o Juego.avisar("Hola").
+#
+# INVENTARIO: es una lista de casillas. Cada casilla es null (vacía) o un
+# diccionario {"id": "tierra", "cantidad": 5} (algunas llevan datos extra,
+# como "agua" en la jarra). Las 9 primeras son la barra rápida (teclas 1-9).
+# Cuántas cosas caben por casilla lo dice "pila" en scripts/datos/objetos.gd.
 #
 # También crea los controles (teclas) para no tener que configurarlos a mano.
 # -----------------------------------------------------------------------------
 extends Node
 
-# Se emite cada vez que cambia el dinero o el inventario (el HUD se refresca).
-signal cambio
-# Se emite para mostrar un mensaje en pantalla.
-signal mensaje(texto: String)
+signal cambio                     # Dinero, vida o inventario han cambiado.
+signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
+
+const TAM_BARRA: int = 9
+const TAM_INVENTARIO: int = 63    # 9 de la barra + 54 de la mochila.
+const TAM_ESTANTERIA: int = 36
+const VIDA_MAX: float = 100.0
+# Velocidad normal del tiempo: 1 hora del juego = 60 segundos reales.
+const HORAS_POR_SEGUNDO: float = 1.0 / 60.0
 
 var dinero: int = 0
-var objetos: Dictionary = {}    # id_objeto (de GameData.OBJETOS) -> cantidad
-var agua_jarra: int = 0         # Riegos que le quedan a la jarra.
-var hierbas: Dictionary = {}    # id_hierba -> cantidad cosechada
-var pociones: Dictionary = {}   # id_pocion -> cantidad lista para vender
+var vida: float = VIDA_MAX
+var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
+var dia: int = 1
+var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
 var casa_alquilada: bool = false
-var almacen: Dictionary = {}    # Lo guardado en la estantería de casa: id_objeto -> cantidad
+var nivel: int = 1
+var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
-# true mientras hay un menú abierto (tienda, inventario, minijuego):
+var inventario: Array = []
+var estanteria: Array = []
+var seleccion: int = 0               # Casilla de la barra que tienes en la mano.
+
+# true mientras hay un menú abierto (tienda, inventario, minijuego...):
 # el jugador no se mueve y el ratón se puede usar para hacer clic.
 var menu_abierto: bool = false
-
-# Qué hierba tienes "en la mano" para echar al caldero. Se cambia con Q.
-var _indice_hierba: int = 0
 
 
 func _ready() -> void:
@@ -38,34 +50,40 @@ func _ready() -> void:
 
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
-	for id_objeto in GameData.OBJETOS:
-		objetos[id_objeto] = 0
-		almacen[id_objeto] = 0
-	agua_jarra = 0
-	casa_alquilada = false
-	for id_hierba in GameData.HIERBAS:
-		hierbas[id_hierba] = 0
-	for id_pocion in GameData.POCIONES:
-		pociones[id_pocion] = 0
+	vida = VIDA_MAX
+	hora = 20.0
+	dia = 1
 	ha_ganado = false
+	casa_alquilada = false
+	nivel = 1
+	habilidades.clear()
+	inventario.clear()
+	inventario.resize(TAM_INVENTARIO)
+	estanteria.clear()
+	estanteria.resize(TAM_ESTANTERIA)
+	seleccion = 0
 	cambio.emit()
 
 
-# ------------------------- Hierba seleccionada --------------------------------
-
-func hierba_seleccionada() -> String:
-	return GameData.HIERBAS.keys()[_indice_hierba]
-
-
-func siguiente_hierba() -> void:
-	_indice_hierba = (_indice_hierba + 1) % GameData.HIERBAS.size()
-	avisar("En la mano: %s" % GameData.HIERBAS[hierba_seleccionada()]["nombre"])
-	cambio.emit()
+func _process(delta: float) -> void:
+	hora += delta * HORAS_POR_SEGUNDO * velocidad_tiempo
+	if hora >= 24.0:
+		hora -= 24.0
+		dia += 1
 
 
-# ------------------------------ Dinero ----------------------------------------
+# Texto de la hora, por ejemplo "21:05".
+func texto_hora() -> String:
+	var minutos: int = int(hora * 60.0) % (24 * 60)
+	return "%02d:%02d" % [minutos / 60, minutos % 60]
 
-# Intenta pagar. Devuelve true si había dinero suficiente.
+
+func es_de_noche() -> bool:
+	return hora < 7.0 or hora >= 20.0
+
+
+# ------------------------------ Dinero y vida ---------------------------------
+
 func gastar(cantidad: int) -> bool:
 	if dinero < cantidad:
 		return false
@@ -79,51 +97,227 @@ func cobrar(cantidad: int) -> void:
 	cambio.emit()
 	if not ha_ganado and dinero >= GameData.OBJETIVO_DINERO:
 		ha_ganado = true
-		avisar("¡Has reunido %d $ y pagado el alquiler! Prototipo superado." %
-				GameData.OBJETIVO_DINERO)
+		avisar("¡Has reunido %d $ para el Prefecto! Prototipo superado." % GameData.OBJETIVO_DINERO)
 
 
-# ------------------------------ Objetos ---------------------------------------
+func cambiar_vida(cantidad: float) -> void:
+	vida = clampf(vida + cantidad, 0.0, VIDA_MAX)
+	cambio.emit()
 
-func tiene(id_objeto: String, cantidad: int = 1) -> bool:
-	return objetos[id_objeto] >= cantidad
+
+# -------------------------------- Inventario ----------------------------------
+
+# Mete objetos en el inventario. Primero rellena montones que ya existan;
+# luego usa casillas vacías. Devuelve lo que NO ha cabido.
+func anadir(id: String, cantidad: int = 1) -> int:
+	var sobra: int = _anadir_en(inventario, id, cantidad, 0)
+	cambio.emit()
+	return sobra
 
 
-# Compra un objeto del puesto. Devuelve un texto con lo que ha pasado.
-func comprar(id_objeto: String) -> String:
-	var datos: Dictionary = GameData.OBJETOS[id_objeto]
-	if datos["unico"] and objetos[id_objeto] > 0:
-		return "Ya tienes %s." % datos["nombre"]
+func _nueva_casilla(id: String, cantidad: int) -> Dictionary:
+	var casilla: Dictionary = {"id": id, "cantidad": cantidad}
+	var datos: Dictionary = DatosObjetos.datos(id)
+	if datos.has("agua_max"):
+		casilla["agua"] = datos["agua_max"]   # Las jarras se compran llenas.
+	return casilla
+
+
+# Cuántos hay en total de un objeto.
+func cuenta(id: String) -> int:
+	var total: int = 0
+	for casilla in inventario:
+		if casilla != null and casilla["id"] == id:
+			total += casilla["cantidad"]
+	return total
+
+
+func tiene(id: String, cantidad: int = 1) -> bool:
+	return cuenta(id) >= cantidad
+
+
+# Quita objetos (empezando por el final, para no vaciar la barra).
+func quitar(id: String, cantidad: int = 1) -> bool:
+	if cuenta(id) < cantidad:
+		return false
+	for i in range(inventario.size() - 1, -1, -1):
+		var casilla = inventario[i]
+		if cantidad <= 0:
+			break
+		if casilla != null and casilla["id"] == id:
+			var saca: int = mini(cantidad, casilla["cantidad"])
+			casilla["cantidad"] -= saca
+			cantidad -= saca
+			if casilla["cantidad"] <= 0:
+				inventario[i] = null
+	cambio.emit()
+	return true
+
+
+# La casilla de la barra que tienes en la mano (o null).
+func en_mano():
+	return inventario[seleccion]
+
+
+func id_en_mano() -> String:
+	var casilla = en_mano()
+	return "" if casilla == null else casilla["id"]
+
+
+func seleccionar(indice: int) -> void:
+	seleccion = posmod(indice, TAM_BARRA)
+	cambio.emit()
+
+
+# Busca la mejor herramienta para regar: la de la mano si riega; si no, la
+# primera que tenga agua. Devuelve la casilla o null.
+func recipiente_de_agua():
+	var mano = en_mano()
+	if mano != null and mano.has("agua"):
+		return mano
+	for casilla in inventario:
+		if casilla != null and casilla.has("agua"):
+			return casilla
+	return null
+
+
+# Intercambia (o junta, si son del mismo objeto) dos casillas. Sirve para
+# mover cosas dentro del inventario o entre el inventario y la estantería.
+func mover(lista_a: Array, i: int, lista_b: Array, j: int) -> void:
+	if lista_a == lista_b and i == j:
+		return
+	var a = lista_a[i]
+	var b = lista_b[j]
+	if a != null and b != null and a["id"] == b["id"] and not a.has("agua"):
+		var maximo: int = DatosObjetos.pila(a["id"])
+		var pasa: int = mini(a["cantidad"], maximo - b["cantidad"])
+		b["cantidad"] += pasa
+		a["cantidad"] -= pasa
+		if a["cantidad"] <= 0:
+			lista_a[i] = null
+	else:
+		lista_a[i] = b
+		lista_b[j] = a
+	cambio.emit()
+
+
+# Parte un montón por la mitad y deja la otra mitad en una casilla vacía.
+func dividir(lista: Array, i: int) -> void:
+	var casilla = lista[i]
+	if casilla == null or casilla["cantidad"] < 2:
+		return
+	var hueco: int = lista.find(null)
+	if hueco == -1:
+		return
+	var mitad: int = casilla["cantidad"] / 2
+	casilla["cantidad"] -= mitad
+	lista[hueco] = {"id": casilla["id"], "cantidad": mitad}
+	cambio.emit()
+
+
+# Junta montones iguales y ordena por tipo y nombre las casillas desde "desde"
+# hasta el final (en el inventario, desde 9 para no tocar la barra rápida).
+func ordenar(lista: Array, desde: int = 0) -> void:
+	var cosas: Array = []
+	for i in range(desde, lista.size()):
+		if lista[i] != null:
+			cosas.append(lista[i])
+		lista[i] = null
+	cosas.sort_custom(func(a, b) -> bool:
+		var da: Dictionary = DatosObjetos.datos(a["id"])
+		var db: Dictionary = DatosObjetos.datos(b["id"])
+		if da["tipo"] != db["tipo"]:
+			return da["tipo"] < db["tipo"]
+		return da["nombre"] < db["nombre"])
+	var i: int = desde
+	for casilla in cosas:
+		# ¿Se puede juntar con la anterior?
+		if i > desde and not casilla.has("agua"):
+			var previa = lista[i - 1]
+			if previa["id"] == casilla["id"]:
+				var maximo: int = DatosObjetos.pila(casilla["id"])
+				var pasa: int = mini(casilla["cantidad"], maximo - previa["cantidad"])
+				previa["cantidad"] += pasa
+				casilla["cantidad"] -= pasa
+				if casilla["cantidad"] <= 0:
+					continue
+		lista[i] = casilla
+		i += 1
+	cambio.emit()
+
+
+# Mueve una casilla entera a otra lista (clic con Mayúsculas). Devuelve true si cupo.
+func mover_rapido(origen: Array, i: int, destino: Array, desde: int = 0) -> void:
+	var casilla = origen[i]
+	if casilla == null:
+		return
+	if casilla.has("agua"):
+		var hueco: int = destino.find(null, desde)
+		if hueco != -1:
+			destino[hueco] = casilla
+			origen[i] = null
+	else:
+		var sobra: int = _anadir_en(destino, casilla["id"], casilla["cantidad"], desde)
+		if sobra <= 0:
+			origen[i] = null
+		else:
+			casilla["cantidad"] = sobra
+	cambio.emit()
+
+
+# Como anadir(), pero empezando en la casilla "desde" y sin avisar.
+func _anadir_en(lista: Array, id: String, cantidad: int, desde: int) -> int:
+	var maximo: int = DatosObjetos.pila(id)
+	for k in range(desde, lista.size()):
+		var c = lista[k]
+		if cantidad > 0 and c != null and c["id"] == id and c["cantidad"] < maximo:
+			var cabe: int = mini(cantidad, maximo - c["cantidad"])
+			c["cantidad"] += cabe
+			cantidad -= cabe
+	for k in range(desde, lista.size()):
+		if cantidad > 0 and lista[k] == null:
+			var cabe: int = mini(cantidad, maximo)
+			lista[k] = _nueva_casilla(id, cabe)
+			cantidad -= cabe
+	return cantidad
+
+
+# Devuelve "" si el jugador puede comprar el objeto, o el motivo si no.
+func motivo_no_compra(id: String) -> String:
+	var datos: Dictionary = DatosObjetos.datos(id)
+	if nivel < datos["nivel"]:
+		return "Necesitas nivel %d" % datos["nivel"]
+	if datos["habilidad"] != "" and not habilidades.has(datos["habilidad"]):
+		return "Necesitas la habilidad: %s" % DatosHabilidades.nombre(datos["habilidad"])
+	return ""
+
+
+# Vende una casilla entera a una tienda por la mitad de su precio.
+func vender(lista: Array, i: int) -> String:
+	var casilla = lista[i]
+	if casilla == null:
+		return ""
+	var datos: Dictionary = DatosObjetos.datos(casilla["id"])
+	if datos["precio"] <= 0:
+		return "Aquí no compran %s." % datos["nombre"]
+	var pago: int = maxi(1, datos["precio"] / 2) * casilla["cantidad"]
+	lista[i] = null
+	cobrar(pago)
+	return "Has vendido %d %s por %d $." % [casilla["cantidad"], datos["nombre"], pago]
+
+
+# Compra un objeto. Devuelve un texto con lo que ha pasado.
+func comprar(id: String) -> String:
+	var datos: Dictionary = DatosObjetos.datos(id)
+	var motivo: String = motivo_no_compra(id)
+	if motivo != "":
+		return motivo + " para comprar %s." % datos["nombre"]
 	if not gastar(datos["precio"]):
 		return "No te llega: %s cuesta %d $." % [datos["nombre"], datos["precio"]]
-	objetos[id_objeto] += 1
-	if id_objeto == "jarra":
-		agua_jarra = GameData.CARGAS_JARRA  # La jarra viene llena.
-	cambio.emit()
+	if anadir(id) > 0:
+		cobrar(datos["precio"])  # No cabía: te devuelven el dinero.
+		return "No te cabe nada más en el inventario."
 	return "Has comprado %s por %d $." % [datos["nombre"], datos["precio"]]
-
-
-# Gasta un objeto (por ejemplo, un saco de tierra al plantar).
-func usar_objeto(id_objeto: String) -> void:
-	objetos[id_objeto] -= 1
-	cambio.emit()
-
-
-# Mueve un objeto entre el inventario y la estantería de casa.
-func guardar_en_almacen(id_objeto: String) -> void:
-	if objetos[id_objeto] <= 0:
-		return
-	objetos[id_objeto] -= 1
-	almacen[id_objeto] += 1
-	cambio.emit()
-
-
-func sacar_de_almacen(id_objeto: String) -> void:
-	if almacen[id_objeto] <= 0:
-		return
-	almacen[id_objeto] -= 1
-	objetos[id_objeto] += 1
-	cambio.emit()
 
 
 func avisar(texto: String) -> void:
@@ -141,10 +335,12 @@ func _crear_controles() -> void:
 	_accion("correr", [KEY_SHIFT])
 	_accion("saltar", [KEY_SPACE])
 	_accion("usar", [KEY_E])
-	_accion("cambiar_hierba", [KEY_Q])
 	_accion("cambiar_camara", [KEY_V])
 	_accion("inventario", [KEY_TAB])
+	_accion("admin", [KEY_F1])
 	_accion("liberar_raton", [KEY_ESCAPE])
+	for i in TAM_BARRA:
+		_accion("barra_%d" % (i + 1), [KEY_1 + i])
 
 
 func _accion(nombre: String, teclas: Array) -> void:
