@@ -67,7 +67,6 @@ Si ya tenías el proyecto abierto cuando llegaron estos cambios, usa
 | `scripts/objetos/caldero_3d.gd` | El caldero y las mezclas. |
 | `scripts/objetos/mostrador.gd` | El mostrador y los clientes con paciencia. |
 | `scripts/ui/hud.gd` | Textos en pantalla: dinero, inventario, "[E] ..." y mensajes. |
-| `prototipo_2d/` | El primer prototipo en 2D (ya no se usa; se guarda como referencia). |
 
 ## Cómo crecer la ciudad (por barrios)
 

@@ -11,7 +11,7 @@ tocar el resto del código.
 
 ## Hecho
 
-- **0.1 Prototipo 2D** (guardado en `prototipo_2d/`).
+- **0.1 Prototipo 2D** (eliminado: ya no se usaba).
 - **0.2 Paso a 3D**: plaza nocturna, personaje en primera/tercera persona (V).
 - **0.3 Escondite**: herboristería con interior, casa en alquiler, minijuego de
   plantar, caldero y ventanilla de venta.

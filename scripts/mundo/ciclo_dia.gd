@@ -48,11 +48,13 @@ func _ready() -> void:
 
 	_sol = DirectionalLight3D.new()
 	_sol.shadow_enabled = true
+	_sol.directional_shadow_max_distance = 70.0
 	add_child(_sol)
 
 	_luna = DirectionalLight3D.new()
 	_luna.light_color = Color(0.6, 0.7, 1.0)
 	_luna.shadow_enabled = true
+	_luna.directional_shadow_max_distance = 40.0
 	_luna.rotation = Vector3(deg_to_rad(-50), deg_to_rad(30), 0)
 	add_child(_luna)
 	actualizar()
@@ -62,6 +64,8 @@ func _ready() -> void:
 # -1 = sin comprobar. Se reinicia al arrancar porque las casas (y sus ventanas) se
 # crean después de que el ciclo calcule la primera vez.
 var _ventanas_encendidas: int = -1
+var _encendido_previo: float = -1.0
+var _ventanas_encendidas_forzar: bool = true
 
 
 func _process(_delta: float) -> void:
@@ -103,7 +107,11 @@ func actualizar() -> void:
 		_ventanas_encendidas = ventanas_encendidas
 		for ventana in get_tree().get_nodes_in_group("ventanas_noche"):
 			(ventana as Node3D).visible = ventanas_encendidas == 1
-	for luz in get_tree().get_nodes_in_group("luces_noche"):
-		var foco: Light3D = luz as Light3D
-		if foco != null:
-			foco.light_energy = float(foco.get_meta("energia_base", 1.0)) * encendido
+	# Las luces solo se tocan cuando el nivel cambia de verdad (no cada fotograma).
+	if absf(encendido - _encendido_previo) > 0.01 or _ventanas_encendidas_forzar:
+		_encendido_previo = encendido
+		_ventanas_encendidas_forzar = false
+		for luz in get_tree().get_nodes_in_group("luces_noche"):
+			var foco: Light3D = luz as Light3D
+			if foco != null:
+				foco.light_energy = float(foco.get_meta("energia_base", 1.0)) * encendido

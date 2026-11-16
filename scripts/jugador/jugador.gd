@@ -132,6 +132,9 @@ func _hay_luz_cerca() -> bool:
 
 # --------------------------------- Movimiento ---------------------------------
 
+var _t_sombra: float = 0.0
+
+
 func _physics_process(delta: float) -> void:
 	_enfriamiento -= delta
 	if Juego.vida <= 0.0 and not _muerto:
@@ -161,7 +164,10 @@ func _physics_process(delta: float) -> void:
 	var direccion: Vector3 = Basis(Vector3.UP, _giro) * Vector3(teclas.x, 0.0, teclas.y)
 
 	agachado = Input.is_action_pressed("agacharse") and not Juego.menu_abierto
-	en_sombra = Juego.es_de_noche() and not _hay_luz_cerca()
+	_t_sombra -= delta
+	if _t_sombra <= 0.0:   # Solo 4 veces por segundo: recorrer todas las luces cada frame es caro.
+		_t_sombra = 0.25
+		en_sombra = Juego.es_de_noche() and not _hay_luz_cerca()
 	_pivote.position.y = lerpf(_pivote.position.y, 1.05 if agachado else 1.6, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
 	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
