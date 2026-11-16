@@ -57,10 +57,10 @@ static func material(color: Color, brillo: float = 0.0) -> StandardMaterial3D:
 
 # Una caja. Si "solida" es true, el jugador choca con ella.
 static func caja(padre: Node3D, pos: Vector3, tam: Vector3, color: Color,
-		solida: bool = true, brillo: float = 0.0) -> Node3D:
+		solida: bool = true, brillo: float = 0.0, material_extra: Material = null) -> Node3D:
 	var malla: BoxMesh = BoxMesh.new()
 	malla.size = tam
-	malla.material = material(color, brillo)
+	malla.material = material_extra if material_extra != null else material(color, brillo)
 	var forma: BoxShape3D = null
 	if solida:
 		forma = BoxShape3D.new()
@@ -116,7 +116,7 @@ static func cristal(padre: Node3D, pos: Vector3, tam: Vector3) -> Node3D:
 # Cada hueco es un diccionario: {"x": centro, "ancho": m, "abajo": m, "arriba": m,
 # "cristal": true/false}. La pared va de x = -ancho/2 a x = ancho/2.
 static func pared_con_huecos(padre: Node3D, z: float, ancho: float, alto: float,
-		grosor: float, huecos: Array, color: Color) -> void:
+		grosor: float, huecos: Array, color: Color, material_extra: Material = null) -> void:
 	# Cortamos la pared en columnas por los bordes de cada hueco.
 	var cortes: Array[float] = [-ancho / 2.0, ancho / 2.0]
 	for h in huecos:
@@ -134,15 +134,15 @@ static func pared_con_huecos(padre: Node3D, z: float, ancho: float, alto: float,
 			if absf(h["x"] - centro_x) < h["ancho"] / 2.0:
 				hueco = h
 		if hueco.is_empty():
-			caja(padre, Vector3(centro_x, alto / 2.0, z), Vector3(x1 - x0, alto, grosor), color)
+			caja(padre, Vector3(centro_x, alto / 2.0, z), Vector3(x1 - x0, alto, grosor), color, true, 0.0, material_extra)
 			continue
 		# Columna con hueco: pared por debajo y por encima.
 		var abajo: float = hueco["abajo"]
 		var arriba: float = hueco["arriba"]
 		if abajo > 0.0:
-			caja(padre, Vector3(centro_x, abajo / 2.0, z), Vector3(x1 - x0, abajo, grosor), color)
+			caja(padre, Vector3(centro_x, abajo / 2.0, z), Vector3(x1 - x0, abajo, grosor), color, true, 0.0, material_extra)
 		if arriba < alto:
-			caja(padre, Vector3(centro_x, (arriba + alto) / 2.0, z), Vector3(x1 - x0, alto - arriba, grosor), color)
+			caja(padre, Vector3(centro_x, (arriba + alto) / 2.0, z), Vector3(x1 - x0, alto - arriba, grosor), color, true, 0.0, material_extra)
 		if hueco.get("cristal", false):
 			cristal(padre, Vector3(centro_x, (abajo + arriba) / 2.0, z), Vector3(x1 - x0, arriba - abajo, 0.04))
 

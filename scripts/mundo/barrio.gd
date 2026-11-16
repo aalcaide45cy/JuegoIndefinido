@@ -153,6 +153,50 @@ func decorar_tienda(tienda: Node3D) -> void:
 	prop(tienda, "Potion_4", Vector3(1.7, 1.0, -5.3), 0.0, 2.0)
 
 
+# Material con una textura del paquete Medieval Village, que se repite por el
+# espacio (triplanar) sin necesidad de coordenadas UV. "escala" = repeticiones por metro.
+var _materiales_textura: Dictionary = {}
+
+func material_textura(nombre: String, escala: float) -> StandardMaterial3D:
+	if _materiales_textura.has(nombre):
+		return _materiales_textura[nombre]
+	var ruta: String = "res://assets/%sT%s.png" % [PUEBLO, nombre.trim_prefix("T")]
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	if ResourceLoader.exists(ruta):
+		mat.albedo_texture = load(ruta) as Texture2D
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3.ONE * escala
+	mat.roughness = 0.9
+	_materiales_textura[nombre] = mat
+	return mat
+
+
+# Marcos de madera alrededor de cada hueco (puerta y escaparates) de una fachada.
+func marcos_de_huecos(casa: Node3D, huecos: Array) -> void:
+	var madera: Material = material_textura("T_WoodTrim_BaseColor", 0.7)
+	var f: float = 0.14   # Grosor del marco.
+	for h in huecos:
+		var x: float = h["x"]
+		var ancho: float = h["ancho"]
+		var abajo: float = h["abajo"]
+		var arriba: float = h["arriba"]
+		var alto_h: float = arriba - abajo
+		var cy: float = (abajo + arriba) / 2.0
+		Construir.caja(casa, Vector3(x - ancho / 2.0 - f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color.WHITE, false, 0.0, madera)
+		Construir.caja(casa, Vector3(x + ancho / 2.0 + f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color.WHITE, false, 0.0, madera)
+		Construir.caja(casa, Vector3(x, arriba + f / 2.0, 0.08), Vector3(ancho + 2.0 * f, f, 0.22), Color.WHITE, false, 0.0, madera)
+		if abajo > 0.05:   # Los escaparates tienen alféizar; la puerta no.
+			Construir.caja(casa, Vector3(x, abajo - f / 2.0, 0.1), Vector3(ancho + 2.0 * f, f, 0.26), Color.WHITE, false, 0.0, madera)
+
+
+# Un tablón de madera con el nombre de la tienda, entre los escaparates y la viga de arriba.
+func cartel_tienda(tienda: Node3D, titulo: String, color_texto: Color) -> void:
+	if hay_kit_pueblo():
+		Construir.caja(tienda, Vector3(0, 2.88, 0.1), Vector3(7.0, 0.46, 0.12), Color.WHITE, false, 0.0,
+				material_textura("T_WoodTrim_BaseColor", 0.7))
+	Construir.texto(tienda, Vector3(0, 2.88, 0.18), titulo, 80, color_texto)
+
+
 # Un edificio genérico de cajas: fachada con ventanas, puerta y cornisa.
 # Se coloca con la fachada en "pos" mirando hacia "angulo"
 # (0 = la fachada mira al sur, +Z; PI = mira al norte; PI/2 = al este; -PI/2 = al oeste).
@@ -225,7 +269,10 @@ func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float,
 	Construir.caja(casa, Vector3(-ancho / 2.0 + g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo - 2.0 * g), color_interior)
 	Construir.caja(casa, Vector3(ancho / 2.0 - g / 2.0, h / 2.0, -fondo / 2.0), Vector3(g, h, fondo - 2.0 * g), color_interior)
 	# Fachada con huecos.
-	Construir.pared_con_huecos(casa, -g / 2.0, ancho, h, g, huecos, color)
+	var piedra: Material = material_textura("T_UnevenBrick_BaseColor", 0.5) if kit else null
+	Construir.pared_con_huecos(casa, -g / 2.0, ancho, h, g, huecos, color, piedra)
+	if kit:
+		marcos_de_huecos(casa, huecos)
 	# Techo de la planta baja y pisos de arriba (macizos).
 	Construir.caja(casa, Vector3(0, h + (alto - h) / 2.0, -fondo / 2.0), Vector3(ancho, alto - h, fondo), color)
 	Construir.caja(casa, Vector3(0, h - 0.06, -fondo / 2.0), Vector3(ancho - 2.0 * g, 0.1, fondo - 2.0 * g), color_interior.darkened(0.5), false)
@@ -349,7 +396,7 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 		{"x": 3.0, "ancho": 2.8, "abajo": 0.6, "arriba": 2.6, "cristal": true},
 	]
 	var tienda: Node3D = edificio_visitable(pos, angulo, 10.0, 8.0, 9.0, color, color_interior, huecos)
-	Construir.texto(tienda, Vector3(0, 3.05, 0.12), titulo, 90, color_cartel)
+	cartel_tienda(tienda, titulo, color_cartel)
 	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
 	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.4, 8.0)
 	Construir.caja(tienda, Vector3(0, 0.5, -5.2), Vector3(5.0, 1.0, 0.7), Color(0.3, 0.2, 0.13))
@@ -421,7 +468,10 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	var casa: Node3D = edificio_visitable(pos, angulo, 10.0, 8.0, 7.0, color, color_interior, huecos)
 
 	# Cartel de alquiler encima de la puerta.
-	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.75, 0.12),
+	if hay_kit_pueblo():
+		Construir.caja(casa, Vector3(-3.0, 2.78, 0.1), Vector3(2.7, 0.42, 0.1), Color.WHITE, false, 0.0,
+				material_textura("T_WoodTrim_BaseColor", 0.7))
+	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.78, 0.17),
 			"SE ALQUILA  %d $" % precio, 56, Color(1.0, 0.85, 0.5))
 	# Farolillo junto a la puerta.
 	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(1.0, 0.75, 0.4), false, 3.0)
