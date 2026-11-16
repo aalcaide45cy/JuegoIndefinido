@@ -184,7 +184,7 @@ func material_textura(nombre: String, escala: float) -> StandardMaterial3D:
 
 # Marcos de madera alrededor de cada hueco (puerta y escaparates) de una fachada.
 func marcos_de_huecos(casa: Node3D, huecos: Array) -> void:
-	var madera: Material = material_textura("T_WoodTrim_BaseColor", 0.7)
+	var madera: Material = null   # Color liso: la textura a rayas se veía mal en piezas finas.
 	var f: float = 0.14   # Grosor del marco.
 	for h in huecos:
 		var x: float = h["x"]
@@ -193,11 +193,11 @@ func marcos_de_huecos(casa: Node3D, huecos: Array) -> void:
 		var arriba: float = h["arriba"]
 		var alto_h: float = arriba - abajo
 		var cy: float = (abajo + arriba) / 2.0
-		Construir.caja(casa, Vector3(x - ancho / 2.0 - f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color.WHITE, false, 0.0, madera)
-		Construir.caja(casa, Vector3(x + ancho / 2.0 + f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color.WHITE, false, 0.0, madera)
-		Construir.caja(casa, Vector3(x, arriba + f / 2.0, 0.08), Vector3(ancho + 2.0 * f, f, 0.22), Color.WHITE, false, 0.0, madera)
+		Construir.caja(casa, Vector3(x - ancho / 2.0 - f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color(0.32, 0.2, 0.11), false, 0.0, madera)
+		Construir.caja(casa, Vector3(x + ancho / 2.0 + f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color(0.32, 0.2, 0.11), false, 0.0, madera)
+		Construir.caja(casa, Vector3(x, arriba + f / 2.0, 0.08), Vector3(ancho + 2.0 * f, f, 0.22), Color(0.32, 0.2, 0.11), false, 0.0, madera)
 		if abajo > 0.05:   # Los escaparates tienen alféizar; la puerta no.
-			Construir.caja(casa, Vector3(x, abajo - f / 2.0, 0.1), Vector3(ancho + 2.0 * f, f, 0.26), Color.WHITE, false, 0.0, madera)
+			Construir.caja(casa, Vector3(x, abajo - f / 2.0, 0.1), Vector3(ancho + 2.0 * f, f, 0.26), Color(0.32, 0.2, 0.11), false, 0.0, madera)
 
 
 # Marca un edificio como "punto de interés": sale en la brújula y el minimapa
@@ -211,8 +211,7 @@ func registrar_poi(nodo: Node3D, nombre: String, color: Color) -> void:
 # Un tablón de madera con el nombre de la tienda, entre los escaparates y la viga de arriba.
 func cartel_tienda(tienda: Node3D, titulo: String, color_texto: Color) -> void:
 	if hay_kit_pueblo():
-		Construir.caja(tienda, Vector3(0, 2.88, 0.1), Vector3(7.0, 0.46, 0.12), Color.WHITE, false, 0.0,
-				material_textura("T_WoodTrim_BaseColor", 0.7))
+		Construir.caja(tienda, Vector3(0, 2.88, 0.1), Vector3(7.0, 0.46, 0.12), Color(0.32, 0.2, 0.11), false)
 	Construir.texto(tienda, Vector3(0, 2.88, 0.18), titulo, 80, color_texto)
 
 
@@ -409,7 +408,42 @@ func fila_con_huecos(origen: Vector3, angulo: float, desde: float, hasta: float,
 func tapon_de_calle(centro: Vector3, ancho: float, color: Color = Color(0.2, 0.2, 0.23),
 		calle_en_x: bool = false) -> void:
 	var tam: Vector3 = Vector3(4.0, 10.0, ancho) if calle_en_x else Vector3(ancho, 10.0, 4.0)
-	Construir.caja(self, Vector3(centro.x, 5.0, centro.z), tam, color)
+	var piedra: Material = material_textura("T_UnevenBrick_BaseColor", 0.5) if hay_kit_pueblo() else null
+	Construir.caja(self, Vector3(centro.x, 5.0, centro.z), tam, color.lightened(0.1), true, 0.0, piedra)
+	# Hacia dónde mira la calle (hacia el centro de la ciudad, donde está la plaza).
+	var cara: Vector3
+	if calle_en_x:
+		cara = Vector3(-1, 0, 0) if centro.x > 0.0 else Vector3(1, 0, 0)
+	else:
+		cara = Vector3(0, 0, -1) if centro.z > 0.0 else Vector3(0, 0, 1)
+	var lado: Vector3 = Vector3(-cara.z, 0, cara.x)   # A lo ancho del muro.
+	var frente: Vector3 = centro + cara * 2.06
+	var giro: float = atan2(cara.x, cara.z)
+	# Almenas por encima del muro, a lo ancho.
+	var n: int = int(ancho / 1.6)
+	for k in n:
+		var t: float = (k - (n - 1) / 2.0) * (ancho / n)
+		Construir.caja(self, centro + lado * t + Vector3(0, 10.5, 0),
+				Vector3(0.9, 1.0, 0.9) if not calle_en_x else Vector3(0.9, 1.0, 0.9), color.darkened(0.15), false)
+	# Portón de madera con arco de piedra y herrajes, cerrado.
+	var portal: Node3D = Node3D.new()
+	portal.position = Vector3(frente.x, 0.0, frente.z)
+	portal.rotation.y = giro
+	add_child(portal)
+	Construir.caja(portal, Vector3(0, 2.2, 0), Vector3(4.4, 4.4, 0.2), Color(0.28, 0.17, 0.09), false)
+	Construir.caja(portal, Vector3(0, 4.6, 0), Vector3(5.2, 0.5, 0.3), color.darkened(0.3), false)
+	Construir.caja(portal, Vector3(-2.5, 2.4, 0), Vector3(0.5, 4.8, 0.3), color.darkened(0.3), false)
+	Construir.caja(portal, Vector3(2.5, 2.4, 0), Vector3(0.5, 4.8, 0.3), color.darkened(0.3), false)
+	for y in [1.0, 2.2, 3.4]:
+		Construir.caja(portal, Vector3(0, y, 0.12), Vector3(4.2, 0.18, 0.06), Color(0.1, 0.1, 0.11), false)
+	Construir.caja(portal, Vector3(0, 2.2, 0.12), Vector3(0.12, 4.2, 0.06), Color(0.1, 0.1, 0.11), false)
+	# Antorchas a los lados (encendidas de noche).
+	for lado_t in [-3.6, 3.6]:
+		Construir.cilindro(portal, Vector3(lado_t, 2.6, 0.2), 0.06, 0.8, Color(0.15, 0.1, 0.07), false)
+		var llama: Node3D = Construir.caja(portal, Vector3(lado_t, 3.1, 0.2), Vector3(0.18, 0.25, 0.18), Color(1.0, 0.65, 0.25), false, 3.0)
+		llama.visible = false
+		llama.add_to_group("ventanas_noche")
+		Construir.luz_noche(portal, Vector3(lado_t, 3.2, 0.6), Color(1.0, 0.65, 0.3), 1.4, 8.0)
 
 
 # ---------------------------------- Tiendas -----------------------------------
@@ -503,8 +537,7 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 
 	# Cartel de alquiler encima de la puerta.
 	if hay_kit_pueblo():
-		Construir.caja(casa, Vector3(-3.0, 2.78, 0.1), Vector3(2.7, 0.42, 0.1), Color.WHITE, false, 0.0,
-				material_textura("T_WoodTrim_BaseColor", 0.7))
+		Construir.caja(casa, Vector3(-3.0, 2.78, 0.1), Vector3(2.7, 0.42, 0.1), Color(0.32, 0.2, 0.11), false)
 	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.78, 0.17),
 			"SE ALQUILA  %d $" % precio, 56, Color(1.0, 0.85, 0.5))
 	# Farolillo junto a la puerta.

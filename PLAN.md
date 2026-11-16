@@ -171,3 +171,4 @@ rendimiento (el renderizador es Compatibilidad):
 - Pendiente: más partículas, sustituir cajas de edificios por piezas Medieval Village, revisión de huecos.
 - Mapa grande a pantalla completa (tecla N, `scripts/ui/mapa_grande.gd`); icono del juego nuevo (poción) en `icon.svg`. SIN PROBAR en Godot.
 - Pendiente: iconos de interfaz de un pack gratuito (Kenney no es accesible desde la nube; hace falta que Alfonso descargue un pack CC0 como "Game Icons" a assets/ui/).
+- Finales de calle: muro de ladrillo con almenas, portón de madera con herrajes y antorchas de noche; marcos y carteles de tienda en madera lisa (sin rayas); sol de día algo más suave. SIN PROBAR en Godot.

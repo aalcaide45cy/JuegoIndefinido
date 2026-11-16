@@ -122,7 +122,7 @@ func actualizar() -> void:
 	var dia: float = smoothstep(-0.15, 0.25, altura)    # 0 = noche, 1 = día.
 
 	_sol.rotation = Vector3(-t, deg_to_rad(30), 0)
-	_sol.light_energy = 0.85 * dia   # (Con 1.1 las fachadas claras salían quemadas en blanco.)
+	_sol.light_energy = 0.7 * dia   # (Con 1.1 las fachadas claras salían quemadas en blanco.)
 	_sol.visible = dia > 0.01
 	_sol.light_color = Color(1.0, 0.55, 0.3).lerp(Color(1.0, 0.96, 0.88), clampf(altura * 2.5, 0.0, 1.0))
 	_luna.light_energy = 0.25 * (1.0 - dia)
