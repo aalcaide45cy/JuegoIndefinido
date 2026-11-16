@@ -35,6 +35,9 @@ var dia: int = 1
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
+var alerta: float = 0.0              # 0-100: cuánto te buscan los guardias (100 = te están viendo).
+var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pantalla).
+var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
 var xp: int = 0                      # Experiencia hacia el siguiente nivel.
@@ -64,6 +67,8 @@ func reiniciar() -> void:
 	velocidad_tiempo = 1.0
 	ha_ganado = false
 	viviendas.clear()
+	alerta = 0.0
+	motivo_alerta = ""
 	nivel = 1
 	xp = 0
 	habilidades.clear()
@@ -76,10 +81,31 @@ func reiniciar() -> void:
 
 
 func _process(delta: float) -> void:
+	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
+	if alerta > 0.0:
+		alerta = maxf(0.0, alerta - delta * (30.0 if interiores > 0 else 6.0))
 	hora += delta * 24.0 / (maxf(1.0, duracion_dia_min) * 60.0) * velocidad_tiempo
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+
+
+# Lista de lo ilegal que llevas, para decírtelo en pantalla.
+func motivos_ilegales() -> PackedStringArray:
+	var tipos: Dictionary = {}
+	for casilla in inventario:
+		if casilla != null:
+			tipos[DatosObjetos.datos(casilla["id"])["tipo"]] = true
+	var lista: PackedStringArray = []
+	if tipos.has("pocion"):
+		lista.append("pociones prohibidas")
+	if tipos.has("hierba"):
+		lista.append("hierbas prohibidas")
+	if tipos.has("arma_fuego"):
+		lista.append("armas de fuego")
+	if tipos.has("explosivo"):
+		lista.append("explosivos")
+	return lista
 
 
 # ¿Llevas algo ilegal? (pociones, hierbas, armas de fuego o explosivos.) Los
@@ -453,6 +479,7 @@ func _crear_controles() -> void:
 	_accion("inventario", [KEY_TAB])
 	_accion("admin", [KEY_F1])
 	_accion("recargar", [KEY_R])
+	_accion("agacharse", [KEY_C, KEY_CTRL])
 	_accion("liberar_raton", [KEY_ESCAPE])
 	for i in TAM_BARRA:
 		_accion("barra_%d" % (i + 1), [KEY_1 + i])

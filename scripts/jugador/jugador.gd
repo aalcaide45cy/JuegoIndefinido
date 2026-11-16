@@ -46,6 +46,8 @@ var _id_mano: String = "~"     # Qué objeto se está dibujando ("~" = todavía 
 var _enfriamiento: float = 0.0   # Segundos hasta poder atacar otra vez.
 var _zoom: bool = false          # Mira del francotirador.
 var _muerto: bool = false
+var agachado: bool = false       # Mantén C o Ctrl: te ven menos y vas más despacio.
+var en_sombra: bool = false      # De noche y lejos de las farolas.
 
 
 func _ready() -> void:
@@ -103,6 +105,29 @@ func _tecla_barra(evento: InputEvent) -> int:
 	return -1
 
 
+# A qué distancia (en metros) te pueden ver los guardias. Baja si te agachas o
+# estás en la sombra, y sube si corres.
+func radio_deteccion() -> float:
+	var radio: float = 14.0
+	if agachado:
+		radio *= 0.45
+	elif Input.is_action_pressed("correr") and velocity.length() > 3.0:
+		radio *= 1.3
+	if en_sombra:
+		radio *= 0.6
+	return maxf(radio, 3.0)
+
+
+# true si hay una farola o luz encendida cerca (entonces no estás en la sombra).
+func _hay_luz_cerca() -> bool:
+	for nodo in get_tree().get_nodes_in_group("luces_noche"):
+		var foco: OmniLight3D = nodo as OmniLight3D
+		if foco != null and foco.light_energy > 0.3 \
+				and foco.global_position.distance_to(global_position + Vector3(0, 1.5, 0)) < foco.omni_range * 0.8:
+			return true
+	return false
+
+
 # --------------------------------- Movimiento ---------------------------------
 
 func _physics_process(delta: float) -> void:
@@ -130,7 +155,13 @@ func _physics_process(delta: float) -> void:
 			velocity.y = FUERZA_SALTO
 	var direccion: Vector3 = Basis(Vector3.UP, _giro) * Vector3(teclas.x, 0.0, teclas.y)
 
+	agachado = Input.is_action_pressed("agacharse") and not Juego.menu_abierto
+	en_sombra = Juego.es_de_noche() and not _hay_luz_cerca()
+	_pivote.position.y = lerpf(_pivote.position.y, 1.05 if agachado else 1.6, minf(1.0, delta * 10.0))
+	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
 	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
+	if agachado:
+		velocidad = VELOCIDAD_ANDAR * 0.5
 	var deseada: Vector3 = direccion * velocidad
 	# "lerp" suaviza: no frenas ni arrancas de golpe.
 	velocity.x = lerpf(velocity.x, deseada.x, minf(1.0, delta * 12.0))

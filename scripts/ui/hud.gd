@@ -22,6 +22,9 @@ var _label_mensaje: Label
 var _label_mano: Label
 var _label_hora: Label
 var _barra_vida: ProgressBar
+var _label_alerta: Label
+var _label_sigilo: Label
+var _barra_alerta: ProgressBar
 var _barra_rapida: HBoxContainer
 var _mira: ColorRect
 var _negro: ColorRect
@@ -77,6 +80,37 @@ func _ready() -> void:
 	_barra_vida.add_theme_stylebox_override("fill", relleno_vida)
 	_raiz.add_child(_barra_vida)
 
+	# Arriba en el centro: aviso de los guardias (cuánto te buscan y por qué).
+	_label_alerta = crear_label(22, Color(1.0, 0.35, 0.3))
+	_label_alerta.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_label_alerta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_label_alerta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label_alerta.offset_left = -380
+	_label_alerta.offset_right = 380
+	_label_alerta.offset_top = 14
+	_label_alerta.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_label_alerta.visible = false
+	_raiz.add_child(_label_alerta)
+	_barra_alerta = ProgressBar.new()
+	_barra_alerta.max_value = 100.0
+	_barra_alerta.show_percentage = false
+	_barra_alerta.size = Vector2(300, 10)
+	_barra_alerta.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_barra_alerta.offset_left = -150
+	_barra_alerta.offset_right = 150
+	_barra_alerta.offset_top = 90
+	_barra_alerta.offset_bottom = 100
+	_barra_alerta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_alerta.visible = false
+	var relleno_alerta: StyleBoxFlat = StyleBoxFlat.new()
+	relleno_alerta.bg_color = Color(0.95, 0.3, 0.2)
+	_barra_alerta.add_theme_stylebox_override("fill", relleno_alerta)
+	_raiz.add_child(_barra_alerta)
+	# Debajo de la vida: cómo de visible eres (sigilo).
+	_label_sigilo = crear_label(14, Color(0.85, 0.85, 0.7))
+	_label_sigilo.position = Vector2(20, 96)
+	_raiz.add_child(_label_sigilo)
+
 	# Abajo en el centro: mensajes, la acción disponible, lo que llevas en la mano y la barra rápida.
 	_label_mensaje = crear_label(18, Color(0.85, 0.95, 0.8))
 	_colocar_abajo(_label_mensaje, 190)
@@ -104,7 +138,7 @@ func _ready() -> void:
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · 1-9 / rueda: barra rápida · TAB inventario · F1 admin · V cámara · Esc soltar ratón"
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 / rueda: barra rápida · TAB inventario · F1 admin · V cámara · Esc soltar ratón"
 	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
@@ -163,9 +197,35 @@ func _process(delta: float) -> void:
 	_mira.visible = _menu == null
 	_barra_rapida.visible = _menu == null
 	_label_hora.text = "Día %d   %s" % [Juego.dia, Juego.texto_hora()]
+	_actualizar_alerta()
 	# Los mensajes se desvanecen pasados unos segundos.
 	_tiempo_mensaje -= delta
 	_label_mensaje.modulate.a = clampf(_tiempo_mensaje, 0.0, 1.0)
+
+
+# Muestra si los guardias te buscan, por qué y cómo esconderte; y cómo de visible eres.
+func _actualizar_alerta() -> void:
+	var alerta: float = Juego.alerta
+	_label_alerta.visible = alerta > 0.0
+	_barra_alerta.visible = alerta > 0.0
+	if alerta > 0.0:
+		_barra_alerta.value = alerta
+		var estado: String = "¡DETECTADO!" if alerta >= 99.0 else "BUSCÁNDOTE…"
+		_label_alerta.text = "%s\n%s\nEscóndete: sal de su vista, entra en un edificio, agáchate (C) en la sombra o guarda lo ilegal en tu estantería." % [
+				estado, Juego.motivo_alerta]
+	# Aviso de sigilo.
+	var lineas: PackedStringArray = []
+	var ilegal: PackedStringArray = Juego.motivos_ilegales()
+	if Juego.es_de_noche() and not ilegal.is_empty():
+		lineas.append("⚠ Llevas: " + ", ".join(ilegal) + ". Los guardias te perseguirán.")
+	if jugador != null:
+		if Juego.interiores > 0:
+			lineas.append("A cubierto (dentro de un edificio)")
+		elif jugador.agachado:
+			lineas.append("Agachado: te ven menos")
+		if jugador.en_sombra and Juego.interiores == 0:
+			lineas.append("En la sombra: te ven menos")
+	_label_sigilo.text = "\n".join(lineas)
 
 
 func _actualizar_estado() -> void:

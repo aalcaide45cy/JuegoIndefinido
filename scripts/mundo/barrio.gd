@@ -85,6 +85,21 @@ func edificio_visitable(pos: Vector3, angulo: float, ancho: float, fondo: float,
 	Construir.caja(casa, Vector3(0, h - 0.06, -fondo / 2.0), Vector3(ancho - 2.0 * g, 0.1, fondo - 2.0 * g), color_interior.darkened(0.5), false)
 	Construir.caja(casa, Vector3(0, alto + 0.15, -fondo / 2.0 + 0.15),
 			Vector3(ancho + 0.3, 0.3, fondo + 0.3), color.darkened(0.4), false)
+	# Zona de interior: mientras estás dentro, los guardias pierden tu rastro antes.
+	var zona: Area3D = Area3D.new()
+	var forma_zona: CollisionShape3D = CollisionShape3D.new()
+	var caja_zona: BoxShape3D = BoxShape3D.new()
+	caja_zona.size = Vector3(ancho - 2.0 * g, h, fondo - 2.0 * g)
+	forma_zona.shape = caja_zona
+	zona.position = Vector3(0, h / 2.0, -fondo / 2.0)
+	zona.add_child(forma_zona)
+	casa.add_child(zona)
+	zona.body_entered.connect(func(cuerpo: Node3D) -> void:
+		if cuerpo.is_in_group("jugador"):
+			Juego.interiores += 1)
+	zona.body_exited.connect(func(cuerpo: Node3D) -> void:
+		if cuerpo.is_in_group("jugador"):
+			Juego.interiores = maxi(0, Juego.interiores - 1))
 	# Ventanas de los pisos de arriba, a oscuras.
 	var pisos: int = int(alto / 3.0)
 	var columnas: int = maxi(1, int(ancho / 2.2))

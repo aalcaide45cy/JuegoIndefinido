@@ -10,7 +10,7 @@ extends CharacterBody3D
 
 const VELOCIDAD_PATRULLA: float = 1.8
 const VELOCIDAD_PERSECUCION: float = 4.5
-const DISTANCIA_VISTA: float = 14.0
+const DISTANCIA_MINIMA: float = 3.0   # Si estás así de cerca, te notan aunque estés agachado.
 const VIDA_MAXIMA: float = 60.0
 
 # Puntos por los que patrulla (posiciones del mundo). Los pone quien lo crea.
@@ -19,7 +19,7 @@ var ruta: Array[Vector3] = []
 var _vida: float = VIDA_MAXIMA
 var _punto: int = 0
 var _persiguiendo: bool = false
-var _sin_ver: float = 0.0
+var _ultima_pos: Vector3 = Vector3.ZERO   # Dónde te vieron por última vez.
 var _golpe: float = 0.0
 var _muerto: bool = false
 var _cuerpo: Node3D
@@ -72,18 +72,21 @@ func _physics_process(delta: float) -> void:
 	var ve: bool = jugador != null and _ve_ilegal(jugador)
 	if ve:
 		_persiguiendo = true
-		_sin_ver = 0.0
-	elif _persiguiendo:
-		_sin_ver += delta
-		if _sin_ver > 6.0:
-			_persiguiendo = false
+		_ultima_pos = jugador.global_position
+		Juego.alerta = 100.0
+		Juego.motivo_alerta = "Un guardia te ha visto con: " + ", ".join(Juego.motivos_ilegales())
+	# Sigue buscando mientras la alerta no baje a cero (ver Juego._process).
+	if _persiguiendo and Juego.alerta <= 0.0:
+		_persiguiendo = false
 
 	var destino: Vector3 = global_position
 	var velocidad: float = 0.0
 	if _persiguiendo and jugador != null:
-		destino = jugador.global_position
+		destino = _ultima_pos
 		velocidad = VELOCIDAD_PERSECUCION
-		if global_position.distance_to(destino) < 1.6:
+		if not ve and global_position.distance_to(Vector3(destino.x, global_position.y, destino.z)) < 1.0:
+			velocidad = 0.0   # Ha llegado donde te vio y mira a su alrededor.
+		if ve and global_position.distance_to(jugador.global_position) < 1.6:
 			velocidad = 0.0
 			if _golpe <= 0.0:
 				_golpe = 1.0
@@ -115,7 +118,10 @@ func _buscar_jugador() -> Node3D:
 
 # true si el jugador está cerca, a la vista y lleva algo ilegal.
 func _ve_ilegal(jugador: Node3D) -> bool:
-	if global_position.distance_to(jugador.global_position) > DISTANCIA_VISTA:
+	var alcance: float = DISTANCIA_MINIMA
+	if jugador.has_method("radio_deteccion"):
+		alcance = maxf(DISTANCIA_MINIMA, jugador.radio_deteccion())
+	if global_position.distance_to(jugador.global_position) > alcance:
 		return false
 	if not Juego.lleva_ilegal():
 		return false
@@ -132,7 +138,11 @@ func recibir_dano(cantidad: float) -> void:
 		return
 	_vida -= cantidad
 	_persiguiendo = true
-	_sin_ver = 0.0
+	Juego.alerta = 100.0
+	Juego.motivo_alerta = "Has atacado a un guardia"
+	var jug: Node3D = _buscar_jugador()
+	if jug != null:
+		_ultima_pos = jug.global_position
 	_material.emission_enabled = true
 	_material.emission = Color(1, 0.2, 0.1)
 	if _vida <= 0.0:
