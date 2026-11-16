@@ -3,8 +3,8 @@
 # Aquí están TODOS los datos del juego: qué hierbas existen, qué pociones se
 # pueden hacer y cuánto vale cada cosa.
 #
-# Si quieres añadir una hierba o una poción nueva, este es el único archivo
-# que tienes que tocar. El resto del código lee de aquí.
+# Si añades una hierba "x", crea también en scripts/datos/objetos.gd sus
+# objetos "semilla_x" y "hierba_x". Cada poción "y" necesita su objeto "pocion_y".
 #
 # "class_name GameData" hace que podamos escribir GameData.HIERBAS desde
 # cualquier otro script sin tener que cargarlo a mano.
@@ -51,55 +51,6 @@ const HIERBAS: Dictionary = {
 
 # Lo que cuesta alquilar la casa del callejón (pago único en este prototipo).
 const PRECIO_ALQUILER: int = 100
-
-# Cuántos riegos caben en la jarra llena (se rellena en el barril de la tienda).
-const CARGAS_JARRA: int = 3
-
-
-# Objetos que se compran en el puesto del mercado (Suministros del Gremio).
-#  - nombre / descripcion: lo que ve el jugador.
-#  - precio: en dólares.
-#  - unico: true si solo se compra una vez (herramientas, como la jarra).
-# Las semillas se llaman "semilla_" + id de la hierba, para saber cuál plantar.
-const OBJETOS: Dictionary = {
-	"semilla_bruma": {
-		"nombre": "Semilla de Hoja de Bruma",
-		"descripcion": "Crece rápido. Su humo hace soñar (y está prohibido).",
-		"precio": 10,
-		"unico": false,
-	},
-	"semilla_sepulcral": {
-		"nombre": "Espora de Hongo Sepulcral",
-		"descripcion": "Tarda más, pero sus pociones se pagan mejor.",
-		"precio": 15,
-		"unico": false,
-	},
-	"tierra": {
-		"nombre": "Saco de tierra",
-		"descripcion": "Tierra negra de cementerio. Un saco llena una maceta.",
-		"precio": 8,
-		"unico": false,
-	},
-	"abono": {
-		"nombre": "Abono de murciélago",
-		"descripcion": "Opcional. La planta crece más rápido y da una hierba más.",
-		"precio": 12,
-		"unico": false,
-	},
-	"maceta": {
-		"nombre": "Maceta de barro",
-		"descripcion": "Colócala en uno de los huecos para macetas de tu casa.",
-		"precio": 20,
-		"unico": false,
-	},
-	"jarra": {
-		"nombre": "Jarra de agua",
-		"descripcion": "Herramienta. Llena da para 3 riegos; se rellena en el grifo de la cocina de tu casa.",
-		"precio": 25,
-		"unico": true,
-	},
-}
-
 
 # Pociones que se pueden mezclar.
 #  - receta: los ingredientes que hay que echar al caldero (el orden da igual).
