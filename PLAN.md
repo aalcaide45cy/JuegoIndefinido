@@ -184,3 +184,9 @@ Orden de fases (cada una se sube al PR y el PC la prueba):
 Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola escena; se hará con chunks cargados según distancia. Hoy rinde 220-430 FPS, hay margen pero no para 100x sin streaming.
 
 **Reordenado (consejo del hilo del PC):** tras estilo moderno y minijuegos: mejoras baratas (macetas por niveles, riego, abonos, locales en alquiler, empaquetadora) -> ciudad por chunks con mapa desde datos y red de calles como datos -> vehículos y tráfico -> concesionarios, alquiler y robo -> campo y tractores. Hecho ya: móvil con encargos, mejora de maceta (niveles 1-3), kit de riego y abono mejorado (se usan con E sobre la maceta con el objeto en la mano).
+
+## Diseño de la ciudad por chunks (para la rama claude/ciudad-grande)
+- `scripts/mundo/red_calles.gd`: red de calles como datos (ya existe, con las calles actuales). Se amplía con el resto de zonas.
+- Cada barrio/zona nuevo es un `Barrio` que se construye bajo demanda: un gestor (`GestorChunks`) mira la posición del jugador cada 0,5 s, construye los chunks a menos de ~200 m (de uno en uno por fotograma para no dar tirones, con `Construir.fusionar_estaticos` al terminar) y libera los de más de ~300 m.
+- Las posiciones, nombres y tipos de cada chunk son datos (lista) para poder dibujar el mapa grande desde datos.
+- Tráfico: coches simples que siguen tramos de `RedCalles`, solo simulados dentro de ~120 m.
