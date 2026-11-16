@@ -65,6 +65,13 @@ la mano y en la decoración de tiendas, casas y mercado. Quedan: cambiar las caj
 de los edificios por Medieval Village, personajes para tenderos, clientes y
 guardias, y texturas de Poly Haven. Las licencias están en `CREDITS.md`.
 
+Guardias (de noche): solo te persiguen si llevas algo ilegal (pociones, hierbas,
+armas de fuego o explosivos). Arriba sale "¡DETECTADO!" con el motivo y una barra
+de búsqueda que baja sola (6 por segundo; 30 dentro de un edificio). Para
+esconderte: salir de su vista, entrar en un edificio, agacharte (C o Ctrl, ven
+menos y vas más despacio), estar lejos de las farolas (sombra) o guardar lo
+ilegal en la estantería de tu casa. Ajustes en `guardia.gd` y `jugador.gd`.
+
 Pendiente de la fase 1: probar en Godot y corregir lo que falle.
 
 Fase 2 (misma rama): la ciudad ya tiene **cuatro barrios** unidos por calles de
