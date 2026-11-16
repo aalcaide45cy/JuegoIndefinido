@@ -33,6 +33,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # Sigue funcionando con el juego en pausa.
 	_raiz = Control.new()
 	_raiz.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_raiz.theme = crear_tema()
 	add_child(_raiz)
 	get_viewport().size_changed.connect(_ajustar_escala)
 	_ajustar_escala()
@@ -275,6 +276,50 @@ static func crear_boton(texto: String, al_pulsar: Callable) -> Button:
 	boton.focus_mode = Control.FOCUS_NONE  # Así ESPACIO no pulsa botones sin querer.
 	boton.pressed.connect(al_pulsar)
 	return boton
+
+
+# El estilo común de toda la interfaz: botones, pestañas y deslizadores con el
+# mismo aspecto oscuro con borde verde que los paneles.
+static func crear_tema() -> Theme:
+	var tema: Theme = Theme.new()
+	var estados: Dictionary = {
+		"normal": Color(0.12, 0.16, 0.13), "hover": Color(0.18, 0.28, 0.2),
+		"pressed": Color(0.1, 0.35, 0.2), "disabled": Color(0.1, 0.1, 0.1),
+		"focus": Color(0.12, 0.16, 0.13),
+	}
+	for estado in estados:
+		var caja: StyleBoxFlat = StyleBoxFlat.new()
+		caja.bg_color = estados[estado]
+		caja.border_color = Color(0.3, 0.55, 0.35) if estado != "disabled" else Color(0.22, 0.25, 0.22)
+		caja.set_border_width_all(2)
+		caja.set_corner_radius_all(6)
+		caja.content_margin_left = 12
+		caja.content_margin_right = 12
+		caja.content_margin_top = 6
+		caja.content_margin_bottom = 6
+		tema.set_stylebox(estado, "Button", caja)
+	tema.set_color("font_color", "Button", Color(0.9, 0.95, 0.88))
+	tema.set_color("font_hover_color", "Button", Color(1, 1, 0.9))
+	tema.set_color("font_pressed_color", "Button", Color(0.7, 1, 0.75))
+	tema.set_color("font_disabled_color", "Button", Color(0.45, 0.47, 0.45))
+	# Pestañas de la tienda.
+	for estado in ["tab_selected", "tab_unselected", "tab_hovered"]:
+		var pestana: StyleBoxFlat = StyleBoxFlat.new()
+		pestana.bg_color = {"tab_selected": Color(0.15, 0.3, 0.2), "tab_unselected": Color(0.09, 0.11, 0.1),
+				"tab_hovered": Color(0.14, 0.2, 0.15)}[estado]
+		pestana.border_color = Color(0.3, 0.55, 0.35)
+		pestana.set_border_width_all(1)
+		pestana.corner_radius_top_left = 6
+		pestana.corner_radius_top_right = 6
+		pestana.content_margin_left = 12
+		pestana.content_margin_right = 12
+		pestana.content_margin_top = 5
+		pestana.content_margin_bottom = 5
+		tema.set_stylebox(estado, "TabContainer", pestana)
+	tema.set_color("font_selected_color", "TabContainer", Color(0.75, 1, 0.8))
+	tema.set_color("font_unselected_color", "TabContainer", Color(0.65, 0.7, 0.65))
+	tema.set_color("font_hovered_color", "TabContainer", Color(0.9, 1, 0.9))
+	return tema
 
 
 # Panel oscuro con borde verde para las ventanas.

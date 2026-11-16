@@ -222,6 +222,17 @@ func _animar_mano(retroceso: float) -> void:
 	animacion.tween_property(_mano, "position", base, 0.12)
 
 
+# Un destello de luz de un instante en la boca del arma.
+func _fogonazo() -> void:
+	var luz: OmniLight3D = OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.8, 0.4)
+	luz.light_energy = 3.0
+	luz.omni_range = 9.0
+	luz.position = _origen() + _adelante() * 1.2
+	_escena().add_child(luz)
+	get_tree().create_timer(0.06).timeout.connect(luz.queue_free)
+
+
 func _golpear(datos: Dictionary) -> void:
 	_enfriamiento = 0.45
 	_animar_mano(-0.25)
@@ -244,6 +255,7 @@ func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
 			"lanzagranadas": 1.0}
 	_enfriamiento = pausa.get(forma, 0.4)
 	_animar_mano(0.12)
+	_fogonazo()
 	_inclinacion = clampf(_inclinacion + 0.015, -1.3, 1.0)   # Retroceso.
 	if forma == "lanzagranadas":
 		Combate.lanzar(_escena(), _origen() + _adelante() * 0.8, _adelante() * 26.0, 4.0, true,

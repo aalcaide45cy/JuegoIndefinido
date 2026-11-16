@@ -28,6 +28,26 @@ func _ready() -> void:
 		brasa.rotation.y = i * PI / 3.0
 		brasa.position = Vector3(0, 0.05, 0)
 	_fuego = Construir.luz(self, Vector3(0, 1.3, 0), Color(0.4, 1.0, 0.55), 1.5, 6.0)
+	# Humo verdoso que sube del caldero.
+	var humo: CPUParticles3D = CPUParticles3D.new()
+	humo.position = Vector3(0, 0.95, 0)
+	humo.amount = 16
+	humo.lifetime = 2.2
+	humo.direction = Vector3.UP
+	humo.spread = 14.0
+	humo.gravity = Vector3.ZERO
+	humo.initial_velocity_min = 0.25
+	humo.initial_velocity_max = 0.5
+	humo.scale_amount_min = 0.6
+	humo.scale_amount_max = 1.6
+	var bola: SphereMesh = SphereMesh.new()
+	bola.radius = 0.06
+	bola.height = 0.12
+	var mat_humo: StandardMaterial3D = Construir.material(Color(0.4, 0.9, 0.55, 0.35), 0.8)
+	mat_humo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bola.material = mat_humo
+	humo.mesh = bola
+	add_child(humo)
 	_actualizar_color()
 
 
