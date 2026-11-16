@@ -19,6 +19,8 @@
 class_name Jugador
 extends CharacterBody3D
 
+# Si el jugador baja de esta altura (metros), reaparece en la plaza.
+const ALTURA_MINIMA: float = -12.0
 const VELOCIDAD_ANDAR: float = 3.5
 const VELOCIDAD_CORRER: float = 6.5
 const FUERZA_SALTO: float = 4.5
@@ -134,6 +136,9 @@ func _physics_process(delta: float) -> void:
 	_enfriamiento -= delta
 	if Juego.vida <= 0.0 and not _muerto:
 		_morir()
+	# Red de seguridad: si por algún hueco se cayera del mundo, vuelve a la plaza.
+	if global_position.y < ALTURA_MINIMA:
+		_reaparecer_en_la_plaza()
 	# El rifle dispara en ráfaga mientras mantienes el botón.
 	if _enfriamiento <= 0.0 and not Juego.menu_abierto and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -358,6 +363,13 @@ func _alternar_zoom() -> void:
 		return
 	_zoom = not _zoom
 	_camara.fov = 22.0 if _zoom else 70.0
+
+
+# Se llama si el jugador cae por debajo de ALTURA_MINIMA (un hueco del mapa).
+func _reaparecer_en_la_plaza() -> void:
+	global_position = Vector3(0, 0.2, 8)
+	velocity = Vector3.ZERO
+	Juego.avisar("Te has caído del mapa. Vuelves a la plaza.")
 
 
 # Si la vida llega a cero: fundido a negro, reaparece en la plaza y pierdes
