@@ -187,9 +187,14 @@ func edificio(pos: Vector3, angulo: float, ancho: float, fondo: float, alto: flo
 		for col in columnas:
 			var x: float = (col - (columnas - 1) / 2.0) * (ancho / columnas)
 			var encendida: bool = rng.randf() < 0.3
-			var color_ventana: Color = Color(1.0, 0.7, 0.35) if encendida else Color(0.05, 0.06, 0.09)
 			Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.05), Vector3(0.9, 1.3, 0.1),
-					color_ventana, false, 1.2 if encendida else 0.0)
+					Color(0.05, 0.06, 0.09), false)
+			if encendida:
+				# Cuadro de luz: solo de noche (lo controla CicloDia).
+				var brillo_v: Node3D = Construir.caja(casa, Vector3(x, piso * 3.0 + 1.2, 0.12),
+						Vector3(0.8, 1.2, 0.03), Color(1.0, 0.7, 0.35), false, 1.2)
+				brillo_v.visible = false
+				brillo_v.add_to_group("ventanas_noche")
 	# Puerta de madera en la planta baja.
 	Construir.caja(casa, Vector3(rng.randf_range(-ancho / 4.0, ancho / 4.0), 1.1, 0.05),
 			Vector3(1.1, 2.2, 0.1), Color(0.2, 0.13, 0.09), false)
@@ -287,7 +292,10 @@ func farola(pos: Vector3) -> void:
 	var modelo_farola: bool = Assets.colocar(self, "farola", pos)
 	if not modelo_farola:
 		Construir.cilindro(self, pos + Vector3(0, 1.6, 0), 0.08, 3.2, Color(0.1, 0.1, 0.1), true)
-		Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.35, 0.45, 0.35), Color(1.0, 0.75, 0.4), false, 3.0)
+		Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.35, 0.45, 0.35), Color(0.12, 0.1, 0.08), false)
+		var brillo_f: Node3D = Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.28, 0.38, 0.28), Color(1.0, 0.75, 0.4), false, 3.0)
+		brillo_f.visible = false
+		brillo_f.add_to_group("ventanas_noche")
 	Construir.luz_noche(self, pos + Vector3(0, 3.2, 0), Color(1.0, 0.7, 0.4), 1.6, 11.0)
 
 
@@ -351,7 +359,8 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 	var tienda: Node3D = edificio_visitable(pos, angulo, 10.0, 8.0, 9.0, color, color_interior, huecos)
 	Construir.texto(tienda, Vector3(0, 3.05, 0.12), titulo, 90, color_cartel)
 	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
-	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.4, 8.0)
+	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.8, 10.0)
+	Construir.luz(tienda, Vector3(0, 3.0, -1.5), Color(1.0, 0.85, 0.6), 1.2, 7.0)
 	Construir.caja(tienda, Vector3(0, 0.5, -5.2), Vector3(5.0, 1.0, 0.7), Color(0.3, 0.2, 0.13))
 	var vendedor: Tendero = Tendero.new()
 	vendedor.tienda = id_tienda
@@ -424,7 +433,10 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.75, 0.12),
 			"SE ALQUILA  %d $" % precio, 56, Color(1.0, 0.85, 0.5))
 	# Farolillo junto a la puerta.
-	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(1.0, 0.75, 0.4), false, 3.0)
+	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(0.12, 0.1, 0.08), false)
+	var brillo_l: Node3D = Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.15, 0.24, 0.15), Color(1.0, 0.75, 0.4), false, 3.0)
+	brillo_l.visible = false
+	brillo_l.add_to_group("ventanas_noche")
 	Construir.luz_noche(casa, Vector3(-4.0, 2.4, 0.6), Color(1.0, 0.7, 0.4), 0.9, 5.0)
 	var puerta: PuertaCasa = PuertaCasa.new()
 	puerta.id_casa = id_casa
@@ -434,7 +446,8 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	casa.add_child(puerta)
 
 	# Luz de dentro (una lámpara de aceite) y una alfombra.
-	Construir.luz(casa, Vector3(0, 3.0, -4.0), Color(1.0, 0.75, 0.45), 1.2, 8.0)
+	Construir.luz(casa, Vector3(0, 3.0, -4.0), Color(1.0, 0.75, 0.45), 1.6, 10.0)
+	Construir.luz(casa, Vector3(0, 3.0, -1.5), Color(1.0, 0.75, 0.45), 1.0, 7.0)
 	Construir.caja(casa, Vector3(0, 0.035, -4.0), Vector3(3.0, 0.01, 2.0), Color(0.35, 0.12, 0.12), false)
 
 	# Ventanilla de venta: el mostrador está detrás del cristal y el cliente fuera.
