@@ -426,8 +426,8 @@ func tienda_con_interior(pos: Vector3, angulo: float, titulo: String, id_tienda:
 	cartel_tienda(tienda, titulo, color_cartel)
 	registrar_poi(tienda, nombre, color_cartel)
 	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), color_cartel, 1.0, 6.0)
-	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.85, 0.6), 1.8, 10.0)
-	Construir.luz(tienda, Vector3(0, 3.0, -1.5), Color(1.0, 0.85, 0.6), 1.2, 7.0)
+	# Una sola lámpara en el centro (antes eran dos: cada luz encarece el dibujo).
+	Construir.luz(tienda, Vector3(0, 3.0, -3.0), Color(1.0, 0.85, 0.6), 2.0, 9.0)
 	Construir.caja(tienda, Vector3(0, 0.5, -5.2), Vector3(5.0, 1.0, 0.7), Color(0.3, 0.2, 0.13))
 	var vendedor: Tendero = Tendero.new()
 	vendedor.tienda = id_tienda
@@ -517,8 +517,7 @@ func vivienda(id_casa: String, precio: int, pos: Vector3, angulo: float,
 	casa.add_child(puerta)
 
 	# Luz de dentro (una lámpara de aceite) y una alfombra.
-	Construir.luz(casa, Vector3(0, 3.0, -4.0), Color(1.0, 0.75, 0.45), 1.6, 10.0)
-	Construir.luz(casa, Vector3(0, 3.0, -1.5), Color(1.0, 0.75, 0.45), 1.0, 7.0)
+	Construir.luz(casa, Vector3(0, 3.0, -3.0), Color(1.0, 0.75, 0.45), 1.8, 9.0)
 	Construir.caja(casa, Vector3(0, 0.035, -4.0), Vector3(3.0, 0.01, 2.0), Color(0.35, 0.12, 0.12), false)
 
 	# Ventanilla de venta: el mostrador está detrás del cristal y el cliente fuera.

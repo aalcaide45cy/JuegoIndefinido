@@ -25,12 +25,12 @@ func _ready() -> void:
 	for i in 3:
 		var disco: Node3D = Construir.cilindro(self, Vector3(0, 1.4, 0.03 + i * 0.004), radios[i], 0.04, colores[i])
 		disco.rotation.x = PI / 2.0
-		_anillos.append((disco as MeshInstance3D).mesh.material)
+		_anillos.append(Construir.material_propio(disco))   # Propio: se pone roja al darle.
 
 
 func recibir_dano(cantidad: float) -> void:
+	# Sin experiencia: si diera XP, se podría subir de nivel disparando sin parar.
 	Juego.avisar("¡Diana! %d de daño." % int(cantidad))
-	Juego.ganar_xp(1)
 	for mat in _anillos:
 		mat.emission_enabled = true
 		mat.emission = Color(1, 0.2, 0.1)

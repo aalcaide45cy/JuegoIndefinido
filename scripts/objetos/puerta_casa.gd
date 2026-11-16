@@ -30,6 +30,18 @@ func _ready() -> void:
 	Construir.caja(_bisagra, Vector3(ANCHO / 2.0, ALTO / 2.0, 0), Vector3(ANCHO, ALTO, 0.08),
 			Color(0.25, 0.15, 0.1))
 	Construir.esfera(_bisagra, Vector3(ANCHO - 0.15, 1.05, 0.08), 0.05, Color(0.7, 0.6, 0.3))
+	# El cartel y la puerta se ponen al día al cargar una partida o empezar otra.
+	Juego.cambio.connect(_actualizar_cartel)
+	_actualizar_cartel()
+
+
+func _actualizar_cartel() -> void:
+	var tuya: bool = Juego.alquilada(id_casa)
+	if cartel != null:
+		cartel.text = "OCUPADO" if tuya else "SE ALQUILA  %d $" % precio
+	if not tuya and abierta:
+		abierta = false
+		_giro_objetivo = 0.0
 
 
 func _process(delta: float) -> void:
@@ -48,8 +60,6 @@ func usar(_jugador: Node) -> void:
 			Juego.avisar("El casero quiere %d $ por adelantado. Vuelve cuando los tengas." % precio)
 			return
 		Juego.viviendas[id_casa] = true
-		if cartel != null:
-			cartel.text = "OCUPADO"
 		Juego.avisar("¡Casa alquilada! Dentro tienes cama, cocina, estantería y sitio para macetas.")
 		Juego.cambio.emit()
 	abierta = not abierta
