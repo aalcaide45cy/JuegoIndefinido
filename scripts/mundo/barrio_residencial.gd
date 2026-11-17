@@ -45,7 +45,7 @@ func construir() -> void:
 	for c in casas_sur:
 		vivienda(c["id"], c["precio"], Vector3(c["x"], 0, 4), PI)
 
-	tapon_de_calle(Vector3(38, 0, 0), 14.0, Color(0.2, 0.2, 0.23), true)
+	# (Sin tapón: la avenida sigue hacia el Campo, ver barrio_campo.gd.)
 	farola(Vector3(-20, 0, -3.2))
 	farola(Vector3(-8, 0, 3.2))
 	farola(Vector3(6, 0, -3.2))

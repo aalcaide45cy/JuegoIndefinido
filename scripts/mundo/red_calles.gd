@@ -15,6 +15,7 @@ const TRAMOS: Array = [
 	[Vector2(16, -20), Vector2(16, -102), 8.0],    # Calle norte hacia el Mercado.
 	[Vector2(20, -16), Vector2(102, -16), 8.0],    # Calle este hacia el Barrio Residencial.
 	[Vector2(-16, 20), Vector2(-16, 102), 8.0],    # Calle sur hacia la Zona Industrial.
+	[Vector2(102, -16), Vector2(300, -16), 8.0],   # Carretera del Campo.
 	[Vector2(-20, 0), Vector2(20, 0), 10.0],       # Plaza (cruce central, simplificado).
 	[Vector2(0, -20), Vector2(0, 20), 10.0],
 ]
@@ -50,11 +51,13 @@ const NODOS: Dictionary = {
 	"n20": Vector3(16, 0, -22), "mercado": Vector3(16, 0, -58),
 	"e20": Vector3(22, 0, -16), "residencial": Vector3(58, 0, -16),
 	"s20": Vector3(-16, 0, 22), "industrial": Vector3(-16, 0, 58),
+	"campo_a": Vector3(140, 0, -16), "campo_b": Vector3(200, 0, -16), "campo_c": Vector3(260, 0, -16),
 }
 const VECINOS: Dictionary = {
 	"pne": ["pse", "pnw", "n20", "e20"], "pse": ["pne", "psw"], "psw": ["pse", "pnw", "s20"], "pnw": ["psw", "pne"],
 	"n20": ["pne", "mercado"], "mercado": ["n20"],
-	"e20": ["pne", "residencial"], "residencial": ["e20"],
+	"e20": ["pne", "residencial"], "residencial": ["e20", "campo_a"],
+	"campo_a": ["residencial", "campo_b"], "campo_b": ["campo_a", "campo_c"], "campo_c": ["campo_b"],
 	"s20": ["psw", "industrial"], "industrial": ["s20"],
 }
 

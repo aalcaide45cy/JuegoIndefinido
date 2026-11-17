@@ -190,3 +190,4 @@ Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola e
 - Cada barrio/zona nuevo es un `Barrio` que se construye bajo demanda: un gestor (`GestorChunks`) mira la posición del jugador cada 0,5 s, construye los chunks a menos de ~200 m (de uno en uno por fotograma para no dar tirones, con `Construir.fusionar_estaticos` al terminar) y libera los de más de ~300 m.
 - Las posiciones, nombres y tipos de cada chunk son datos (lista) para poder dibujar el mapa grande desde datos.
 - Tráfico: coches simples que siguen tramos de `RedCalles`, solo simulados dentro de ~120 m.
+- Zona de Campo (`barrio_campo.gd`, mundo x 100..300): carretera, 8 huertos de 144 a 1020 m² (alquiler 80 a 900 $), granja y cartel. La avenida del Barrio Residencial ya no tiene tapón, sigue hasta el campo. La ciudad pasa de ~160x220 m a ~300x220 m. Alquilar huertos y la inmobiliaria: pendiente.

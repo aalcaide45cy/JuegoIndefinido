@@ -24,6 +24,8 @@ const LUGARES: Array = [
 	[Vector3(16, 0.2, -58), "Mercado"],
 	[Vector3(58, 0.2, -16), "Barrio Residencial"],
 	[Vector3(-16, 0.2, 58), "Zona Industrial"],
+	[Vector3(150, 0.2, -16), "Carretera del Campo"],
+	[Vector3(205, 0.2, -16), "Campo, junto a los huertos"],
 ]
 const VALIDEZ_OFERTA: float = 120.0
 const ESPERA_COMPRADOR: float = 300.0

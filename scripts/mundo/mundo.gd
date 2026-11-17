@@ -25,6 +25,7 @@ func _ready() -> void:
 	_anadir_barrio(BarrioMercado.new(), Vector3(16, 0, -64))
 	_anadir_barrio(BarrioResidencial.new(), Vector3(64, 0, -16))
 	_anadir_barrio(BarrioIndustrial.new(), Vector3(-16, 0, 64))
+	_anadir_barrio(BarrioCampo.new(), Vector3(200, 0, -16))
 
 	_guardias_nocturnos()
 	_cerrar_ciudad()
