@@ -8,7 +8,7 @@ extends Interactuable
 
 
 func _ready() -> void:
-	distancia = 2.6
+	distancia = 3.2   # Caja maciza de 3 x 2,4 m: desde fuera hay que llegar al centro.
 	Construir.caja(self, Vector3(0, 1.25, 0), Vector3(3.0, 2.5, 2.4), Color(0.2, 0.28, 0.4), true)
 	Construir.caja(self, Vector3(0, 2.7, 0), Vector3(3.4, 0.3, 2.8), Color(0.12, 0.15, 0.22), false)
 	Construir.caja(self, Vector3(0, 1.1, 1.22), Vector3(1.4, 1.2, 0.06), Color(0.05, 0.08, 0.12), false)

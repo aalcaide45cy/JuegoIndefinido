@@ -24,7 +24,7 @@ var _dibujados: int = -1
 
 
 func _ready() -> void:
-	distancia = 3.2
+	distancia = 4.6   # El corral mide 6 m y tiene valla maciza: desde fuera hay que llegar al centro.
 	_animales = Node3D.new()
 	add_child(_animales)
 	var tam: float = 6.0

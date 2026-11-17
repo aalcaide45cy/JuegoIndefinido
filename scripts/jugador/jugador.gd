@@ -447,8 +447,13 @@ func _se_ve(cosa: Interactuable) -> bool:
 	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ojos, destino)
 	consulta.exclude = [get_rid()]
 	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
-	# Si choca, solo vale si es con el propio objeto (o muy cerca de él).
-	return choque.is_empty() or choque["position"].distance_to(destino) < 0.8
+	# Si choca, solo vale si es con el propio objeto (o muy cerca de él). Los choques que
+	# pertenecen al propio objeto cuentan como "el objeto": si no, un quiosco o un corral
+	# con paredes macizas jamás se podían usar (el rayo chocaba con su propia pared).
+	if choque.is_empty() or choque["position"].distance_to(destino) < 0.8:
+		return true
+	var otro = choque["collider"]
+	return otro is Node and (cosa.is_ancestor_of(otro) or otro == cosa)
 
 
 # ------------------------- Construcción del muñeco ----------------------------
