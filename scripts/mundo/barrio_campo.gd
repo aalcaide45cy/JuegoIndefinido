@@ -91,3 +91,18 @@ func _granja(pos: Vector3) -> void:
 	g.position = pos
 	add_child(g)
 	registrar_poi(g, "Granja", Color(0.9, 0.5, 0.3))
+	var gallinero: Corral = Corral.new()
+	gallinero.id_corral = "gallinero"
+	gallinero.especie = "gallina"
+	gallinero.position = Vector3(66, 0, -12)
+	add_child(gallinero)
+	var establo: Corral = Corral.new()
+	establo.id_corral = "establo"
+	establo.especie = "vaca"
+	establo.position = Vector3(66, 0, -36)
+	add_child(establo)
+	for i in 3:
+		var arbol: ArbolFrutal = ArbolFrutal.new()
+		arbol.id_arbol = "manzano_%d" % (i + 1)
+		arbol.position = Vector3(86 + i * 5.0, 0, -9)
+		add_child(arbol)

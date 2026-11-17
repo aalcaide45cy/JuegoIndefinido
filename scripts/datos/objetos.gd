@@ -128,6 +128,36 @@ const LISTA: Dictionary = {
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
 		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
 	},
+	"gallina": {
+		"nombre": "Gallina", "tipo": "animal", "pila": 1, "precio": 45,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
+		"descripcion": "Mételas en el gallinero de la granja (E). Cada una pone un huevo por minuto.",
+	},
+	"vaca": {
+		"nombre": "Vaca", "tipo": "animal", "pila": 1, "precio": 260,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
+		"descripcion": "Métela en el establo de la granja (E). Da leche cada 2 minutos.",
+	},
+	"huevo": {
+		"nombre": "Huevo", "tipo": "cosecha", "pila": 20, "precio": 7,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
+		"descripcion": "Producto legal del gallinero. Se vende en las tiendas.",
+	},
+	"leche": {
+		"nombre": "Leche", "tipo": "cosecha", "pila": 20, "precio": 16,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
+		"descripcion": "Producto legal del establo. Se vende en las tiendas.",
+	},
+	"manzana": {
+		"nombre": "Manzana", "tipo": "cosecha", "pila": 20, "precio": 8,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
+		"descripcion": "Fruta del manzano de la granja. Se vende en las tiendas.",
+	},
 	"jarra": {
 		"nombre": "Jarra de agua", "tipo": "herramienta", "pila": 1, "precio": 25,
 		"tienda": "herbolario", "nivel": 1, "habilidad": "",
