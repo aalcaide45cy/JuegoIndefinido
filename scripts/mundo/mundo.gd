@@ -76,11 +76,12 @@ func _polvo_en_el_aire(jugador: Node3D) -> void:
 # Refuerzos de noche: guardias extra que solo existen de noche y recorren toda la ciudad.
 func _guardias_nocturnos() -> void:
 	var nodos: Array = RedCalles.NODOS.keys()
+	nodos.shuffle()   # Cada refuerzo empieza en una zona distinta (hay 10 nodos y 4 refuerzos).
 	for i in 4:
 		var g: Guardia = Guardia.new()
 		g.solo_noche = true
 		add_child(g)
-		var inicio: String = nodos[randi() % nodos.size()]
+		var inicio: String = nodos[i]
 		g.global_position = RedCalles.NODOS[inicio]
 		g._nodo_destino = inicio
 

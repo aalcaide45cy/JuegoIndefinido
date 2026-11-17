@@ -83,6 +83,14 @@ func _draw() -> void:
 			continue
 		var x: float = centro_x + d / (ANCHO_VISTA / 2.0) * (ancho / 2.0 - 10.0)
 		var color: Color = poi.get_meta("poi_color", Color.WHITE)
+		if bool(poi.get_meta("poi_grande", false)):
+			var r: float = 9.0 + 2.0 * sin(Time.get_ticks_msec() / 160.0)
+			draw_circle(Vector2(x, 8), r + 2.0, Color(0, 0, 0, 0.9))
+			draw_circle(Vector2(x, 8), r, Color(1.0, 0.55, 0.1))
+			var txt: String = "%d m" % int(distancia)
+			draw_string_outline(fuente, Vector2(x - 14, 30), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
+			draw_string(fuente, Vector2(x - 14, 30), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.85, 0.5))
+			continue
 		draw_colored_polygon(PackedVector2Array([Vector2(x, 2), Vector2(x + 6, 8), Vector2(x, 14), Vector2(x - 6, 8)]),
 				Color(0, 0, 0, 0.85))
 		draw_colored_polygon(PackedVector2Array([Vector2(x, 4), Vector2(x + 4.5, 8), Vector2(x, 12), Vector2(x - 4.5, 8)]),

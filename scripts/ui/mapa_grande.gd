@@ -102,8 +102,15 @@ func _dibujar(vista: Control) -> void:
 		var poi: Node3D = nodo as Node3D
 		var c: Vector2 = _a_pantalla(poi.global_position)
 		var color: Color = poi.get_meta("poi_color", Color.WHITE)
-		_marcas.draw_circle(c, 7.0, Color(0, 0, 0, 0.85))
-		_marcas.draw_circle(c, 5.0, color)
+		if bool(poi.get_meta("poi_grande", false)):
+			var r: float = 13.0 + 3.0 * sin(Time.get_ticks_msec() / 160.0)
+			_marcas.draw_circle(c, r + 3.0, Color(0, 0, 0, 0.9))
+			_marcas.draw_circle(c, r, Color(1.0, 0.55, 0.1))
+			_marcas.draw_circle(c, r * 0.4, Color(1, 1, 1))
+			color = Color(1.0, 0.85, 0.5)
+		else:
+			_marcas.draw_circle(c, 7.0, Color(0, 0, 0, 0.85))
+			_marcas.draw_circle(c, 5.0, color)
 		var nombre: String = str(poi.get_meta("poi_nombre", ""))
 		_marcas.draw_string_outline(fuente, c + Vector2(9, 5), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.9))
 		_marcas.draw_string(fuente, c + Vector2(9, 5), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1))

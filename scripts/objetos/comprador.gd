@@ -24,6 +24,7 @@ func _ready() -> void:
 	add_to_group("poi")
 	set_meta("poi_color", Color(1.0, 0.6, 0.15))
 	set_meta("poi_nombre", "Comprador")
+	set_meta("poi_grande", true)   # Los mapas lo dibujan grande, pulsante y con distancia.
 
 
 func _datos() -> Dictionary:

@@ -163,8 +163,20 @@ func _dibujar_marcas() -> void:
 		var lejos: bool = pos.length() > radio - 9.0
 		if lejos:
 			pos = pos.normalized() * (radio - 9.0)
+		var grande: bool = bool(poi.get_meta("poi_grande", false))
 		var tam: float = 4.0 if lejos else 6.0
 		var c: Vector2 = centro + pos
+		if grande:
+			# Comprador de un encargo: círculo naranja grande que late, con su distancia.
+			var latido: float = 1.0 + 0.2 * sin(Time.get_ticks_msec() / 160.0)
+			var r: float = 10.0 * latido
+			_marcas.draw_circle(c, r + 2.0, Color(0, 0, 0, 0.9))
+			_marcas.draw_circle(c, r, Color(1.0, 0.55, 0.1))
+			_marcas.draw_circle(c, r * 0.4, Color(1, 1, 1))
+			var texto_d: String = "%d m" % int(Vector2(rel.x, rel.z).length())
+			_marcas.draw_string_outline(fuente, c + Vector2(-14, -r - 4), texto_d, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
+			_marcas.draw_string(fuente, c + Vector2(-14, -r - 4), texto_d, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.85, 0.5))
+			continue
 		_marcas.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -tam - 1), c + Vector2(tam + 1, 0),
 				c + Vector2(0, tam + 1), c + Vector2(-tam - 1, 0)]), Color(0, 0, 0, 0.85))
 		_marcas.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -tam), c + Vector2(tam, 0),

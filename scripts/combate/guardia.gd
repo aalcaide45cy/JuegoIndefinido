@@ -28,6 +28,7 @@ var _golpe: float = 0.0
 var _muerto: bool = false
 var _cuerpo: Node3D
 var _material: StandardMaterial3D
+static var _destinos: Dictionary = {}   # guardia -> nodo al que va (para repartirse)
 var _t_puertas: float = 0.0
 var _nodo_destino: String = ""
 var _espera: float = 0.0
@@ -136,7 +137,17 @@ func _physics_process(delta: float) -> void:
 			destino = RedCalles.NODOS[_nodo_destino]
 			if global_position.distance_to(Vector3(destino.x, global_position.y, destino.z)) < 0.8:
 				var vecinos: Array = RedCalles.VECINOS[_nodo_destino]
-				_nodo_destino = vecinos[randi() % vecinos.size()]
+				var libres: Array = []
+				for v in vecinos:
+					var ocupado: bool = false
+					for otro in _destinos:
+						if otro != self and is_instance_valid(otro) and _destinos[otro] == v:
+							ocupado = true
+					if not ocupado:
+						libres.append(v)
+				var candidatos: Array = libres if not libres.is_empty() else vecinos
+				_nodo_destino = candidatos[randi() % candidatos.size()]
+				_destinos[self] = _nodo_destino
 				if randf() < 0.5:
 					_espera = randf_range(2.0, 7.0)   # Se para a mirar a su alrededor.
 			else:
