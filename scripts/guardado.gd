@@ -47,6 +47,9 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
+		"huertos": Juego.huertos.keys(),
+		"en_propiedad": Juego.en_propiedad.keys(),
+		"parcelas": Juego.parcelas,
 		"encargos": Juego.encargos,
 		"pedidos_material": Juego.pedidos_material,
 		"avisos": Juego.avisos,
@@ -92,6 +95,17 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	if bool(datos.get("casa_alquilada", false)):   # Partidas de la versión anterior.
 		Juego.viviendas["plaza"] = true
 	Juego.ha_ganado = bool(datos.get("ha_ganado", false))
+	for id_h in datos.get("huertos", []):
+		Juego.huertos[str(id_h)] = true
+	for id_p in datos.get("en_propiedad", []):
+		Juego.en_propiedad[str(id_p)] = true
+	var parcelas_g = datos.get("parcelas", {})
+	if parcelas_g is Dictionary:
+		for id_h in parcelas_g:
+			var pg = parcelas_g[id_h]
+			if pg is Dictionary and Parcela.CULTIVOS.has(str(pg.get("semilla", ""))):
+				Juego.parcelas[str(id_h)] = {"semilla": str(pg["semilla"]), "t": maxf(0.0, float(pg.get("t", 0.0))),
+						"total": maxf(1.0, float(pg.get("total", 100.0)))}
 	Juego.reputacion = clampi(int(datos.get("reputacion", 0)), -50, 100)
 	for e in datos.get("encargos", []):
 		if e is Dictionary and GameData.POCIONES.has(str(e.get("pocion", ""))) and e.get("pos", []) is Array \

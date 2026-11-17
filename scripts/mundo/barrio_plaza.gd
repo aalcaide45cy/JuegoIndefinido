@@ -57,6 +57,10 @@ func construir() -> void:
 	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
 			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
+	var inmo: InmobiliariaMostrador = InmobiliariaMostrador.new()
+	inmo.position = Vector3(-10, 0, -10)
+	add_child(inmo)
+	registrar_poi(inmo, "Inmobiliaria", Color(0.5, 0.75, 1.0))
 	_decorar_plaza()
 	_guardia([Vector3(-12, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 12), Vector3(-12, 0, 12)])
 

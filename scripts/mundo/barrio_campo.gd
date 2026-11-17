@@ -66,8 +66,12 @@ func _huerto(h: Dictionary) -> void:
 	var t: Label3D = Construir.texto(self, pos_cartel + Vector3(0, 0.2, 0),
 			"HUERTO %d m²\n%d $ al mes" % [int(ancho * fondo), h["precio"]], 44, Color(0.85, 1.0, 0.7))
 	t.rotation.y = 0.0 if lado < 0.0 else PI
-	var puerta: Node3D = Node3D.new()
+	var puerta: Parcela = Parcela.new()
+	puerta.id_huerto = h["id"]
+	puerta.m2 = int(ancho * fondo)
 	puerta.position = Vector3(cx, 0, z_cerca)
+	puerta.centro_cultivo = Vector3(cx, 0.0, cz)
+	puerta.tam_cultivo = Vector2(ancho - 3.0, fondo - 3.0)
 	add_child(puerta)
 	registrar_poi(puerta, "Huerto %d m² (%d $)" % [int(ancho * fondo), h["precio"]], Color(0.6, 0.9, 0.4))
 

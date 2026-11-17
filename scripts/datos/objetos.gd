@@ -92,6 +92,42 @@ const LISTA: Dictionary = {
 		"color": Color(0.7, 0.9, 1.0), "forma": "saco",
 		"descripcion": "Con E sobre una lámpara o foco montados, sube su nivel (máx. 3).",
 	},
+	"semilla_trigo": {
+		"nombre": "Semillas de Trigo", "tipo": "semilla", "pila": 20, "precio": 6,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.7, 0.35), "forma": "bolsita",
+		"descripcion": "Cultivo legal para tu huerto (E en la entrada del huerto con ellas en la mano).",
+	},
+	"semilla_maiz": {
+		"nombre": "Semillas de Maíz", "tipo": "semilla", "pila": 20, "precio": 8,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.7, 0.35), "forma": "bolsita",
+		"descripcion": "Cultivo legal para tu huerto (E en la entrada del huerto con ellas en la mano).",
+	},
+	"semilla_tomate": {
+		"nombre": "Semillas de Tomate", "tipo": "semilla", "pila": 20, "precio": 9,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.7, 0.35), "forma": "bolsita",
+		"descripcion": "Cultivo legal para tu huerto (E en la entrada del huerto con ellas en la mano).",
+	},
+	"trigo": {
+		"nombre": "Trigo", "tipo": "cosecha", "pila": 20, "precio": 14,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+	},
+	"maiz": {
+		"nombre": "Maíz", "tipo": "cosecha", "pila": 20, "precio": 18,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+	},
+	"tomate": {
+		"nombre": "Tomate", "tipo": "cosecha", "pila": 20, "precio": 24,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+	},
 	"jarra": {
 		"nombre": "Jarra de agua", "tipo": "herramienta", "pila": 1, "precio": 25,
 		"tienda": "herbolario", "nivel": 1, "habilidad": "",

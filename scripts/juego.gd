@@ -42,6 +42,9 @@ var sospecha: float = 0.0           # 0-100: sube si llevas ilegal, corres con e
 var _t_sospecha: float = 0.0
 var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
 var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
+var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado).
+var en_propiedad: Dictionary = {}     # id -> true: casas y huertos COMPRADOS (se pueden vender).
+var parcelas: Dictionary = {}         # id_huerto -> {semilla, t, total}: cultivo en curso.
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
@@ -76,6 +79,9 @@ func reiniciar() -> void:
 	velocidad_tiempo = 1.0
 	ha_ganado = false
 	viviendas.clear()
+	huertos.clear()
+	en_propiedad.clear()
+	parcelas.clear()
 	alerta = 0.0
 	motivo_alerta = ""
 	nivel = 1
