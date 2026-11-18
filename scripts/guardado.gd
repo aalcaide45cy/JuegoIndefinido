@@ -52,6 +52,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"dia_pago": Juego.dia_pago,
 		"negocio": Juego.negocio,
 		"contador_vehiculos": Juego._contador_vehiculos,
+		"plazas_tomadas": Juego.plazas_tomadas.keys(),
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
@@ -157,6 +158,12 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	_leer_personal(datos)
 	Negocios.importar(datos.get("negocio", {}))
 	Juego._contador_vehiculos = maxi(0, int(datos.get("contador_vehiculos", Juego.vehiculos.size())))
+	for id_pl in datos.get("plazas_tomadas", []):
+		Juego.plazas_tomadas[str(id_pl)] = true
+	# (Partidas anteriores: un coche aparcado que ya es tuyo cuenta como tomado.)
+	for id_v in Juego.vehiculos:
+		if str(id_v).begins_with("amb_"):
+			Juego.plazas_tomadas[str(id_v)] = true
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
 			Juego.habilidades[str(id_hab)] = true
