@@ -606,14 +606,66 @@ static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array) ->
 					var pp: Vector2 = cx + nor * lado2 * (medio - 0.8)
 					var suelo: float = minf(altura_lista(pp.x, pp.y, lista), ya - 1.0)
 					mb.caja(Vector3(pp.x, (ya - 0.9 + suelo) / 2.0, pp.y), Vector3(1.0, ya - 0.9 - suelo, 1.0), hormigon.darkened(0.15))
-			# Túnel: laderas altas a los dos lados (un portal de piedra con dintel).
-			elif hi > ya + 3.0 and hd > ya + 3.0 and i - ultimo_tunel > 12 and absf(giro) < 0.15:
-				ultimo_tunel = i
-				obras_vistas.append(["tunel", Vector3(a.x, ya, a.y), d1])
-				for lado3 in [-1.0, 1.0]:
-					var pl: Vector2 = a + nor * lado3 * (medio + 0.9)
-					mb.caja(Vector3(pl.x, ya + 3.0, pl.y), Vector3(1.4, 6.0, 1.4), piedra)
-				mb.caja(Vector3(a.x, ya + 6.6, a.y), Vector3(1.4, 1.4, CALLE_ANCHO + 3.2) if absf(d1.x) > absf(d1.y) else Vector3(CALLE_ANCHO + 3.2, 1.4, 1.4), piedra.darkened(0.1))
+			# Túnel: laderas altas a los dos lados. La galería cubierta rodea la carretera y, en la entrada
+			# y la salida, lleva un portal de piedra con dintel.
+			if _es_tramo_tunel(pts, i, lista):
+				_galeria(mb, a, pts[i + 1], medio, ya, altura_lista(pts[i + 1].x, pts[i + 1].y, lista))
+				if not _es_tramo_tunel(pts, i - 1, lista):
+					_portal(mb, a, nor, d1, medio, ya)
+					obras_vistas.append(["tunel", Vector3(a.x, ya, a.y), d1])
+				if not _es_tramo_tunel(pts, i + 1, lista):
+					_portal(mb, pts[i + 1], nor, d1, medio, altura_lista(pts[i + 1].x, pts[i + 1].y, lista))
+
+
+# ¿El tramo i->i+1 de una carretera de montaña va encajonado entre dos laderas altas y casi recto?
+static func _es_tramo_tunel(pts: PackedVector2Array, i: int, lista: Array) -> bool:
+	if i < 2 or i >= pts.size() - 3:
+		return false
+	var a: Vector2 = pts[i]
+	var d0: Vector2 = (pts[i] - pts[i - 1]).normalized()
+	var d1: Vector2 = (pts[i + 1] - pts[i]).normalized()
+	if absf(d0.cross(d1)) > 0.15:
+		return false
+	var nor: Vector2 = Vector2(-d1.y, d1.x)
+	var ya: float = altura_lista(a.x, a.y, lista)
+	var izq: Vector2 = a + nor * 8.0
+	var der: Vector2 = a - nor * 8.0
+	return altura_lista(izq.x, izq.y, lista) > ya + 3.0 and altura_lista(der.x, der.y, lista) > ya + 3.0
+
+
+# Paredes y techo de la galería de un tramo (a doble cara, para verse y chocar desde dentro y desde fuera).
+static func _galeria(mb: ConstructorMalla, a: Vector2, b: Vector2, medio: float, ya: float, yb: float) -> void:
+	var dir: Vector2 = (b - a).normalized()
+	var nor: Vector2 = Vector2(-dir.y, dir.x)
+	var ancho: float = medio + 0.6
+	var alto: float = 6.2
+	var roca: Color = Color(0.46, 0.44, 0.42)
+	var techo: Color = Color(0.3, 0.29, 0.28)
+	var lampara: Color = Color(1.0, 0.9, 0.6)
+	for lado in [-1.0, 1.0]:
+		var pa: Vector2 = a + nor * lado * ancho
+		var pb: Vector2 = b + nor * lado * ancho
+		_losa(mb, Vector3(pa.x, ya, pa.y), Vector3(pb.x, yb, pb.y), Vector3(pb.x, yb + alto, pb.y), Vector3(pa.x, ya + alto, pa.y), roca)
+	var i0: Vector2 = a + nor * ancho
+	var i1: Vector2 = a - nor * ancho
+	var j0: Vector2 = b + nor * ancho
+	var j1: Vector2 = b - nor * ancho
+	_losa(mb, Vector3(i0.x, ya + alto, i0.y), Vector3(j0.x, yb + alto, j0.y), Vector3(j1.x, yb + alto, j1.y), Vector3(i1.x, ya + alto, i1.y), techo)
+	var c: Vector2 = (a + b) / 2.0
+	mb.caja(Vector3(c.x, (ya + yb) / 2.0 + alto - 0.1, c.y), Vector3(0.5, 0.2, 0.5), lampara)   # Lámpara del techo.
+
+
+static func _losa(mb: ConstructorMalla, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, col: Color) -> void:
+	mb.cuadro(p0, p1, p2, p3, col)
+	mb.cuadro(p3, p2, p1, p0, col)
+
+
+static func _portal(mb: ConstructorMalla, a: Vector2, nor: Vector2, d1: Vector2, medio: float, ya: float) -> void:
+	var piedra: Color = Color(0.5, 0.49, 0.47)
+	for lado in [-1.0, 1.0]:
+		var pl: Vector2 = a + nor * lado * (medio + 0.9)
+		mb.caja(Vector3(pl.x, ya + 3.4, pl.y), Vector3(1.4, 6.8, 1.4), piedra)
+	mb.caja(Vector3(a.x, ya + 7.0, a.y), Vector3(1.4, 1.4, CALLE_ANCHO + 3.4) if absf(d1.x) > absf(d1.y) 			else Vector3(CALLE_ANCHO + 3.4, 1.4, 1.4), piedra.darkened(0.1))
 
 
 # Parte del segmento a-b que cae dentro del rectángulo, como (t0, t1) entre 0 y 1.
@@ -1312,6 +1364,15 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 	for s in lista:
 		for casa_d in _casas_en(s, rect):
 			_edificio(objetos, casa_d, true)
+			# Aldeas y pueblos: más o menos la mitad de las casas encienden ventanas y una luz de noche.
+			if int(s["tipo"]) < 2 and not casa_d.has("servicio") and _f(int(casa_d["x"]), int(casa_d["z"]), 301) < 0.55:
+				var cara_l: float = casa_d["puerta"]
+				var zf: float = float(casa_d["z"]) + cara_l * (float(casa_d["d"]) / 2.0 + 0.07)
+				var vent: Array = []
+				for lado_v in [-1.0, 1.0]:
+					vent.append(Vector3(float(casa_d["x"]) + lado_v * float(casa_d["w"]) * 0.27, float(casa_d["y"]) + 1.6, zf))
+				props.append({"tipo": "luces_casa", "ventanas": vent, "cara": cara_l,
+						"luz": Vector3(float(casa_d["x"]), float(casa_d["y"]) + 2.2, float(casa_d["z"]) + cara_l * (float(casa_d["d"]) / 2.0 + 2.5))})
 			if casa_d.has("servicio"):
 				props.append({"tipo": "servicio", "serv": casa_d["servicio"], "pos": _punto_servicio(casa_d)})
 			if str(casa_d["id"]) != "":
