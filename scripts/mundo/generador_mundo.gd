@@ -874,6 +874,51 @@ static func huertos_de(s: Dictionary) -> Array:
 	return out
 
 
+# Versión de la distribución del mundo. La 2 es la de las ciudades vivas (celdas de 700 m): las
+# partidas guardadas sin este número usan ids de propiedad de la distribución antigua (celdas de 1200 m).
+const VERSION_MUNDO: int = 2
+
+
+# Traduce el id de una casa o huerto de la distribución antigua a uno equivalente del mundo actual:
+# el mismo tipo (casa/huerto), en el asentamiento más cercano al sitio donde estaba antes, y que no
+# esté ya en "usados" (ids ya repartidos). Así nadie pierde lo que alquiló o compró al mover los pueblos.
+# Devuelve "" si no es un id del mundo o si el mundo aún no está listo.
+static func migrar_id(id: String, usados: Dictionary) -> String:
+	if not listo:
+		return ""
+	var partes: PackedStringArray = id.split("_")
+	if partes.size() < 5 or partes[0] != "w" or not (partes[1] == "c" or partes[1] == "h"):
+		return ""
+	var ci: int = int(partes[2])
+	var cj: int = int(partes[3])
+	var antes: Vector2 = Vector2((ci + 0.5) * 1200.0 + (_f(ci, cj, 2) - 0.5) * 500.0,
+			(cj + 0.5) * 1200.0 + (_f(ci, cj, 3) - 0.5) * 500.0)
+	var lista: Array = _asentamientos.values()
+	lista.sort_custom(func(a, b): return (a["pos"] as Vector2).distance_squared_to(antes) < (b["pos"] as Vector2).distance_squared_to(antes))
+	for s in lista:
+		for cand in _alquilables(s, partes[1] == "h"):
+			if not usados.has(cand):
+				return cand
+	return ""
+
+
+# Ids de las casas en alquiler/venta (o de los huertos) de un asentamiento.
+static func _alquilables(s: Dictionary, huertos: bool) -> Array:
+	var out: Array = []
+	if huertos:
+		for h in huertos_de(s):
+			out.append(h["id"])
+		return out
+	var n: int = s["n"]
+	for k in range(-n, n):
+		for l in range(-n, n):
+			for sub in 4:
+				var c: Dictionary = casa(s, k, l, sub)
+				if not c.is_empty() and str(c["id"]) != "":
+					out.append(c["id"])
+	return out
+
+
 # La ficha de una propiedad del mundo a partir de su id ("w_c_..." casa, "w_h_..." huerto).
 # Devuelve {} si el id no existe en este mundo.
 static func propiedad(id: String) -> Dictionary:
