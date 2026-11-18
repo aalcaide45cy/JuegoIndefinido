@@ -92,6 +92,18 @@ const LISTA: Dictionary = {
 		"color": Color(0.7, 0.9, 1.0), "forma": "saco",
 		"descripcion": "Con E sobre una lámpara o foco montados, sube su nivel (máx. 3).",
 	},
+	"bidon_gasolina": {
+		"nombre": "Bidón de gasolina", "tipo": "material", "pila": 10, "precio": 30,
+		"tienda": "ferreteria", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.15, 0.1), "forma": "saco",
+		"descripcion": "Con E sobre un vehículo (en la mano) rellena el 40 % del depósito.",
+	},
+	"kit_reparacion": {
+		"nombre": "Kit de reparación", "tipo": "material", "pila": 10, "precio": 80,
+		"tienda": "ferreteria", "nivel": 1, "habilidad": "",
+		"color": Color(0.6, 0.6, 0.65), "forma": "saco",
+		"descripcion": "Con E sobre un vehículo (en la mano) lo deja como nuevo.",
+	},
 	"semilla_trigo": {
 		"nombre": "Semillas de Trigo", "tipo": "semilla", "pila": 20, "precio": 6,
 		"tienda": "herbolario", "nivel": 1, "habilidad": "",

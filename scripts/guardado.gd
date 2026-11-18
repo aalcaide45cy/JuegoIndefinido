@@ -45,6 +45,8 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"xp": Juego.xp,
 		"habilidades": Juego.habilidades.keys(),
 		"aspecto": Juego.aspecto,
+		"vehiculos": _vehiculos_para_guardar(arbol),
+		"contador_vehiculos": Juego._contador_vehiculos,
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
@@ -131,6 +133,8 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	for a in datos.get("avisos", []):
 		Juego.avisos.append(str(a))
 	Juego.aspecto = Juego.DatosAspecto.valido(datos.get("aspecto", {}))
+	_leer_vehiculos(datos.get("vehiculos", {}))
+	Juego._contador_vehiculos = maxi(0, int(datos.get("contador_vehiculos", Juego.vehiculos.size())))
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
 			Juego.habilidades[str(id_hab)] = true
@@ -163,8 +167,29 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	var jug: Jugador = jugador as Jugador
 	if jug != null:
 		jug.vestir()
+	arbol.call_group("gestor_vehiculos", "sincronizar")
 	Juego.cambio.emit()
 	return true
+
+
+# Pone al día la posición de los vehículos que hay en el mundo y devuelve los datos.
+static func _vehiculos_para_guardar(arbol: SceneTree) -> Dictionary:
+	for nodo in arbol.get_nodes_in_group("vehiculos"):
+		if nodo.has_method("guardar_estado"):
+			nodo.guardar_estado()
+	return Juego.vehiculos
+
+
+static func _leer_vehiculos(guardados) -> void:
+	if not guardados is Dictionary:
+		return
+	for id_v in guardados:
+		var v = guardados[id_v]
+		if v is Dictionary and Vehiculo.TIPOS.has(str(v.get("tipo", ""))) and v.get("pos", []) is Array and v["pos"].size() == 3:
+			Juego.vehiculos[str(id_v)] = {"tipo": str(v["tipo"]),
+					"pos": [float(v["pos"][0]), float(v["pos"][1]), float(v["pos"][2])],
+					"giro": float(v.get("giro", 0.0)), "gas": clampf(float(v.get("gas", 100.0)), 0.0, 100.0),
+					"salud": clampf(float(v.get("salud", 100.0)), 0.0, 100.0)}
 
 
 static func _exportar_colocables(arbol: SceneTree) -> Array:

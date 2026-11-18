@@ -42,6 +42,9 @@ var _inclinacion: float = -0.2  # Arriba/abajo de la cámara.
 var _bloqueado: bool = false   # Para quietos momentáneos (por ejemplo, escenas).
 
 var _cuerpo: Node3D
+var vehiculo = null   # El vehículo que conduces ahora (o null). Ver vehiculo.gd.
+var _choque: CollisionShape3D
+var _primera_antes: bool = true
 var _ropa: Node3D = null       # El aspecto puesto (se rehace al cambiarlo en la ventana de aspecto).
 var _modelo_anim: Node3D = null   # Si el cuerpo es un modelo con animaciones, aquí está.
 var _pivote: Node3D
@@ -73,6 +76,10 @@ func _unhandled_input(evento: InputEvent) -> void:
 	if Juego.menu_abierto:
 		return  # Con una ventana abierta, el ratón y las teclas son para la ventana.
 	var raton_capturado: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	if vehiculo != null and evento.is_action_pressed("usar"):
+		vehiculo.bajar()
+		get_viewport().set_input_as_handled()
+		return
 	if evento is InputEventMouseMotion and raton_capturado:
 		var movimiento: InputEventMouseMotion = evento
 		_giro -= movimiento.relative.x * SENSIBILIDAD_RATON
@@ -158,6 +165,11 @@ func _physics_process(delta: float) -> void:
 			_atacar()
 	_pivote.rotation.y = _giro
 	_brazo.rotation.x = _inclinacion
+	if vehiculo != null:
+		# Conduciendo: el vehículo nos lleva (vehiculo.gd). Aquí solo se mueve la cámara.
+		velocity = Vector3.ZERO
+		objetivo = null
+		return
 
 	# Gravedad.
 	if not is_on_floor():
@@ -231,7 +243,7 @@ func _datos_mano() -> Dictionary:
 
 # Clic izquierdo: ataca con lo que lleves en la mano (o usa comida y medicinas).
 func _atacar() -> void:
-	if _enfriamiento > 0.0 or _muerto:
+	if _enfriamiento > 0.0 or _muerto or vehiculo != null:
 		return
 	var casilla = Juego.en_mano()
 	if casilla == null:
@@ -393,6 +405,8 @@ func _reaparecer_en_la_plaza() -> void:
 # Si la vida llega a cero: fundido a negro, reaparece en la plaza y pierdes
 # una parte del dinero.
 func _morir() -> void:
+	if vehiculo != null:
+		vehiculo.bajar()
 	_muerto = true
 	Juego.avisar("Has caído. Despiertas en la plaza, y te falta dinero...")
 	hud.fundido(func() -> void:
@@ -449,6 +463,8 @@ func _buscar_objetivo() -> void:
 
 # true si no hay una pared entre los ojos del jugador y el objeto.
 func _se_ve(cosa: Interactuable) -> bool:
+	if cosa.ignora_vista:
+		return true
 	var ojos: Vector3 = global_position + Vector3(0, 1.5, 0)
 	var destino: Vector3 = cosa.global_position + Vector3(0, 0.3, 0)
 	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(ojos, destino)
@@ -474,6 +490,7 @@ func _crear_cuerpo() -> void:
 	choque.shape = capsula
 	choque.position.y = 0.85
 	add_child(choque)
+	_choque = choque
 
 	# El muñeco (o traje con modelo): ver aspecto.gd. Se cambia con la tecla O.
 	_cuerpo = Node3D.new()
@@ -504,3 +521,35 @@ func _crear_camara() -> void:
 	_brazo.position.x = DESPLAZAMIENTO_HOMBRO  # (El SpringArm3D coloca a la cámara; por eso se mueve el brazo.)
 	_brazo.add_child(_camara)
 	_camara.current = true
+
+
+# ------------------------------- Vehículos ------------------------------------
+
+# Sube a un vehículo: cuerpo oculto, sin choque, cámara en tercera persona más lejos.
+func subir_a(v: Interactuable) -> void:
+	vehiculo = v
+	_primera_antes = primera_persona
+	primera_persona = false
+	_aplicar_camara()
+	_choque.set_deferred("disabled", true)
+	_cuerpo.visible = false
+	if _mano != null:
+		_mano.visible = false
+	_brazo.spring_length = 6.5
+	var chasis = v.get("chasis")
+	if chasis != null:
+		_brazo.add_excluded_object(chasis.get_rid())
+
+
+func bajar_de(v: Interactuable, destino: Vector3) -> void:
+	var chasis = v.get("chasis")
+	if chasis != null:
+		_brazo.remove_excluded_object(chasis.get_rid())
+	vehiculo = null
+	global_position = destino
+	velocity = Vector3.ZERO
+	_choque.set_deferred("disabled", false)
+	primera_persona = _primera_antes
+	_aplicar_camara()
+	if _mano != null:
+		_mano.visible = true

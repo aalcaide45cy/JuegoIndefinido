@@ -55,6 +55,8 @@ var reputacion: int = 0              # -50..100: sube al entregar encargos, baja
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
 var avisos: Array = []               # Últimos avisos del móvil (más nuevo primero).
+var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: vehículos tuyos (ver vehiculo.gd).
+var _contador_vehiculos: int = 0
 var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
@@ -92,6 +94,8 @@ func reiniciar() -> void:
 	xp = 0
 	habilidades.clear()
 	aspecto = DatosAspecto.POR_DEFECTO.duplicate()
+	vehiculos.clear()
+	_contador_vehiculos = 0
 	reputacion = 0
 	sospecha = 0.0
 	encargos.clear()
@@ -127,6 +131,11 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+
+
+func siguiente_vehiculo() -> int:
+	_contador_vehiculos += 1
+	return _contador_vehiculos
 
 
 # Lista de lo ilegal que llevas, para decírtelo en pantalla.

@@ -238,7 +238,9 @@ func _input(evento: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	# Texto de la acción: se pregunta cada fotograma porque cambia (p. ej. el % de crecimiento).
-	if _menu == null and jugador != null and jugador.objetivo != null:
+	if _menu == null and jugador != null and jugador.vehiculo != null:
+		_label_accion.text = jugador.vehiculo.texto_conduccion()
+	elif _menu == null and jugador != null and jugador.objetivo != null:
 		_label_accion.text = "[E] " + jugador.objetivo.texto_accion()
 	else:
 		_label_accion.text = ""
@@ -328,6 +330,11 @@ func abrir_caldero() -> void:
 
 func abrir_estanteria() -> void:
 	_abrir_menu(Ventanas.Estanteria.new())
+
+
+# Abre cualquier ventana ya creada (concesionario, bolsa de trabajo...).
+func abrir_ventana(v: Control) -> void:
+	_abrir_menu(v)
 
 
 func abrir_inmobiliaria() -> void:

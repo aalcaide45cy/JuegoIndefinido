@@ -31,6 +31,12 @@ func construir() -> void:
 	for h in HUERTOS:
 		_huerto(h)
 	_granja(Vector3(78, 0, -22))
+	# Concesionario al oeste de la zona: los vehículos comprados aparecen frente a él.
+	var conc: Concesionario = Concesionario.new()
+	conc.position = Vector3(-88, 0, -10)
+	conc.entrega = Vector3(0, 0.05, -14.0)
+	add_child(conc)
+	registrar_poi(conc, "Concesionario", Color(1.0, 0.6, 0.3))
 	tapon_de_calle(Vector3(98, 0, 0), 14.0, Color(0.2, 0.2, 0.23), true)
 	var cartel: Label3D = Construir.texto(self, Vector3(95.9, 6.0, 0), "ZONA DE CAMPO", 160, Color(0.7, 0.85, 0.6))
 	cartel.rotation.y = -PI / 2.0
