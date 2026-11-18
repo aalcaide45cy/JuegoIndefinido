@@ -174,6 +174,29 @@ Y un `docker-compose.yml` de ejemplo (copiar, pegar, `docker compose up -d`). La
 
 **Fases extra** (se suman a la sección 6): preset de exportación + arranque `--servidor` + `servidor.cfg` = **1-2 sesiones** (con la fase 3). Docker + GitHub Actions + guía de VPS = **1-2**. Transporte WebSocket + guías Fly.io/otros = **1-2**. Consola y copias de seguridad = **1-2**.
 
+### 3.9 ¿Docker? ¿Y cómo lo hace ARK?
+
+**Docker es una opción, no la única.** ARK (y Valheim, Rust, etc.) funciona así:
+
+1. **Servidor dedicado aparte**: es un programa distinto del juego (en ARK, `ShooterGameServer`), sin gráficos, que se descarga gratis con **SteamCMD** (la herramienta de línea de comandos de Steam) usando un *AppID de servidor* propio (ARK: 376030).
+2. **Se configura con archivos de texto** (`GameUserSettings.ini`, `Game.ini`) y parámetros de arranque (mapa, puerto, contraseña, máx. jugadores).
+3. **Los hosts de juegos** (Nitrado, G-Portal, etc.) lo ofrecen con **un clic**: tienen una plantilla que ejecuta SteamCMD, crea los archivos y arranca el servidor. El cliente solo elige nombre y contraseña.
+4. **Los jugadores lo encuentran** en la lista de servidores de Steam, o por IP:puerto.
+5. Mucha gente también lo corre en **Docker** (imágenes de la comunidad) o en su PC con SteamCMD.
+
+**Cómo lo replicaríamos** (de menos a más trabajo):
+
+| Paso | Qué es | Para quién |
+|---|---|---|
+| **A. Descargable** | `servidor-windows.zip` y `servidor-linux.tar.gz` en GitHub Releases, con `servidor.cfg` y un `iniciar.bat`/`iniciar.sh`. Descomprimir y ejecutar | Cualquiera, en su PC o VPS |
+| **B. Imagen Docker** | La misma cosa en un contenedor (sección 3.8). Es **lo que piden la mayoría de nubes y paneles** modernos | VPS, Fly.io, paneles tipo Pterodactyl |
+| **C. Servidor dedicado en Steam** | Un segundo "app" en Steamworks, gratis para quien tenga el juego, con su AppID de servidor. Se baja con `steamcmd +login anonymous +app_update <AppID> +quit`. Se registra en la lista de servidores de Steam con `GodotSteam` | Quien use SteamCMD o hosts de juegos |
+| **D. Plantilla para hosts** | Un *egg* de **Pterodactyl** (panel de código abierto que usan muchos hosts pequeños), más instrucciones para que hosts comerciales la añadan | Hosts de juegos |
+
+Recomendación: **A y B primero** (baratos y valen para todo). **C y D cuando el juego esté en Steam**: necesita tener la ficha del juego creada y el AppID de servidor. Mientras tanto se pueden probar con el AppID de pruebas 480.
+
+**Pasos para un host de juegos (cuando exista C/D):** 1) crear el servidor y elegir la plantilla del juego; 2) el host ejecuta SteamCMD y descarga el servidor; 3) el cliente rellena nombre, contraseña, puerto y máx. jugadores (genera `servidor.cfg`); 4) abrir el puerto UDP indicado; 5) arrancar; 6) el servidor aparece en la lista de Steam y los amigos entran por IP o código. Los detalles exactos (nombres de variables, puertos, AppID) se confirman con cada host al escribir `docs/SERVIDOR.md`.
+
 ## 4. Qué hay que refactorizar del código actual
 
 Esta es la parte más grande. Resumen de lo que he visto en el código:
