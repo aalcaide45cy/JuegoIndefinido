@@ -9,30 +9,30 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 
 ## P0: antes de seguir ampliando
 
-- [ ] **Relojes absolutos en producción** (S/M). Cultivos de huerto, granja, manzanos y macetas guardan
+- [x] **Relojes absolutos en producción** (S/M). Cultivos de huerto, granja, manzanos y macetas guardan
   cuándo empezaron en vez de descontar tiempo en `_process`. Sin esto, con chunks los campos lejos no
   producen. `parcela.gd`, `corral.gd`, `arbol_frutal.gd`, `maceta_3d.gd`, `guardado.gd`.
-- [ ] **Quitar el objetivo de 1.000 $** (S). `GameData.OBJETIVO_DINERO` y el aviso "Prototipo superado"
+- [x] **Quitar el objetivo de 1.000 $** (S). `GameData.OBJETIVO_DINERO` y el aviso "Prototipo superado"
   en `juego.gd` salen a los 10 minutos. Sustituir por metas del móvil (ver P1).
 - [ ] **Una sola fuente para precios** (S). Borrar `precio_semilla` y `PRECIO_ALQUILER` de `game_data.gd`;
   que `barrio_residencial.gd` y `barrio_campo.gd` lean `propiedades.gd`.
 - [ ] **Datos de cultivos, granja y vehículos a `scripts/datos/`** (S). `Parcela.CULTIVOS`, `Corral.ESPECIES`,
   `Vehiculo.TIPOS` fuera de sus scripts (el hilo de vehículos debe hacerlo, para no chocar).
-- [ ] **Archivo `scripts/datos/economia.gd` con los multiplicadores** (S): % de venta a tienda, factor de
+- [x] **Archivo `scripts/datos/economia.gd` con los multiplicadores** (S): % de venta a tienda, factor de
   compra, factor de cosecha, multas. Cambiar el equilibrio será tocar un archivo.
 
 ## P1: equilibrar y dar rumbo
 
-- [ ] **Subir los tiempos de las hierbas** (S): Bruma 15 s → 60 s, Sepulcral 25 s → 120 s. `game_data.gd`.
+- [x] **Subir los tiempos de las hierbas** (S): Bruma 15 s → 60 s, Sepulcral 25 s → 120 s. `game_data.gd`.
   Efecto: bajar el dinero/hora del nivel 1 de 5.000-8.000 a 1.500-3.000.
-- [ ] **Alquiler que se repite** (M): cobrar cada día de juego (propuesta 4 % del precio de compra por día)
+- [x] **Alquiler que se repite** (M): cobrar cada día de juego (propuesta 4 % del precio de compra por día)
   y avisar en el móvil; si no pagas, pierdes la propiedad a los 3 días. Compra a 40 veces el alquiler
   (no 25). `propiedades.gd`, `juego.gd`, `inmobiliaria.gd`.
-- [ ] **Arreglar la escala de los huertos** (S): quitar el tope de 60 unidades o subir el tope según tamaño;
+- [x] **Arreglar la escala de los huertos** (S): quitar el tope de 60 unidades o subir el tope según tamaño;
   que el beneficio por m² baje con el tamaño no, sino que suba un poco. `parcela.gd`, `propiedades.gd`.
-- [ ] **Equilibrar la legal frente a la ilegal** (S): venta de cosechas al 33 % (hoy 50 %) o tiempos x2.
+- [x] **Equilibrar la legal frente a la ilegal** (S): venta de cosechas al 33 % (hoy 50 %) o tiempos x2.
   Objetivo: huerto grande ≈ 2.000 $/h; pociones 3.000 $/h con riesgo. `juego.gd` (`vender`), `parcela.gd`.
-- [ ] **Equilibrar la granja** (S): vaca 90 s por leche (o leche a 24 $) y manzanos 2 en vez de 3 o fruta
+- [x] **Equilibrar la granja** (S): vaca 90 s por leche (o leche a 24 $) y manzanos 2 en vez de 3 o fruta
   cada 5 min. `corral.gd`, `arbol_frutal.gd`.
 - [ ] **Más recetas e ingredientes** (M): 3 hierbas nuevas (nivel 3, 6, 9) y 8 pociones con recetas de
   2 a 4 ingredientes; precios de 40 a 600 $. `game_data.gd`, `objetos.gd`. (El hilo de recetas.)
@@ -40,9 +40,9 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   (hierba Sepulcral nivel 2, empaquetadora nivel 2, vacas nivel 6, huertos grandes nivel 7-10…).
   Solo hace falta usar el campo `nivel` que ya existe.
 - [ ] **Metas encadenadas en el móvil** (M): 6 misiones con recompensa. `ui/telefono.gd`, `juego.gd`.
-- [ ] **Subir los sueldos del personal** (S): hoy 35-60 $/día frente a 6.000+ $/h que rinde un huerto grande.
+- [x] **Subir los sueldos del personal** (S): hoy 35-60 $/día frente a 6.000+ $/h que rinde un huerto grande.
   Sueldo ≈ 25-40 % de lo que rinde el puesto, o día de 20-24 min. `datos/personal.gd`, `juego.gd`.
-- [ ] **Multas proporcionales** (S): cacheo = 5 % del dinero + valor de lo confiscado; registro de casa
+- [x] **Multas proporcionales** (S): cacheo = 5 % del dinero + valor de lo confiscado; registro de casa
   igual; morir = 10 a 20 % con mínimo. `ui/cacheo.gd`, `juego.gd`, `jugador.gd`.
 
 ## P2: sistemas que faltan o están a medias
@@ -83,3 +83,16 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 - **Sin probar en Godot**: casi todo lo reciente lo escribió la nube. Cada hito debe pasar por el hilo del PC.
 - **Choques entre hilos**: `PLAN.md`, `juego.gd` y `objetos.gd` los tocan todos. Hacer commits pequeños y
   actualizar la rama antes de empezar.
+
+## Hecho el 2026-11-18 (hilo "Equilibrar economía y cerrar pendientes")
+
+- `scripts/datos/economia.gd`: ventas (cosechas 33 %), cultivos x2 de tiempo, huertos 1 cosecha por 16 m2 (tope 80),
+  alquiler diario 4 % del precio de compra (3 impagos = pierdes la propiedad), compra a 40 veces el alquiler,
+  multas proporcionales, niveles 1 a 20 (60 x n^1,5 de XP) con +1 % de precio de pociones por nivel.
+- Bruma 60 s y Sepulcral 120 s; sueldos de personal 200 a 280 $/día; vaca 180 s por leche; manzanos 3 cada 5 min.
+- `Juego.reloj` (reloj absoluto, se guarda): corrales, manzanos y macetas cuentan el tiempo aunque estén descargados.
+- Troncos con colisión en los trozos del mundo; cámara de conducción más alta que atraviesa otros coches y guardias.
+- Guardias: ven atropellos y conducir sin carnet (habilidad "conduccion", 150 $ con un instructor); multa y persecución.
+- Casas del mundo en alquiler/venta con interior (muros con puerta, cama y mesa).
+- Pendiente de la lista: datos de cultivos/granja a `scripts/datos/`, una sola fuente de precios, metas del móvil,
+  desbloqueos por nivel de hierbas y huertos (no hecho), y P2/P3. Todo SIN PROBAR a mano en Godot (solo pruebas automáticas).

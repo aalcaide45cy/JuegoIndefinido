@@ -581,7 +581,11 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 	var d: float = c["d"]
 	var alto: float = c["alto"]
 	var centro: Vector3 = Vector3(c["x"], y + alto / 2.0 - 0.2, c["z"])
-	mb.caja(centro, Vector3(w, alto + 0.4, d), c["color"])
+	var hueca: bool = detalle and str(c["id"]) != ""   # Las casas en alquiler o venta tienen interior.
+	if hueca:
+		_paredes_con_interior(mb, c)
+	else:
+		mb.caja(centro, Vector3(w, alto + 0.4, d), c["color"])
 	if bool(c["plano"]):
 		mb.caja(Vector3(c["x"], y + alto + 0.2, c["z"]), Vector3(w + 0.4, 0.4, d + 0.4), (c["techo"] as Color).darkened(0.2))
 	else:
@@ -590,7 +594,8 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 		return
 	var cara: float = float(c["puerta"])
 	var zf: float = c["z"] + cara * (d / 2.0 + 0.04)
-	mb.caja(Vector3(c["x"], y + 1.05, zf), Vector3(1.1, 2.1, 0.1), Color(0.25, 0.15, 0.1))
+	if not hueca:
+		mb.caja(Vector3(c["x"], y + 1.05, zf), Vector3(1.1, 2.1, 0.1), Color(0.25, 0.15, 0.1))
 	var vent: Color = Color(0.12, 0.17, 0.26)
 	for piso in int(c["pisos"]):
 		for lado in [-1.0, 1.0]:
@@ -602,6 +607,45 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 				mb.caja(Vector3(vx, y + 1.6 + piso * 3.2, vz), Vector3(1.0, 1.2, 0.08), vent)
 	if str(c["id"]) != "":
 		mb.caja(Vector3(c["x"], y + 2.9, zf + cara * 0.04), Vector3(1.6, 0.5, 0.08), Color(0.2, 0.65, 0.3))
+
+
+# Casa hueca: cuatro muros con un hueco de puerta de 1,3 m, suelo, techo bajo y unos muebles
+# (cama y mesa). Si la casa tiene varios pisos, los de arriba son macizos.
+static func _paredes_con_interior(mb: ConstructorMalla, c: Dictionary) -> void:
+	var x: float = c["x"]
+	var z: float = c["z"]
+	var y: float = c["y"]
+	var w: float = c["w"]
+	var d: float = c["d"]
+	var alto: float = c["alto"]
+	var cara: float = float(c["puerta"])
+	var col: Color = c["color"]
+	var g: float = 0.3          # Grosor de los muros.
+	var hueco: float = 1.3      # Ancho de la puerta.
+	var h_muro: float = alto + 0.2
+	var yc: float = y + h_muro / 2.0 - 0.1
+	# Muro del fondo y muros laterales.
+	mb.caja(Vector3(x, yc, z - cara * (d / 2.0 - g / 2.0)), Vector3(w, h_muro, g), col)
+	for lado in [-1.0, 1.0]:
+		mb.caja(Vector3(x + lado * (w / 2.0 - g / 2.0), yc, z), Vector3(g, h_muro, d), col)
+	# Muro del frente partido por la puerta, con dintel encima.
+	var zf: float = z + cara * (d / 2.0 - g / 2.0)
+	var lado_w: float = (w - g * 2.0 - hueco) / 2.0
+	for lado in [-1.0, 1.0]:
+		mb.caja(Vector3(x + lado * (hueco / 2.0 + lado_w / 2.0 + g), yc, zf), Vector3(lado_w + 2.0 * g, h_muro, g), col)
+	mb.caja(Vector3(x, y + 2.1 + (h_muro - 2.1) / 2.0 - 0.1, zf), Vector3(hueco, h_muro - 2.1, g), col)
+	# Suelo y techo de la planta baja; pisos de arriba macizos.
+	mb.caja(Vector3(x, y + 0.05, z), Vector3(w - 2.0 * g, 0.1, d - 2.0 * g), Color(0.38, 0.26, 0.16))
+	mb.caja(Vector3(x, y + 3.2, z), Vector3(w - 2.0 * g, 0.2, d - 2.0 * g), col.darkened(0.15))
+	if int(c["pisos"]) > 1:
+		mb.caja(Vector3(x, y + (3.3 + alto) / 2.0, z), Vector3(w, alto - 3.3, d), col)
+	# Muebles sencillos: cama contra una pared lateral al fondo y una mesa con dos sillas.
+	var fondo_z: float = z - cara * (d / 2.0 - g - 1.2)
+	mb.caja(Vector3(x - w / 2.0 + g + 0.55, y + 0.35, fondo_z), Vector3(1.0, 0.5, 2.0), Color(0.5, 0.15, 0.15))
+	mb.caja(Vector3(x - w / 2.0 + g + 0.55, y + 0.2, fondo_z), Vector3(1.1, 0.2, 2.1), Color(0.3, 0.2, 0.12))
+	mb.caja(Vector3(x + 1.0, y + 0.42, z - cara * 1.0), Vector3(1.4, 0.84, 0.8), Color(0.35, 0.24, 0.14))
+	mb.caja(Vector3(x + 1.0, y + 0.25, z - cara * 2.0), Vector3(0.4, 0.5, 0.4), Color(0.3, 0.2, 0.12))
+	mb.caja(Vector3(x + 1.0, y + 0.25, z), Vector3(0.4, 0.5, 0.4), Color(0.3, 0.2, 0.12))
 
 
 # Un huerto: tierra, surcos, valla con entrada hacia el pueblo.
