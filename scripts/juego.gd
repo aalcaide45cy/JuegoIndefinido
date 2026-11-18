@@ -15,6 +15,9 @@ extends Node
 
 # Datos de objetos y habilidades (se cargan con preload para no depender de
 # que el editor haya registrado los nombres de clase).
+const DatosPropiedades = preload("res://scripts/datos/propiedades.gd")
+const DatosMetas = preload("res://scripts/datos/metas.gd")
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
@@ -37,6 +40,10 @@ var dinero: int = 0
 var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
+var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
+var metas_cobradas: Dictionary = {}   # id de meta -> true (ver datos/metas.gd).
+var _t_metas: float = 0.0
+var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
@@ -45,6 +52,8 @@ var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pant
 var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
 var sospecha: float = 0.0           # 0-100: sube si llevas ilegal, corres con ello o vendes; baja con el tiempo. Sube la prob. de cacheo y registro.
 var _t_sospecha: float = 0.0
+var atropello_visto: float = 0.0    # Segundos que quedan de "has atropellado a alguien a la vista".
+var multa_trafico_enfriamiento: float = 0.0   # Evita multar una y otra vez por lo mismo.
 var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
 var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
 var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado).
@@ -93,6 +102,9 @@ func reiniciar() -> void:
 	vida = VIDA_MAX
 	hora = 20.0
 	dia = 1
+	reloj = 0.0
+	impagos.clear()
+	metas_cobradas.clear()
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	ha_ganado = false
@@ -131,6 +143,11 @@ func reiniciar() -> void:
 
 
 func _process(delta: float) -> void:
+	reloj += delta * velocidad_tiempo
+	_t_metas += delta
+	if _t_metas >= 2.0:
+		_t_metas = 0.0
+		revisar_metas()
 	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
 	_t_sospecha += delta
 	if _t_sospecha >= 1.0:
@@ -138,7 +155,7 @@ func _process(delta: float) -> void:
 		_t_sospecha = 0.0
 		var delta_s: float = -0.6   # Baja con el tiempo.
 		if lleva_ilegal():
-			delta_s += 0.9
+			delta_s += 0.9 * (0.7 if habilidades.has("sigilo") else 1.0)
 			if Input.is_action_pressed("correr"):
 				delta_s += 0.6
 		if delito_visto > 0.0:
@@ -146,6 +163,8 @@ func _process(delta: float) -> void:
 		delta_s -= 1.5 * mod("calma")   # Efecto "Calma": la sospecha baja más rápido.
 		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
+	atropello_visto = maxf(0.0, atropello_visto - delta)
+	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	if alerta > 0.0:
 		var bajada: float = 30.0 if interiores > 0 else 6.0
@@ -156,6 +175,7 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+		DatosPropiedades.cobrar_dia()
 		dia_nuevo.emit()
 
 
@@ -196,16 +216,20 @@ func lleva_ilegal() -> bool:
 
 # Experiencia que hace falta para pasar del nivel actual al siguiente.
 func xp_necesaria() -> int:
-	return 100 * nivel
+	return Economia.xp_para_subir(nivel)
 
 
 # Suma experiencia (plantar, cosechar, preparar y vender dan XP) y sube de nivel.
 func ganar_xp(cantidad: int) -> void:
+	if nivel >= Economia.NIVEL_MAX:
+		return
 	xp += int(round(float(cantidad) * (1.0 + mod("xp"))))
-	while xp >= xp_necesaria():
+	while nivel < Economia.NIVEL_MAX and xp >= xp_necesaria():
 		xp -= xp_necesaria()
 		nivel += 1
 		avisar("¡Subes al nivel %d! Hay objetos nuevos en las tiendas." % nivel)
+	if nivel >= Economia.NIVEL_MAX:
+		xp = 0
 	cambio.emit()
 
 
@@ -234,6 +258,21 @@ func alquilada(id_casa: String) -> bool:
 	return viviendas.has(id_casa)
 
 
+# Cobra el premio de las metas del móvil que ya cumpliste (una vez cada una).
+func revisar_metas() -> void:
+	for m in DatosMetas.LISTA:
+		if not metas_cobradas.has(m["id"]) and DatosMetas.cumplida(m["id"]):
+			metas_cobradas[m["id"]] = true
+			cobrar(int(m["premio"]))
+			nuevo_aviso("Meta cumplida: %s  +%d $" % [m["texto"], m["premio"]])
+			avisar("¡Meta cumplida! +%d $" % int(m["premio"]))
+
+
+# ¿Tienes el carnet de conducir? (Se aprende con un instructor: habilidad "conduccion".)
+func tiene_carnet() -> bool:
+	return habilidades.has("conduccion")
+
+
 func tiene_vivienda() -> bool:
 	return not viviendas.is_empty()
 
@@ -255,9 +294,6 @@ func gastar(cantidad: int) -> bool:
 func cobrar(cantidad: int) -> void:
 	dinero += cantidad
 	cambio.emit()
-	if not ha_ganado and dinero >= GameData.OBJETIVO_DINERO:
-		ha_ganado = true
-		avisar("¡Has reunido %d $ para el Prefecto! Prototipo superado." % GameData.OBJETIVO_DINERO)
 
 
 func cambiar_vida(cantidad: float) -> void:
@@ -646,7 +682,8 @@ func vender(lista: Array, i: int) -> String:
 	var datos: Dictionary = DatosObjetos.datos(casilla["id"])
 	if datos["precio"] <= 0:
 		return "Aquí no compran %s." % datos["nombre"]
-	var pago: int = maxi(1, datos["precio"] / 2) * casilla["cantidad"]
+	var factor: float = Economia.VENTA_COSECHA if datos["tipo"] == "cosecha" else Economia.VENTA_TIENDA
+	var pago: int = maxi(1, int(datos["precio"] * factor)) * casilla["cantidad"]
 	lista[i] = null
 	cobrar(pago)
 	# Revender a una tienda no da experiencia: si no, comprar y vender sin parar
@@ -683,7 +720,7 @@ func registrar_casa() -> String:
 			estanteria[i] = null
 	if montones == 0:
 		return "La policía ha entrado en tu casa por la puerta abierta, no ha encontrado nada y se ha ido."
-	var multa: int = mini(dinero, 30 * montones + 5 * unidades)
+	var multa: int = mini(dinero, 30 * montones + 5 * unidades + int(dinero * Economia.MULTA_REGISTRO_PORCENTAJE))
 	dinero -= multa
 	cambio.emit()
 	return "¡La policía ha registrado tu casa (puerta abierta)! Confiscado lo ilegal de tu estantería y multa de %d $." % multa

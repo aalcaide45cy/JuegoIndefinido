@@ -60,6 +60,9 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"en_propiedad": Juego.en_propiedad.keys(),
 		"parcelas": Juego.parcelas,
 		"granja": Juego.granja,
+		"reloj": Juego.reloj,
+		"impagos": Juego.impagos,
+		"metas": Juego.metas_cobradas,
 		"encargos": Juego.encargos,
 		"pedidos_material": Juego.pedidos_material,
 		"avisos": Juego.avisos,
@@ -118,13 +121,25 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 			if pg is Dictionary and Parcela.CULTIVOS.has(str(pg.get("semilla", ""))):
 				Juego.parcelas[str(id_h)] = {"semilla": str(pg["semilla"]), "t": maxf(0.0, float(pg.get("t", 0.0))),
 						"total": maxf(1.0, float(pg.get("total", 100.0)))}
+	Juego.metas_cobradas.clear()
+	var mt = datos.get("metas", {})
+	if mt is Dictionary:
+		for k in mt:
+			Juego.metas_cobradas[str(k)] = true
+	Juego.impagos.clear()
+	var imp = datos.get("impagos", {})
+	if imp is Dictionary:
+		for k in imp:
+			Juego.impagos[str(k)] = clampi(int(imp[k]), 1, 3)
+	Juego.reloj = maxf(0.0, float(datos.get("reloj", 0.0)))
 	var granja_g = datos.get("granja", {})
 	if granja_g is Dictionary:
 		for id_g in granja_g:
 			var gg = granja_g[id_g]
 			if gg is Dictionary:
 				Juego.granja[str(id_g)] = {"n": clampi(int(gg.get("n", 0)), 0, 12), "prod": clampi(int(gg.get("prod", 0)), 0, 20),
-						"t": maxf(0.0, float(gg.get("t", 0.0))), "nivel": clampi(int(gg.get("nivel", 1)), 1, 3)}
+						"t": maxf(0.0, float(gg.get("t", 0.0))), "nivel": clampi(int(gg.get("nivel", 1)), 1, 3),
+						"u": minf(Juego.reloj, float(gg.get("u", Juego.reloj)))}
 	Juego.reputacion = clampi(int(datos.get("reputacion", 0)), -50, 100)
 	for e in datos.get("encargos", []):
 		if e is Dictionary and GameData.existe_pocion(str(e.get("pocion", ""))) and e.get("pos", []) is Array \

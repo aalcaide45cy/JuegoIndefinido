@@ -75,8 +75,8 @@ func construir() -> void:
 	var apps: HBoxContainer = HBoxContainer.new()
 	apps.add_theme_constant_override("separation", 6)
 	caja.add_child(apps)
-	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"]]
-	for i in 4:
+	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"], ["Metas", "trophy"]]
+	for i in 5:
 		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
 		b.icon = _icono(datos[i][1])
 		b.expand_icon = true
@@ -100,7 +100,7 @@ func _cambiar_pestana(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
-	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios"][_pestana]
+	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios", "Metas"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
 	var firma: String = _calcular_firma()
 	if firma != _firma:
@@ -127,6 +127,7 @@ func _reconstruir() -> void:
 		1: _pintar_pedidos()
 		2: _pintar_avisos()
 		3: _pintar_negocios()
+		4: _pintar_metas()
 
 
 # Resume lo que obliga a redibujar la pestaña. La de Negocios se cuida sola (el
@@ -137,8 +138,17 @@ func _calcular_firma() -> String:
 		return firma
 	for e in Juego.encargos:
 		firma += "%s%s," % [e["id"], e["estado"]]
-	firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
+	firma += "|%d|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel, Juego.metas_cobradas.size()]
 	return firma
+
+
+func _pintar_metas() -> void:
+	for m in Juego.DatosMetas.LISTA:
+		var v: VBoxContainer = _tarjeta()
+		var hecha: bool = Juego.metas_cobradas.has(m["id"])
+		_texto(v, ("✔ " if hecha else "○ ") + str(m["texto"]), 15,
+				Color(0.55, 0.9, 0.55) if hecha else Color(0.9, 0.92, 0.95))
+		_texto(v, "Premio: %d $" % int(m["premio"]), 13, Color(1.0, 0.85, 0.4))
 
 
 func _pintar_negocios() -> void:

@@ -1,14 +1,14 @@
 # arbol_frutal.gd
 # -----------------------------------------------------------------------------
-# Un manzano de la granja: cada 180 s da 4 manzanas (se acumulan hasta 12).
+# Un manzano de la granja: cada 300 s da 3 manzanas (se acumulan hasta 12).
 # E recoge la fruta. Hace falta tener algún huerto. SIN PROBAR en Godot.
 # -----------------------------------------------------------------------------
 class_name ArbolFrutal
 extends Interactuable
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
-const TIEMPO: float = 180.0
-const FRUTOS: int = 4
+const TIEMPO: float = 300.0   # Una tanda cada 5 minutos.
+const FRUTOS: int = 3
 const MAXIMO: int = 12
 
 var id_arbol: String = "manzano_1"
@@ -25,17 +25,21 @@ func _ready() -> void:
 
 func _estado() -> Dictionary:
 	if not Juego.granja.has(id_arbol):
-		Juego.granja[id_arbol] = {"prod": 0, "t": 0.0}
+		Juego.granja[id_arbol] = {"prod": 0, "t": 0.0, "u": Juego.reloj}
 	return Juego.granja[id_arbol]
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var e: Dictionary = _estado()
+	var pasado: float = maxf(0.0, Juego.reloj - float(e.get("u", Juego.reloj)))
+	e["u"] = Juego.reloj
 	if not Juego.huertos.is_empty() and int(e["prod"]) < MAXIMO:
-		e["t"] = float(e["t"]) + delta
-		if float(e["t"]) >= TIEMPO:
-			e["t"] = 0.0
+		e["t"] = float(e["t"]) + pasado
+		while float(e["t"]) >= TIEMPO and int(e["prod"]) < MAXIMO:
+			e["t"] = float(e["t"]) - TIEMPO
 			e["prod"] = mini(MAXIMO, int(e["prod"]) + FRUTOS)
+		if int(e["prod"]) >= MAXIMO:
+			e["t"] = 0.0
 	var visibles: int = mini(6, int(e["prod"]))
 	if _frutas.get_child_count() != visibles:
 		for h in _frutas.get_children():

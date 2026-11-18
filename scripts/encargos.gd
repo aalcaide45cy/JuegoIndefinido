@@ -11,6 +11,7 @@
 class_name Encargos
 extends Node
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 
 const NOMBRES: Array[String] = ["Marta", "Ismael", "Rosario", "Dani", "Lola", "Chema", "Vera", "Nico", "Paco", "Inés"]
@@ -253,7 +254,7 @@ func entregar(id: int) -> String:
 		Juego.quitar(item, cant)
 		if Juego.interiores == 0:
 			Juego.delito_visto = 30.0   # Vender ilegal en la calle: los guardias cercanos lo notan.
-		e["pago"] = int(int(e["pago"]) * bonus)
+		e["pago"] = int(int(e["pago"]) * bonus * Economia.bonus_nivel(Juego.nivel))
 		Juego.cobrar(int(e["pago"]))
 		Juego.ganar_xp(15 * cant)
 		Juego.reputacion = mini(100, Juego.reputacion + 3)

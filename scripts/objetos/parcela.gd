@@ -10,11 +10,8 @@
 class_name Parcela
 extends Interactuable
 
-const CULTIVOS: Dictionary = {
-	"semilla_trigo": {"cosecha": "trigo", "tiempo": 150.0, "color": Color(0.85, 0.75, 0.3)},
-	"semilla_maiz": {"cosecha": "maiz", "tiempo": 200.0, "color": Color(0.9, 0.8, 0.2)},
-	"semilla_tomate": {"cosecha": "tomate", "tiempo": 240.0, "color": Color(0.75, 0.15, 0.1)},
-}
+const DatosCultivos = preload("res://scripts/datos/cultivos.gd")
+const CULTIVOS: Dictionary = DatosCultivos.CULTIVOS
 
 var id_huerto: String = ""
 var m2: int = 144
@@ -77,6 +74,7 @@ func texto_accion() -> String:
 	return "Cosechar %d x %s" % [_unidades(), DatosObjetos.nombre(CULTIVOS[e["semilla"]]["cosecha"])]
 
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const Propiedades = preload("res://scripts/datos/propiedades.gd")
 
@@ -86,7 +84,7 @@ func _semillas_necesarias() -> int:
 
 
 func _unidades() -> int:
-	return clampi(m2 / 12, 1, 60)
+	return clampi(m2 / Economia.M2_POR_UNIDAD, 1, Economia.MAX_UNIDADES_HUERTO)
 
 
 func usar(_jugador: Node) -> void:
@@ -109,7 +107,7 @@ func usar(_jugador: Node) -> void:
 			Juego.avisar("Necesitas %d semillas para sembrar este huerto." % n)
 			return
 		Juego.quitar(semilla, n)
-		var total: float = CULTIVOS[semilla]["tiempo"]
+		var total: float = CULTIVOS[semilla]["tiempo"] * Economia.FACTOR_TIEMPO_CULTIVO * (0.85 if Juego.habilidades.has("cultivo") else 1.0)
 		Juego.parcelas[id_huerto] = {"semilla": semilla, "t": total, "total": total}
 		Juego.avisar("Huerto sembrado. Tardará %d s en madurar." % int(total))
 		return

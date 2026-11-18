@@ -10,6 +10,7 @@
 class_name GestorPersonal
 extends Node
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosPersonal = preload("res://scripts/datos/personal.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const Propiedades = preload("res://scripts/datos/propiedades.gd")
@@ -108,5 +109,5 @@ func _cosechar(id_huerto: String, rend: float) -> void:
 		var coste: int = int(DatosObjetos.datos(semilla)["precio"]) * semillas_n
 		if not Juego.gastar(coste):
 			return
-	var total: float = Parcela.CULTIVOS[semilla]["tiempo"]
+	var total: float = Parcela.CULTIVOS[semilla]["tiempo"] * Economia.FACTOR_TIEMPO_CULTIVO
 	Juego.parcelas[id_huerto] = {"semilla": semilla, "t": total, "total": total}

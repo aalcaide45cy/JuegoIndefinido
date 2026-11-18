@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # La puerta de una casa del mundo grande que se alquila o se vende.
 #   E          -> alquilar (pago único).
-#   Mayús + E  -> comprar (25 veces el alquiler; se vende por el 70 %).
+#   Mayús + E  -> comprar (40 veces el alquiler; se vende por el 70 %).
 # Cuando ya es tuya, E descansa un rato y recupera vida.
 # Los huertos del mundo usan Parcela (que hace lo mismo con su id "w_h_...").
 # La ficha (precio, tamaño, nombre) sale del id con GeneradorMundo.propiedad().

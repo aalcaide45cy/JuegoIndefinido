@@ -16,9 +16,6 @@ extends RefCounted
 # Dólares con los que empiezas la partida.
 const DINERO_INICIAL: int = 200
 
-# Dinero que necesitas para "ganar" el prototipo (pagar el alquiler al casero).
-const OBJETIVO_DINERO: int = 1000
-
 # Cuántos ingredientes caben en el caldero depende del nivel (2, 3 o 4): ver
 # Mezclas.CASILLAS_POR_NIVEL en scripts/datos/mezclas.gd, que también genera una
 # poción distinta por cada combinación.
@@ -31,62 +28,57 @@ const Mezclas = preload("res://scripts/datos/mezclas.gd")
 #  - forma: cómo se dibuja ("hoja" = planta de hojas dentadas, "seta" = hongo).
 #  - color: color de la planta y del líquido en el caldero.
 #  - tiempo: segundos que tarda en crecer.
-#  - precio_semilla: dólares que cuesta una semilla en el puesto del mercado.
+#  (El precio de las semillas está en scripts/datos/objetos.gd.)
 const HIERBAS: Dictionary = {
 	# La hierba estrella: ilegal, de hojas dentadas, cuyo humo hace soñar.
 	"bruma": {
 		"nombre": "Hoja de Bruma",
 		"forma": "hoja",
 		"color": Color(0.3, 0.6, 0.35),
-		"tiempo": 15.0,
-		"precio_semilla": 10,
+		"tiempo": 60.0,
 	},
 	# Un hongo pálido que solo crece donde hay huesos.
 	"sepulcral": {
 		"nombre": "Hongo Sepulcral",
 		"forma": "seta",
 		"color": Color(0.62, 0.58, 0.7),
-		"tiempo": 25.0,
-		"precio_semilla": 15,
+		"tiempo": 120.0,
 	},
 	# Hierbas nuevas (cada una aporta efectos distintos a las pociones; ver mezclas.gd).
 	"raiz_ardiente": {
 		"nombre": "Raíz Ardiente", "forma": "hoja", "color": Color(0.85, 0.3, 0.15),
-		"tiempo": 45.0, "precio_semilla": 14,
+		"tiempo": 45.0,
 	},
 	"lirio_lunar": {
 		"nombre": "Lirio Lunar", "forma": "hoja", "color": Color(0.55, 0.7, 0.95),
-		"tiempo": 150.0, "precio_semilla": 20,
+		"tiempo": 150.0,
 	},
 	"cardo_hierro": {
 		"nombre": "Cardo de Hierro", "forma": "hoja", "color": Color(0.5, 0.55, 0.6),
-		"tiempo": 75.0, "precio_semilla": 16,
+		"tiempo": 75.0,
 	},
 	"musgo_dulce": {
 		"nombre": "Musgo Dulce", "forma": "hoja", "color": Color(0.5, 0.85, 0.4),
-		"tiempo": 40.0, "precio_semilla": 12,
+		"tiempo": 40.0,
 	},
 	"baya_noche": {
 		"nombre": "Baya de Noche", "forma": "hoja", "color": Color(0.3, 0.2, 0.5),
-		"tiempo": 110.0, "precio_semilla": 15,
+		"tiempo": 110.0,
 	},
 	"flor_sol": {
 		"nombre": "Flor de Sol", "forma": "hoja", "color": Color(0.95, 0.8, 0.25),
-		"tiempo": 130.0, "precio_semilla": 16,
+		"tiempo": 130.0,
 	},
 	"ortiga_negra": {
 		"nombre": "Ortiga Negra", "forma": "hoja", "color": Color(0.15, 0.3, 0.2),
-		"tiempo": 35.0, "precio_semilla": 11,
+		"tiempo": 35.0,
 	},
 	"hongo_risueno": {
 		"nombre": "Hongo Risueño", "forma": "seta", "color": Color(0.95, 0.6, 0.7),
-		"tiempo": 80.0, "precio_semilla": 14,
+		"tiempo": 80.0,
 	},
 }
 
-
-# Lo que cuesta alquilar la casa del callejón (pago único en este prototipo).
-const PRECIO_ALQUILER: int = 100
 
 # Pociones que se pueden mezclar.
 #  - receta: los ingredientes que hay que echar al caldero (el orden da igual).
