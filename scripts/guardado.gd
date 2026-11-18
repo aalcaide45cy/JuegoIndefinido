@@ -148,6 +148,8 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"reloj": Juego.reloj,
 		"impagos": Juego.impagos,
 		"metas": Juego.metas_cobradas,
+		"oficio": Juego.oficio,
+		"oficios_xp": Juego.oficios_xp,
 		"encargos": Juego.encargos,
 		"pedidos_material": Juego.pedidos_material,
 		"avisos": Juego.avisos,
@@ -258,6 +260,13 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 				Juego.parcelas[str(id_h)] = {"semilla": str(pg["semilla"]), "t": maxf(0.0, float(pg.get("t", 0.0))),
 						"total": maxf(1.0, float(pg.get("total", 100.0)))}
 	Juego.metas_cobradas.clear()
+	var of: String = str(datos.get("oficio", ""))
+	Juego.oficio = of if Juego.DatosOficios.existe(of) else ""
+	var oxp = datos.get("oficios_xp", {})
+	if oxp is Dictionary:
+		for k in oxp:
+			if Juego.DatosOficios.existe(str(k)):
+				Juego.oficios_xp[str(k)] = maxi(0, int(oxp[k]))
 	var mt = datos.get("metas", {})
 	if mt is Dictionary:
 		for k in mt:

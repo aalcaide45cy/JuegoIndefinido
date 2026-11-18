@@ -320,7 +320,7 @@ func _revisar_puertas(de_noche: bool) -> void:
 
 # Con probabilidad baja (más alta de noche y si llevas algo ilegal) te pide un cacheo.
 func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
-	if jugador == null or Juego.menu_abierto or Juego.enfriamiento_cacheo > 0.0 or Juego.interiores > 0:
+	if jugador == null or Juego.menu_abierto or Juego.enfriamiento_cacheo > 0.0 or Juego.interiores > 0 or Juego.es_policia_activo():
 		return
 	if global_position.distance_to(jugador.global_position) > 5.0:
 		return

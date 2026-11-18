@@ -201,6 +201,35 @@ class Semaforo extends Node3D:
 	var estado: Array = [-1, -1]
 
 
+func _ready() -> void:
+	add_to_group("vida_urbana")
+
+
+# Un punto de calle (x, y, z) a entre "minimo" y "maximo" metros del jugador, o null.
+func punto_de_calle(minimo: float, maximo: float):
+	if _jugador == null or not is_instance_valid(_jugador):
+		return null
+	_actualizar_redes_cercanas()
+	if _cerca.is_empty():
+		return null
+	var yo: Vector2 = Vector2(_jugador.global_position.x, _jugador.global_position.z)
+	for intento in 40:
+		var red: Dictionary = _cerca[randi() % _cerca.size()]
+		var claves: Array = red["pos"].keys()
+		var desde: Vector2i = claves[randi() % claves.size()]
+		var vecinos: Array = red["vec"][desde]
+		if vecinos.is_empty():
+			continue
+		var hacia: Vector2i = vecinos[randi() % vecinos.size()]
+		var pa: Vector2 = red["pos"][desde]
+		var pb: Vector2 = red["pos"][hacia]
+		var p: Vector2 = pa.lerp(pb, randf())
+		var dist: float = p.distance_to(yo)
+		if dist >= minimo and dist <= maximo:
+			return Vector3(p.x, _altura(red, p.x, p.y) + 0.15, p.y)
+	return null
+
+
 func _physics_process(delta: float) -> void:
 	if _jugador == null or not is_instance_valid(_jugador):
 		_jugador = get_tree().get_first_node_in_group("jugador") as Node3D
