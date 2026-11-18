@@ -174,10 +174,10 @@ func material_textura(nombre: String, escala: float) -> StandardMaterial3D:
 	var ruta: String = "res://assets/%sT%s.png" % [PUEBLO, nombre.trim_prefix("T")]
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	if ResourceLoader.exists(ruta):
-		mat.albedo_texture = load(ruta) as Texture2D
-	mat.uv1_triplanar = true
-	mat.uv1_scale = Vector3.ONE * escala
-	mat.roughness = 0.9
+		# Low poly: nada de textura de piedra; se usa su color medio, liso.
+		var medio: Color = Estilo.color_medio(load(ruta) as Texture2D)
+		mat.albedo_color = medio.lightened(0.08)
+	mat.roughness = 1.0
 	_materiales_textura[nombre] = mat
 	return mat
 

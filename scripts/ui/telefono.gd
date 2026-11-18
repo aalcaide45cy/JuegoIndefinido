@@ -43,6 +43,7 @@ func construir() -> void:
 	estilo.border_color = Color(0.28, 0.3, 0.36)
 	estilo.set_border_width_all(4)
 	estilo.set_corner_radius_all(44)
+	estilo.corner_detail = 2   # Bordes facetados: low poly
 	estilo.set_content_margin_all(14)
 	marco.add_theme_stylebox_override("panel", estilo)
 	Hud.centrar(marco, Vector2(410.0, 700.0))
@@ -51,6 +52,7 @@ func construir() -> void:
 	var est2: StyleBoxFlat = StyleBoxFlat.new()
 	est2.bg_color = FONDO_APP
 	est2.set_corner_radius_all(32)
+	est2.corner_detail = 2   # Bordes facetados: low poly
 	est2.set_content_margin_all(14)
 	pantalla.add_theme_stylebox_override("panel", est2)
 	marco.add_child(pantalla)
@@ -203,6 +205,7 @@ func _tarjeta() -> VBoxContainer:
 	est.border_color = ACENTO
 	est.border_width_left = 5
 	est.set_corner_radius_all(16)
+	est.corner_detail = 1   # Esquina cortada: estilo low poly
 	est.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL

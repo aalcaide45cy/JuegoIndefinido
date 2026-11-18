@@ -84,6 +84,7 @@ func _tarjeta(color: Color = ACENTO) -> VBoxContainer:
 	est.border_color = color
 	est.border_width_left = 5
 	est.set_corner_radius_all(14)
+	est.corner_detail = 1   # Esquina cortada: estilo low poly
 	est.set_content_margin_all(10)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL

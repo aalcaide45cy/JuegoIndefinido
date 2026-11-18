@@ -262,6 +262,7 @@ class Tienda extends Ventana:
 		var estilo: StyleBoxFlat = StyleBoxFlat.new()
 		estilo.bg_color = Color(0.12, 0.13, 0.12)
 		estilo.set_corner_radius_all(6)
+		estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 		estilo.set_content_margin_all(6)
 		fondo.add_theme_stylebox_override("panel", estilo)
 		var fila: HBoxContainer = HBoxContainer.new()
@@ -309,6 +310,7 @@ class ZonaVenta extends PanelContainer:
 		estilo.border_color = Color(0.7, 0.45, 0.3)
 		estilo.set_border_width_all(2)
 		estilo.set_corner_radius_all(6)
+		estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 		add_theme_stylebox_override("panel", estilo)
 		var texto: Label = Hud.crear_label(15, Color(1, 0.8, 0.65))
 		texto.text = "Arrastra aquí algo de tu inventario para venderlo (a mitad de precio) · o Mayús + clic"

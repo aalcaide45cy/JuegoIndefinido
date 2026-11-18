@@ -48,6 +48,7 @@ static func _estilo(tipo: String) -> StyleBoxFlat:
 	var e: StyleBoxFlat = StyleBoxFlat.new()
 	e.bg_color = FONDOS.get(tipo, FONDO_POR_DEFECTO)
 	e.set_corner_radius_all(6)
+	e.corner_detail = 1   # Esquina cortada: estilo low poly
 	e.border_color = e.bg_color.lightened(0.25)
 	e.set_border_width_all(1)
 	_estilos[tipo] = e

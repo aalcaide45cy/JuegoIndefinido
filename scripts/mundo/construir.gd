@@ -62,11 +62,16 @@ static func material_propio(nodo: Node3D) -> StandardMaterial3D:
 	if instancia == null:
 		return null
 	var primitiva: PrimitiveMesh = instancia.mesh as PrimitiveMesh
-	if primitiva == null:
+	if primitiva != null:
+		var copia: StandardMaterial3D = (primitiva.material as StandardMaterial3D).duplicate() as StandardMaterial3D
+		primitiva.material = copia
+		return copia
+	var lista: ArrayMesh = instancia.mesh as ArrayMesh   # Mallas facetadas (Estilo.facetar).
+	if lista == null or lista.get_surface_count() == 0:
 		return null
-	var copia: StandardMaterial3D = (primitiva.material as StandardMaterial3D).duplicate() as StandardMaterial3D
-	primitiva.material = copia
-	return copia
+	var copia2: StandardMaterial3D = (lista.surface_get_material(0) as StandardMaterial3D).duplicate() as StandardMaterial3D
+	lista.surface_set_material(0, copia2)
+	return copia2
 
 
 # Como material(), pero siempre nuevo (no compartido).
@@ -74,11 +79,8 @@ static func material_unico(color: Color, brillo: float = 0.0) -> StandardMateria
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = 0.9
-	if brillo <= 0.0:
-		# Grano en el espacio del objeto: no hace falta UV y se ve bien en cajas grandes.
-		mat.albedo_texture = _ruido()
-		mat.uv1_triplanar = true
-		mat.uv1_scale = Vector3.ONE * 0.4
+	# Low poly: colores lisos, sin grano ni texturas.
+	mat.metallic_specular = 0.2
 	if brillo > 0.0:
 		mat.emission_enabled = true
 		mat.emission = color
@@ -107,14 +109,15 @@ static func cilindro(padre: Node3D, pos: Vector3, radio: float, alto: float,
 	malla.bottom_radius = radio
 	malla.top_radius = radio if radio_arriba < 0.0 else radio_arriba
 	malla.height = alto
-	malla.radial_segments = 16
+	malla.radial_segments = 8
+	malla.rings = 1
 	malla.material = material(color, brillo)
 	var forma: CylinderShape3D = null
 	if solida:
 		forma = CylinderShape3D.new()
 		forma.radius = radio
 		forma.height = alto
-	return _colocar(padre, pos, malla, forma)
+	return _colocar(padre, pos, Estilo.facetar(malla), forma)
 
 
 # Una esfera (cabezas, sombreros de seta...). Se puede aplastar con "escala".
@@ -123,8 +126,10 @@ static func esfera(padre: Node3D, pos: Vector3, radio: float, color: Color,
 	var malla: SphereMesh = SphereMesh.new()
 	malla.radius = radio
 	malla.height = radio * 2.0
+	malla.radial_segments = 10
+	malla.rings = 5
 	malla.material = material(color, brillo)
-	var nodo: Node3D = _colocar(padre, pos, malla, null)
+	var nodo: Node3D = _colocar(padre, pos, Estilo.facetar(malla), null)
 	nodo.scale = escala
 	return nodo
 
