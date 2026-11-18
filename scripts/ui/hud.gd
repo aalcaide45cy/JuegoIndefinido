@@ -34,6 +34,7 @@ var _efectos_pantalla: EfectosPantalla
 var _mira: ColorRect
 var _negro: ColorRect
 var _menu = null   # La ventana abierta ahora mismo (o null).
+var _chat: PanelChat
 var _tiempo_mensaje: float = 0.0
 
 
@@ -147,6 +148,10 @@ func _ready() -> void:
 	_efectos_pantalla = EfectosPantalla.new()
 	_raiz.add_child(_efectos_pantalla)
 	_raiz.move_child(_efectos_pantalla, 0)
+	# Chat (abajo a la izquierda).
+	_chat = PanelChat.new()
+	_chat.hud = self
+	_raiz.add_child(_chat)
 
 	# Abajo en el centro: mensajes, la acción disponible, lo que llevas en la mano y la barra rápida.
 	_label_mensaje = crear_label(18, Color(0.85, 0.95, 0.8))
@@ -204,6 +209,9 @@ func _ajustar_escala() -> void:
 
 # TAB y Esc se miran aquí, antes que nadie, para que funcionen con menús abiertos.
 func _input(evento: InputEvent) -> void:
+	# Mientras escribes en el chat, las teclas son del chat (P no abre el móvil, etc.).
+	if _chat != null and _chat.escribiendo and evento is InputEventKey:
+		return
 	if evento.is_action_pressed("inventario"):
 		if _menu is Ventanas.Inventario:
 			_menu.cerrar()
