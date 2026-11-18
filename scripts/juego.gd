@@ -16,6 +16,7 @@ extends Node
 # Datos de objetos y habilidades (se cargan con preload para no depender de
 # que el editor haya registrado los nombres de clase).
 const DatosPropiedades = preload("res://scripts/datos/propiedades.gd")
+const DatosMetas = preload("res://scripts/datos/metas.gd")
 const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
@@ -40,6 +41,8 @@ var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
 var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
+var metas_cobradas: Dictionary = {}   # id de meta -> true (ver datos/metas.gd).
+var _t_metas: float = 0.0
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
@@ -100,6 +103,7 @@ func reiniciar() -> void:
 	dia = 1
 	reloj = 0.0
 	impagos.clear()
+	metas_cobradas.clear()
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	ha_ganado = false
@@ -138,6 +142,10 @@ func reiniciar() -> void:
 
 func _process(delta: float) -> void:
 	reloj += delta * velocidad_tiempo
+	_t_metas += delta
+	if _t_metas >= 2.0:
+		_t_metas = 0.0
+		revisar_metas()
 	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
 	_t_sospecha += delta
 	if _t_sospecha >= 1.0:
@@ -246,6 +254,16 @@ func texto_hora() -> String:
 # ¿Tienes alquilada esa vivienda? (Cada casa de la ciudad tiene su identificador.)
 func alquilada(id_casa: String) -> bool:
 	return viviendas.has(id_casa)
+
+
+# Cobra el premio de las metas del móvil que ya cumpliste (una vez cada una).
+func revisar_metas() -> void:
+	for m in DatosMetas.LISTA:
+		if not metas_cobradas.has(m["id"]) and DatosMetas.cumplida(m["id"]):
+			metas_cobradas[m["id"]] = true
+			cobrar(int(m["premio"]))
+			nuevo_aviso("Meta cumplida: %s  +%d $" % [m["texto"], m["premio"]])
+			avisar("¡Meta cumplida! +%d $" % int(m["premio"]))
 
 
 # ¿Tienes el carnet de conducir? (Se aprende con un instructor: habilidad "conduccion".)

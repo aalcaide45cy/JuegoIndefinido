@@ -10,11 +10,8 @@
 class_name Parcela
 extends Interactuable
 
-const CULTIVOS: Dictionary = {
-	"semilla_trigo": {"cosecha": "trigo", "tiempo": 150.0, "color": Color(0.85, 0.75, 0.3)},
-	"semilla_maiz": {"cosecha": "maiz", "tiempo": 200.0, "color": Color(0.9, 0.8, 0.2)},
-	"semilla_tomate": {"cosecha": "tomate", "tiempo": 240.0, "color": Color(0.75, 0.15, 0.1)},
-}
+const DatosCultivos = preload("res://scripts/datos/cultivos.gd")
+const CULTIVOS: Dictionary = DatosCultivos.CULTIVOS
 
 var id_huerto: String = ""
 var m2: int = 144

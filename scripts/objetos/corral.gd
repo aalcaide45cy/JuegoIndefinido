@@ -11,10 +11,8 @@ class_name Corral
 extends Interactuable
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
-const ESPECIES: Dictionary = {
-	"gallina": {"producto": "huevo", "tiempo": 60.0, "color": Color(0.95, 0.93, 0.85), "tam": Vector3(0.35, 0.35, 0.45)},
-	"vaca": {"producto": "leche", "tiempo": 180.0, "color": Color(0.9, 0.9, 0.9), "tam": Vector3(0.9, 0.9, 1.6)},
-}
+const DatosGranja = preload("res://scripts/datos/granja.gd")
+const ESPECIES: Dictionary = DatosGranja.ESPECIES
 const MAX_ACUMULADO: int = 20
 
 var id_corral: String = "gallinero"
