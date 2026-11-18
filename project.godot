@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 Juego="*res://scripts/juego.gd"
 Logros="*res://scripts/logros.gd"
 Graficos="*res://scripts/graficos.gd"
+Chat="*res://scripts/chat/gestor_chat.gd"
 
 [display]
 
