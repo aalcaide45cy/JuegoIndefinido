@@ -37,6 +37,7 @@ static var semilla: int = 1847
 static var nucleo: Rect2 = Rect2(-110.0, -120.0, 440.0, 240.0)   # La ciudad original.
 static var listo: bool = false
 static var conectores: Array = []
+static var obras_vistas: Array = []   # Para pruebas: ["puente"|"tunel"|"curva", Vector3 posición, dirección Vector2].
 static var _r_cont: FastNoiseLite
 static var _r_mont: FastNoiseLite
 static var _r_med: FastNoiseLite
@@ -551,6 +552,68 @@ static func _quitamiedos(mb: ConstructorMalla, rect: Rect2, lista: Array) -> voi
 						Vector3(pb.x, yb + 0.85, pb.y), Vector3(pa.x, ya + 0.85, pa.y), metal)
 				mb.cuadro(Vector3(pa.x, ya + 0.85, pa.y), Vector3(pb.x, yb + 0.85, pb.y),
 						Vector3(pb.x, yb + 0.5, pb.y), Vector3(pa.x, ya + 0.5, pa.y), metal)
+
+
+# Carreteras de montaña: señales de curva y de velocidad, puentes (donde el terreno cae a los dos
+# lados) y bocas de túnel (donde la carretera va encajonada entre dos laderas). Todo con cajas.
+static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array) -> void:
+	var poste: Color = Color(0.35, 0.36, 0.38)
+	var piedra: Color = Color(0.5, 0.49, 0.47)
+	var hormigon: Color = Color(0.62, 0.62, 0.6)
+	for c in lista:
+		if not c.has("camino"):
+			continue
+		var pts: PackedVector2Array = c["pts"]
+		var ultimo_tunel: int = -100
+		var ultimo_puente: int = -100
+		for i in range(2, pts.size() - 3):
+			var a: Vector2 = pts[i]
+			if not rect.has_point(a):
+				continue
+			var d0: Vector2 = (pts[i] - pts[i - 1]).normalized()
+			var d1: Vector2 = (pts[i + 1] - pts[i]).normalized()
+			var nor: Vector2 = Vector2(-d1.y, d1.x)
+			var ya: float = altura_lista(a.x, a.y, lista)
+			var giro: float = d0.cross(d1)   # >0 / <0: curva a un lado u otro.
+			var medio: float = CALLE_ANCHO / 2.0
+			# Señal de curva peligrosa (rombo amarillo) en el exterior, una de cada pocas curvas cerradas.
+			if absf(giro) > 0.22 and i % 4 == 0:
+				var lado: float = -signf(giro)
+				obras_vistas.append(["curva", Vector3(a.x, ya, a.y), d1])
+				var q: Vector2 = a + nor * lado * (medio + 1.2)
+				mb.caja(Vector3(q.x, ya + 1.1, q.y), Vector3(0.1, 2.2, 0.1), poste)
+				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.9, 0.9, 0.08), Color(1.0, 0.8, 0.1))
+				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.5, 0.5, 0.1), Color(0.1, 0.1, 0.1))
+			# Límite de velocidad cada ~250 m, a la derecha según se avanza.
+			elif i % 25 == 0:
+				var q2: Vector2 = a - nor * (medio + 1.2)
+				mb.caja(Vector3(q2.x, ya + 1.1, q2.y), Vector3(0.1, 2.2, 0.1), poste)
+				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.85, 0.85, 0.08), Color(0.85, 0.1, 0.1))
+				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.6, 0.6, 0.1), Color(0.95, 0.95, 0.95))
+			var izq: Vector2 = a + nor * 8.0
+			var der: Vector2 = a - nor * 8.0
+			var hi: float = altura_lista(izq.x, izq.y, lista)
+			var hd: float = altura_lista(der.x, der.y, lista)
+			# Puente: la tierra cae más de 4 m a los dos lados.
+			if hi < ya - 2.2 and hd < ya - 2.2 and i - ultimo_puente > 6 and absf(giro) < 0.2:
+				ultimo_puente = i
+				obras_vistas.append(["puente", Vector3(a.x, ya, a.y), d1])
+				var largo: float = a.distance_to(pts[i + 1]) + 0.6
+				var cx: Vector2 = (a + pts[i + 1]) / 2.0
+				var cubierta: Vector3 = Vector3(largo + 1.0, 0.9, CALLE_ANCHO + 1.2) if absf(d1.x) > absf(d1.y) 						else Vector3(CALLE_ANCHO + 1.2, 0.9, largo + 1.0)
+				mb.caja(Vector3(cx.x, ya - 0.5, cx.y), cubierta, hormigon)
+				for lado2 in [-1.0, 1.0]:
+					var pp: Vector2 = cx + nor * lado2 * (medio - 0.8)
+					var suelo: float = minf(altura_lista(pp.x, pp.y, lista), ya - 1.0)
+					mb.caja(Vector3(pp.x, (ya - 0.9 + suelo) / 2.0, pp.y), Vector3(1.0, ya - 0.9 - suelo, 1.0), hormigon.darkened(0.15))
+			# Túnel: laderas altas a los dos lados (un portal de piedra con dintel).
+			elif hi > ya + 3.0 and hd > ya + 3.0 and i - ultimo_tunel > 12 and absf(giro) < 0.15:
+				ultimo_tunel = i
+				obras_vistas.append(["tunel", Vector3(a.x, ya, a.y), d1])
+				for lado3 in [-1.0, 1.0]:
+					var pl: Vector2 = a + nor * lado3 * (medio + 0.9)
+					mb.caja(Vector3(pl.x, ya + 3.0, pl.y), Vector3(1.4, 6.0, 1.4), piedra)
+				mb.caja(Vector3(a.x, ya + 6.6, a.y), Vector3(1.4, 1.4, CALLE_ANCHO + 3.2) if absf(d1.x) > absf(d1.y) else Vector3(CALLE_ANCHO + 3.2, 1.4, 1.4), piedra.darkened(0.1))
 
 
 # Parte del segmento a-b que cae dentro del rectángulo, como (t0, t1) entre 0 y 1.
@@ -1266,6 +1329,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
 	_quitamiedos(objetos, rect, lista_t)
+	_senales_y_obras(objetos, rect, lista_t)
 	for est in _gasolineras_de_carretera(rect, segs):
 		_edificio(objetos, est, true)
 		var base_y: float = est["y"]
