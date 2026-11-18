@@ -121,6 +121,59 @@ En un jugador seguirán existiendo 5 ranuras: cada ranura es un mundo con un jug
 
 Recomendación: IP+puerto primero, luego código de sala, y Steam al final (con la misma interfaz `GestorRed` para no rehacer nada).
 
+### 3.8 Servidores fáciles de montar (para la nube y para cualquiera)
+
+Objetivo: que cualquiera monte su servidor **copiando un comando** o pulsando un botón en un servicio de nube.
+
+**a) Un ejecutable sin pantalla.** Godot exporta el juego para **Linux** y **Windows**, y se arranca con
+`./juego --headless -- --servidor`. No necesita tarjeta gráfica ni ventana. Recomendado: un *preset* de exportación "Servidor" que quite imágenes, música y shaders para que pese poco.
+
+**b) Un archivo de configuración sencillo** (`servidor.cfg`, texto plano, se crea solo la primera vez):
+
+```ini
+nombre = "Mi servidor"
+contrasena = ""            ; vacío = abierto
+puerto = 24565
+semilla = 12345            ; 0 = aleatoria al crear el mundo
+max_jugadores = 8
+pvp = false
+guardado_minutos = 2
+admins = ["ID_DEL_ADMIN"]
+```
+
+Todo se puede sobrescribir con variables de entorno (`JI_PUERTO`, `JI_CONTRASENA`…), que es lo que usan los servicios de nube.
+
+**c) Imagen Docker con un solo comando.** Imagen pequeña (Debian "slim" + el ejecutable exportado), con un **volumen** `/datos` donde se guarda `mundo.json`, `jugadores/` y `servidor.cfg`. Así actualizar el servidor no borra el mundo:
+
+```bash
+docker run -d --name juego -p 24565:24565/udp -v juego-datos:/datos \
+  -e JI_NOMBRE="Mi servidor" -e JI_CONTRASENA="secreta" ghcr.io/aalcaide45cy/juegoindefinido-servidor:latest
+```
+
+Y un `docker-compose.yml` de ejemplo (copiar, pegar, `docker compose up -d`). La imagen se construye y publica sola con **GitHub Actions** en cada versión.
+
+**d) Guía paso a paso (a escribir en `docs/SERVIDOR.md`).**
+
+| Dónde | Dificultad | Notas importantes |
+|---|---|---|
+| **VPS** (Hetzner, DigitalOcean, OVH…) | Fácil | Instalar Docker, ejecutar el comando de arriba y abrir el puerto UDP 24565 en el cortafuegos. Es la opción recomendada: ~4-6 €/mes |
+| **Fly.io** | Media | Admite UDP con IP dedicada; volumen persistente para `/datos`; un `fly.toml` de ejemplo en el repo |
+| **Railway / Render** | Cuidado | Suelen exponer solo TCP/HTTP, no UDP. Con ENet no funcionarían. Solución: ofrecer **WebSocket** (`WebSocketMultiplayerPeer`, TCP) como transporte alternativo del servidor |
+| **Casa (PC o Raspberry)** | Media | Abrir el puerto en el router o usar el código de sala/UPnP |
+| **Steam** | Fácil para jugadores | El anfitrión o servidor se anuncia por Steam sin abrir puertos |
+
+(Hay que **comprobar** cada proveedor al escribir la guía: sus reglas de UDP y de volúmenes cambian.)
+
+**e) Transporte doble.** El servidor escucha **ENet (UDP)**, mejor para juego rápido, y opcionalmente **WebSocket**, que pasa por casi cualquier nube. El resto del juego no cambia, porque todo va por `GestorRed`.
+
+**f) Administración remota básica.**
+- **Consola de texto** por la entrada estándar del contenedor (`docker attach`): `jugadores`, `expulsar <id>`, `prohibir <id>`, `guardar`, `apagar`, `decir <mensaje>`, `hora <h>`.
+- **Chat de administración en el juego**: los `admins` del `.cfg` usan `/comandos` (reutilizando el panel admin F1, pero validado en el servidor).
+- **Más adelante**: pequeña página web de estado con contraseña (jugadores conectados, hora del mundo, botón de guardar) y **copias de seguridad** automáticas del volumen (cada X horas, conservando las últimas N).
+- **Comprobación de salud**: el servidor responde a un "ping" para que Docker o la nube lo reinicien si se cuelga. Se guarda siempre antes de apagar (señal `SIGTERM`).
+
+**Fases extra** (se suman a la sección 6): preset de exportación + arranque `--servidor` + `servidor.cfg` = **1-2 sesiones** (con la fase 3). Docker + GitHub Actions + guía de VPS = **1-2**. Transporte WebSocket + guías Fly.io/otros = **1-2**. Consola y copias de seguridad = **1-2**.
+
 ## 4. Qué hay que refactorizar del código actual
 
 Esta es la parte más grande. Resumen de lo que he visto en el código:
@@ -188,15 +241,15 @@ Esfuerzo orientativo en **sesiones de trabajo** (una sesión ≈ un hilo grande)
 | **0. Preparación** | Cerrar los pendientes de `MEJORAS.md` (P0) y pruebas del mundo grande | 1-2 | Base estable |
 | **1. Separar mundo y jugador** | Dividir `Juego` en `EstadoMundo` + `EstadoJugador` con fachada; la pausa pasa a "jugador ocupado"; guardado en dos bloques (con migración) | 3-4 | **El juego se ve igual**, pero por dentro está listo |
 | **2. Servidor local en un jugador** | Cliente y servidor en el mismo proceso: las acciones pasan por funciones de "servidor"; macetas, huertos y granjas en datos | 3-4 | Igual que hoy, sin pausa por menús |
-| **3. Servidor dedicado sin pantalla** | `--headless --servidor`, reloj y economía corriendo, guardado automático de mundo, sin nodos de escena | 2-3 | **El mundo sigue vivo** con nadie dentro |
+| **3. Servidor dedicado sin pantalla** | `--headless --servidor`, `servidor.cfg`, reloj y economía corriendo, guardado automático de mundo, sin nodos de escena (más Docker y guía VPS, ver 3.8) | 3-5 | **El mundo sigue vivo** con nadie dentro |
 | **4. ENet: un cliente remoto (HITO MÍNIMO)** | `GestorRed`, conectar por IP, un jugador remoto que se mueve, ver la hora y plantar/cosechar | 3-4 | Tú y un amigo en el mismo mundo |
 | **5. Varios jugadores** | Inventario/dinero por jugador, tienda, casas, encargos, policía por jugador, ver a otros con su aspecto, chat | 4-6 | 2-8 jugadores jugando |
 | **6. Vehículos y tráfico en red** | Conductor con autoridad, remolques, IA solo cerca de jugadores | 4-5 | Coches compartidos |
-| **7. Invitar fácil** | Código de sala (Worker) y UPnP; lista de servidores | 2-3 | "Dime el código" |
+| **7. Invitar y alojar fácil** | Código de sala (Worker) y UPnP; lista de servidores; WebSocket, guías de nube, consola y copias (ver 3.8) | 4-6 | "Dime el código" |
 | **8. Steam** | GodotSteam, lista de amigos, relé, logros de Steam | 3-4 | Unirse desde Steam |
 | **9. Blindaje** | Anti-trampas, admin autorizado, reconexión, pruebas de carga | 3-4 | Servidor robusto |
 
-Total aproximado: **28-39 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 12-17 sesiones**).
+Total aproximado: **32-45 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
 
 ### Primer hito mínimo viable (fases 0 a 4)
 
