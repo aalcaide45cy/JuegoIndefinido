@@ -64,7 +64,7 @@ var _t_sin_jugador: float = 0.0
 func _red_ciudad() -> Dictionary:
 	if _redes.has("ciudad"):
 		return _redes["ciudad"]
-	var red: Dictionary = {"id": "ciudad", "pos": {}, "vec": {}, "luz": {}, "y": 0.0, "ancho": 8.0, "coches": true}
+	var red: Dictionary = {"id": "ciudad", "pos": {}, "vec": {}, "luz": {}, "y": 0.0, "ancho": 8.0, "coches": true, "tipo": 3}
 	for i in CIUDAD_NODOS.size():
 		red["pos"][Vector2i(i, 0)] = CIUDAD_NODOS[i]
 		red["vec"][Vector2i(i, 0)] = []
@@ -85,7 +85,7 @@ func _red_asentamiento(s: Dictionary) -> Dictionary:
 	var tipo: int = int(s["tipo"])
 	var centro: Vector2 = s["pos"]
 	var red: Dictionary = {"id": id, "pos": {}, "vec": {}, "luz": {}, "y": float(s["base"]),
-			"ancho": GeneradorMundo.CALLE_ANCHO, "coches": tipo >= 1}
+			"ancho": GeneradorMundo.CALLE_ANCHO, "coches": tipo >= 1, "tipo": tipo}
 	for k in range(-n, n + 1):
 		for l in range(-n, n + 1):
 			var c: Vector2i = Vector2i(k, l)
@@ -225,11 +225,18 @@ func _physics_process(delta: float) -> void:
 
 func _objetivo_peatones() -> int:
 	var h: float = Juego.hora
-	var n: int = 5
+	# Según el mayor asentamiento cercano: aldea (0), pueblo (1), ciudad (2) o ciudad original (3).
+	var tipo: int = 0
+	for red in _cerca:
+		tipo = maxi(tipo, int(red.get("tipo", 0)))
+	var dia: Array = [9, 13, 16, 16]
+	var tarde: Array = [5, 8, 10, 10]
+	var noche: Array = [2, 3, 5, 5]
+	var n: int = int(noche[tipo])
 	if h >= 7.0 and h < 20.0:
-		n = 16
+		n = int(dia[tipo])
 	elif h >= 20.0 and h < 23.0:
-		n = 10
+		n = int(tarde[tipo])
 	if Clima.lluvia > 0.6:
 		n = int(n * 0.4)
 	return n
@@ -254,6 +261,14 @@ func _gestionar() -> void:
 			_semaforos.erase(clave)
 	if _cerca.is_empty():
 		return
+	# Rutina: al anochecer los vecinos "se van a casa" (los que están lejos de ti desaparecen poco a poco).
+	var objetivo_actual: int = _objetivo_peatones()
+	if _peatones.size() > objetivo_actual:
+		for a in _peatones.duplicate():
+			if is_instance_valid(a) and a.global_position.distance_to(yo3) > 45.0:
+				_peatones.erase(a)
+				a.queue_free()
+				break
 	# Crear, como mucho 2 de cada cosa por pasada.
 	var objetivo: int = _objetivo_peatones()
 	var creados: int = 0

@@ -191,7 +191,7 @@ func cerrar_trato(precio: int) -> void:
 	if Juego.es_de_noche() and Juego.policia_activa:
 		Juego.alerta = 100.0   # De noche, vender por la ventana sí te puede costar una detención.
 		Juego.motivo_alerta = "Te vieron vender de noche por la ventana"
-	precio = int(round(float(precio) * clampf(1.0 + Juego.mod("precio"), 0.5, 2.0) * Economia.bonus_nivel(Juego.nivel)))   # Efecto "Carisma".
+	precio = int(round(float(precio) * clampf(1.0 + Juego.mod("precio"), 0.5, 2.0) * Economia.bonus_nivel(Juego.nivel) * float(Regiones.actual()["precio"])))   # Carisma y región.
 	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.pocion(pedido)["efecto"]])
 	Juego.cobrar(precio)
 	Juego.ganar_xp(25)

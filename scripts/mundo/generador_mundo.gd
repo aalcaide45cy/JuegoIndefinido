@@ -37,6 +37,7 @@ static var semilla: int = 1847
 static var nucleo: Rect2 = Rect2(-110.0, -120.0, 440.0, 240.0)   # La ciudad original.
 static var listo: bool = false
 static var conectores: Array = []
+static var obras_vistas: Array = []   # Para pruebas: ["puente"|"tunel"|"curva", Vector3 posición, dirección Vector2].
 static var _r_cont: FastNoiseLite
 static var _r_mont: FastNoiseLite
 static var _r_med: FastNoiseLite
@@ -551,6 +552,120 @@ static func _quitamiedos(mb: ConstructorMalla, rect: Rect2, lista: Array) -> voi
 						Vector3(pb.x, yb + 0.85, pb.y), Vector3(pa.x, ya + 0.85, pa.y), metal)
 				mb.cuadro(Vector3(pa.x, ya + 0.85, pa.y), Vector3(pb.x, yb + 0.85, pb.y),
 						Vector3(pb.x, yb + 0.5, pb.y), Vector3(pa.x, ya + 0.5, pa.y), metal)
+
+
+# Carreteras de montaña: señales de curva y de velocidad, puentes (donde el terreno cae a los dos
+# lados) y bocas de túnel (donde la carretera va encajonada entre dos laderas). Todo con cajas.
+static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array) -> void:
+	var poste: Color = Color(0.35, 0.36, 0.38)
+	var piedra: Color = Color(0.5, 0.49, 0.47)
+	var hormigon: Color = Color(0.62, 0.62, 0.6)
+	for c in lista:
+		if not c.has("camino"):
+			continue
+		var pts: PackedVector2Array = c["pts"]
+		var ultimo_tunel: int = -100
+		var ultimo_puente: int = -100
+		for i in range(2, pts.size() - 3):
+			var a: Vector2 = pts[i]
+			if not rect.has_point(a):
+				continue
+			var d0: Vector2 = (pts[i] - pts[i - 1]).normalized()
+			var d1: Vector2 = (pts[i + 1] - pts[i]).normalized()
+			var nor: Vector2 = Vector2(-d1.y, d1.x)
+			var ya: float = altura_lista(a.x, a.y, lista)
+			var giro: float = d0.cross(d1)   # >0 / <0: curva a un lado u otro.
+			var medio: float = CALLE_ANCHO / 2.0
+			# Señal de curva peligrosa (rombo amarillo) en el exterior, una de cada pocas curvas cerradas.
+			if absf(giro) > 0.22 and i % 4 == 0:
+				var lado: float = -signf(giro)
+				obras_vistas.append(["curva", Vector3(a.x, ya, a.y), d1])
+				var q: Vector2 = a + nor * lado * (medio + 1.2)
+				mb.caja(Vector3(q.x, ya + 1.1, q.y), Vector3(0.1, 2.2, 0.1), poste)
+				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.9, 0.9, 0.08), Color(1.0, 0.8, 0.1))
+				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.5, 0.5, 0.1), Color(0.1, 0.1, 0.1))
+			# Límite de velocidad cada ~250 m, a la derecha según se avanza.
+			elif i % 25 == 0:
+				var q2: Vector2 = a - nor * (medio + 1.2)
+				mb.caja(Vector3(q2.x, ya + 1.1, q2.y), Vector3(0.1, 2.2, 0.1), poste)
+				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.85, 0.85, 0.08), Color(0.85, 0.1, 0.1))
+				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.6, 0.6, 0.1), Color(0.95, 0.95, 0.95))
+			var izq: Vector2 = a + nor * 8.0
+			var der: Vector2 = a - nor * 8.0
+			var hi: float = altura_lista(izq.x, izq.y, lista)
+			var hd: float = altura_lista(der.x, der.y, lista)
+			# Puente: la tierra cae más de 4 m a los dos lados.
+			if hi < ya - 2.2 and hd < ya - 2.2 and i - ultimo_puente > 6 and absf(giro) < 0.2:
+				ultimo_puente = i
+				obras_vistas.append(["puente", Vector3(a.x, ya, a.y), d1])
+				var largo: float = a.distance_to(pts[i + 1]) + 0.6
+				var cx: Vector2 = (a + pts[i + 1]) / 2.0
+				var cubierta: Vector3 = Vector3(largo + 1.0, 0.9, CALLE_ANCHO + 1.2) if absf(d1.x) > absf(d1.y) 						else Vector3(CALLE_ANCHO + 1.2, 0.9, largo + 1.0)
+				mb.caja(Vector3(cx.x, ya - 0.5, cx.y), cubierta, hormigon)
+				for lado2 in [-1.0, 1.0]:
+					var pp: Vector2 = cx + nor * lado2 * (medio - 0.8)
+					var suelo: float = minf(altura_lista(pp.x, pp.y, lista), ya - 1.0)
+					mb.caja(Vector3(pp.x, (ya - 0.9 + suelo) / 2.0, pp.y), Vector3(1.0, ya - 0.9 - suelo, 1.0), hormigon.darkened(0.15))
+			# Túnel: laderas altas a los dos lados. La galería cubierta rodea la carretera y, en la entrada
+			# y la salida, lleva un portal de piedra con dintel.
+			if _es_tramo_tunel(pts, i, lista):
+				_galeria(mb, a, pts[i + 1], medio, ya, altura_lista(pts[i + 1].x, pts[i + 1].y, lista))
+				if not _es_tramo_tunel(pts, i - 1, lista):
+					_portal(mb, a, nor, d1, medio, ya)
+					obras_vistas.append(["tunel", Vector3(a.x, ya, a.y), d1])
+				if not _es_tramo_tunel(pts, i + 1, lista):
+					_portal(mb, pts[i + 1], nor, d1, medio, altura_lista(pts[i + 1].x, pts[i + 1].y, lista))
+
+
+# ¿El tramo i->i+1 de una carretera de montaña va encajonado entre dos laderas altas y casi recto?
+static func _es_tramo_tunel(pts: PackedVector2Array, i: int, lista: Array) -> bool:
+	if i < 2 or i >= pts.size() - 3:
+		return false
+	var a: Vector2 = pts[i]
+	var d0: Vector2 = (pts[i] - pts[i - 1]).normalized()
+	var d1: Vector2 = (pts[i + 1] - pts[i]).normalized()
+	if absf(d0.cross(d1)) > 0.15:
+		return false
+	var nor: Vector2 = Vector2(-d1.y, d1.x)
+	var ya: float = altura_lista(a.x, a.y, lista)
+	var izq: Vector2 = a + nor * 8.0
+	var der: Vector2 = a - nor * 8.0
+	return altura_lista(izq.x, izq.y, lista) > ya + 3.0 and altura_lista(der.x, der.y, lista) > ya + 3.0
+
+
+# Paredes y techo de la galería de un tramo (a doble cara, para verse y chocar desde dentro y desde fuera).
+static func _galeria(mb: ConstructorMalla, a: Vector2, b: Vector2, medio: float, ya: float, yb: float) -> void:
+	var dir: Vector2 = (b - a).normalized()
+	var nor: Vector2 = Vector2(-dir.y, dir.x)
+	var ancho: float = medio + 0.6
+	var alto: float = 6.2
+	var roca: Color = Color(0.46, 0.44, 0.42)
+	var techo: Color = Color(0.3, 0.29, 0.28)
+	var lampara: Color = Color(1.0, 0.9, 0.6)
+	for lado in [-1.0, 1.0]:
+		var pa: Vector2 = a + nor * lado * ancho
+		var pb: Vector2 = b + nor * lado * ancho
+		_losa(mb, Vector3(pa.x, ya, pa.y), Vector3(pb.x, yb, pb.y), Vector3(pb.x, yb + alto, pb.y), Vector3(pa.x, ya + alto, pa.y), roca)
+	var i0: Vector2 = a + nor * ancho
+	var i1: Vector2 = a - nor * ancho
+	var j0: Vector2 = b + nor * ancho
+	var j1: Vector2 = b - nor * ancho
+	_losa(mb, Vector3(i0.x, ya + alto, i0.y), Vector3(j0.x, yb + alto, j0.y), Vector3(j1.x, yb + alto, j1.y), Vector3(i1.x, ya + alto, i1.y), techo)
+	var c: Vector2 = (a + b) / 2.0
+	mb.caja(Vector3(c.x, (ya + yb) / 2.0 + alto - 0.1, c.y), Vector3(0.5, 0.2, 0.5), lampara)   # Lámpara del techo.
+
+
+static func _losa(mb: ConstructorMalla, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, col: Color) -> void:
+	mb.cuadro(p0, p1, p2, p3, col)
+	mb.cuadro(p3, p2, p1, p0, col)
+
+
+static func _portal(mb: ConstructorMalla, a: Vector2, nor: Vector2, d1: Vector2, medio: float, ya: float) -> void:
+	var piedra: Color = Color(0.5, 0.49, 0.47)
+	for lado in [-1.0, 1.0]:
+		var pl: Vector2 = a + nor * lado * (medio + 0.9)
+		mb.caja(Vector3(pl.x, ya + 3.4, pl.y), Vector3(1.4, 6.8, 1.4), piedra)
+	mb.caja(Vector3(a.x, ya + 7.0, a.y), Vector3(1.4, 1.4, CALLE_ANCHO + 3.4) if absf(d1.x) > absf(d1.y) 			else Vector3(CALLE_ANCHO + 3.4, 1.4, 1.4), piedra.darkened(0.1))
 
 
 # Parte del segmento a-b que cae dentro del rectángulo, como (t0, t1) entre 0 y 1.
@@ -1249,6 +1364,15 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 	for s in lista:
 		for casa_d in _casas_en(s, rect):
 			_edificio(objetos, casa_d, true)
+			# Aldeas y pueblos: más o menos la mitad de las casas encienden ventanas y una luz de noche.
+			if int(s["tipo"]) < 2 and not casa_d.has("servicio") and _f(int(casa_d["x"]), int(casa_d["z"]), 301) < 0.55:
+				var cara_l: float = casa_d["puerta"]
+				var zf: float = float(casa_d["z"]) + cara_l * (float(casa_d["d"]) / 2.0 + 0.07)
+				var vent: Array = []
+				for lado_v in [-1.0, 1.0]:
+					vent.append(Vector3(float(casa_d["x"]) + lado_v * float(casa_d["w"]) * 0.27, float(casa_d["y"]) + 1.6, zf))
+				props.append({"tipo": "luces_casa", "ventanas": vent, "cara": cara_l,
+						"luz": Vector3(float(casa_d["x"]), float(casa_d["y"]) + 2.2, float(casa_d["z"]) + cara_l * (float(casa_d["d"]) / 2.0 + 2.5))})
 			if casa_d.has("servicio"):
 				props.append({"tipo": "servicio", "serv": casa_d["servicio"], "pos": _punto_servicio(casa_d)})
 			if str(casa_d["id"]) != "":
@@ -1266,6 +1390,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
 	_quitamiedos(objetos, rect, lista_t)
+	_senales_y_obras(objetos, rect, lista_t)
 	for est in _gasolineras_de_carretera(rect, segs):
 		_edificio(objetos, est, true)
 		var base_y: float = est["y"]
@@ -1284,6 +1409,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
 	var tipo: int = s["tipo"]
 	if tipo == 0:
+		_decorar_aldea(mb, s, rect)
 		return
 	var n: int = s["n"]
 	var p: Vector2 = s["pos"]
@@ -1321,6 +1447,84 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 				for i in 4:
 					var ang: float = TAU * float(i) / 4.0 + 0.4
 					mb.caja(Vector3(bx + cos(ang) * 7.5, y + 0.5, bz + sin(ang) * 7.5), Vector3(2.0, 0.5, 0.6), Color(0.4, 0.28, 0.18))
+
+
+# Aldeas: pozo en el cruce, farolillos, y en cada solar algo de vida de pueblo (huertecillo, pajar,
+# leña, corral con valla, frutal) y junto a cada casa leña, barriles o una valla. Todo a pie de solar:
+# nada a menos de 6 m del eje de las calles.
+static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+	var n: int = s["n"]
+	var p: Vector2 = s["pos"]
+	var y: float = s["base"]
+	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
+	var piedra: Color = Color(0.55, 0.54, 0.52)
+	var madera: Color = Color(0.4, 0.28, 0.17)
+	if rect.has_point(p):
+		# Pozo en el centro del cruce, con su tejadillo.
+		mb.cono(Vector3(p.x, y, p.y), 1.5, 0.9, 12, piedra, 1.4)
+		for sx in [-1.1, 1.1]:
+			mb.caja(Vector3(p.x + sx, y + 1.4, p.y), Vector3(0.14, 1.6, 0.14), madera)
+		mb.techo(Vector3(p.x, y + 2.2, p.y), 3.0, 2.0, 0.9, Color(0.45, 0.22, 0.16))
+	for k in range(-n, n):
+		for l in range(-n, n):
+			var cx: float = p.x + k * BLOQUE
+			var cz: float = p.y + l * BLOQUE
+			var clave: int = k * 101 + l
+			# Farolillo en una esquina de cada bloque.
+			if rect.has_point(Vector2(cx + 5.0, cz + 5.0)):
+				mb.caja(Vector3(cx + 5.0, y + 1.6, cz + 5.0), Vector3(0.14, 3.2, 0.14), madera)
+				mb.caja(Vector3(cx + 5.0, y + 3.3, cz + 5.0), Vector3(0.4, 0.4, 0.4), Color(1.0, 0.85, 0.45))
+			for sub in 4:
+				var a: int = sub % 2
+				var b: int = sub / 2
+				var lx: float = cx + CALLE_ANCHO / 2.0 + a * 18.0 + 9.0
+				var lz: float = cz + CALLE_ANCHO / 2.0 + b * 18.0 + 9.0
+				if not rect.has_point(Vector2(lx, lz)):
+					continue
+				var casa_d: Dictionary = casa(s, k, l, sub)
+				var r: float = _f(sid, clave, 200 + sub)
+				var r2: float = _f(sid, clave, 210 + sub)
+				if casa_d.is_empty():
+					_solar_de_aldea(mb, Vector3(lx, y, lz), r, r2)
+				else:
+					# Junto a la casa, por el lado contrario a la calle: leña, barriles o un trozo de valla.
+					var cara: float = float(casa_d["puerta"])
+					var ex: float = float(casa_d["x"]) + float(casa_d["w"]) / 2.0 + 1.1
+					var ez: float = float(casa_d["z"]) - cara * (float(casa_d["d"]) / 2.0 - 1.5)
+					if r < 0.35:
+						for i in 3:
+							mb.caja(Vector3(ex, y + 0.2 + i * 0.4, ez), Vector3(0.7, 0.4, 2.0 - i * 0.3), Color(0.5, 0.36, 0.2))   # Pila de leña.
+					elif r < 0.6:
+						mb.cono(Vector3(ex, y, ez), 0.4, 0.9, 8, Color(0.4, 0.27, 0.15), 0.35)   # Barril.
+						mb.cono(Vector3(ex, y, ez + 1.0), 0.4, 0.9, 8, Color(0.36, 0.24, 0.14), 0.35)
+					elif r < 0.8:
+						for i in 4:
+							mb.caja(Vector3(ex, y + 0.45, ez - 2.0 + i * 1.3), Vector3(0.12, 0.9, 0.12), madera)
+						mb.caja(Vector3(ex, y + 0.7, ez), Vector3(0.08, 0.1, 4.0), madera)
+
+
+static func _solar_de_aldea(mb: ConstructorMalla, c: Vector3, r: float, r2: float) -> void:
+	var madera: Color = Color(0.4, 0.28, 0.17)
+	if r < 0.28:   # Huertecillo con surcos.
+		mb.caja(Vector3(c.x, c.y + 0.05, c.z), Vector3(12.0, 0.1, 12.0), Color(0.34, 0.24, 0.15))
+		for i in 5:
+			mb.caja(Vector3(c.x - 4.0 + i * 2.0, c.y + 0.25, c.z), Vector3(0.9, 0.35, 10.0),
+					Color(0.2, 0.45, 0.16).lerp(Color(0.5, 0.5, 0.15), r2))
+	elif r < 0.5:   # Pajar.
+		mb.cono(Vector3(c.x, c.y, c.z), 2.4, 3.0, 10, Color(0.8, 0.68, 0.3), 0.3)
+		mb.cono(Vector3(c.x + 5.0, c.y, c.z - 3.0), 1.6, 2.0, 10, Color(0.75, 0.62, 0.28), 0.25)
+	elif r < 0.7:   # Corral con valla y un cobertizo.
+		for i in 6:
+			mb.caja(Vector3(c.x - 6.0 + i * 2.4, c.y + 0.5, c.z - 6.0), Vector3(0.14, 1.0, 0.14), madera)
+			mb.caja(Vector3(c.x - 6.0 + i * 2.4, c.y + 0.5, c.z + 6.0), Vector3(0.14, 1.0, 0.14), madera)
+		mb.caja(Vector3(c.x, c.y + 0.8, c.z - 6.0), Vector3(12.0, 0.1, 0.1), madera)
+		mb.caja(Vector3(c.x, c.y + 0.8, c.z + 6.0), Vector3(12.0, 0.1, 0.1), madera)
+		mb.caja(Vector3(c.x + 3.0, c.y + 1.2, c.z), Vector3(3.0, 2.4, 2.4), Color(0.45, 0.33, 0.22))
+		mb.techo(Vector3(c.x + 3.0, c.y + 2.4, c.z), 3.6, 3.0, 0.9, Color(0.35, 0.22, 0.15))
+	else:   # Frutal con un banco debajo.
+		mb.caja(Vector3(c.x, c.y + 1.2, c.z), Vector3(0.45, 2.4, 0.45), Color(0.3, 0.2, 0.12))
+		mb.cono(Vector3(c.x, c.y + 2.0, c.z), 2.6 + r2, 2.6, 8, Color(0.2, 0.42, 0.16), 0.6)
+		mb.caja(Vector3(c.x + 2.8, c.y + 0.45, c.z), Vector3(0.6, 0.12, 2.0), madera)
 
 
 # Gasolineras sueltas junto a las carreteras largas (cada ~600 m). Devuelve edificios de servicio
