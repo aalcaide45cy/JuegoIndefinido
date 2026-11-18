@@ -96,7 +96,11 @@ func _terminar() -> void:
 		unidades += int(c["cantidad"])
 		confiscados += 1
 		Juego.inventario[i] = null
-	var multa: int = mini(Juego.dinero, 20 * confiscados + 5 * unidades + int(Juego.dinero * Economia.MULTA_CACHEO_PORCENTAJE))
+	# Solo hay multa si encuentran algo: antes también cobraban el % del dinero cuando "no
+	# encuentran nada y te dejan ir".
+	var multa: int = 0
+	if confiscados > 0:
+		multa = mini(Juego.dinero, 20 * confiscados + 5 * unidades + int(Juego.dinero * Economia.MULTA_CACHEO_PORCENTAJE))
 	Juego.dinero -= multa
 	Juego.cambio.emit()
 	for h in _lista.get_children():
