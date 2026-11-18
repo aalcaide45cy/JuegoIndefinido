@@ -55,6 +55,10 @@ var reputacion: int = 0              # -50..100: sube al entregar encargos, baja
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
 var avisos: Array = []               # Últimos avisos del móvil (más nuevo primero).
+var personal: Array = []             # Empleados contratados (ver scripts/datos/personal.gd).
+var almacen: Dictionary = {}         # Lo que produce el personal: id_objeto -> cantidad.
+var almacen_ultima_semilla: Dictionary = {}   # id_huerto -> última semilla (para volver a sembrar).
+var dia_pago: int = 1                # Último día en que se pagó al personal.
 var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: vehículos tuyos (ver vehiculo.gd).
 var _contador_vehiculos: int = 0
 var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
@@ -95,6 +99,10 @@ func reiniciar() -> void:
 	habilidades.clear()
 	aspecto = DatosAspecto.POR_DEFECTO.duplicate()
 	vehiculos.clear()
+	personal.clear()
+	almacen.clear()
+	almacen_ultima_semilla.clear()
+	dia_pago = 1
 	_contador_vehiculos = 0
 	reputacion = 0
 	sospecha = 0.0

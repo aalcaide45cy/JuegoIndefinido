@@ -46,6 +46,10 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"habilidades": Juego.habilidades.keys(),
 		"aspecto": Juego.aspecto,
 		"vehiculos": _vehiculos_para_guardar(arbol),
+		"personal": Juego.personal,
+		"almacen": Juego.almacen,
+		"almacen_ultima_semilla": Juego.almacen_ultima_semilla,
+		"dia_pago": Juego.dia_pago,
 		"contador_vehiculos": Juego._contador_vehiculos,
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
@@ -134,6 +138,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 		Juego.avisos.append(str(a))
 	Juego.aspecto = Juego.DatosAspecto.valido(datos.get("aspecto", {}))
 	_leer_vehiculos(datos.get("vehiculos", {}))
+	_leer_personal(datos)
 	Juego._contador_vehiculos = maxi(0, int(datos.get("contador_vehiculos", Juego.vehiculos.size())))
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
@@ -178,6 +183,27 @@ static func _vehiculos_para_guardar(arbol: SceneTree) -> Dictionary:
 		if nodo.has_method("guardar_estado"):
 			nodo.guardar_estado()
 	return Juego.vehiculos
+
+
+static func _leer_personal(datos: Dictionary) -> void:
+	const DatosPersonal = preload("res://scripts/datos/personal.gd")
+	for e in datos.get("personal", []):
+		if e is Dictionary and DatosPersonal.OFICIOS.has(str(e.get("oficio", ""))) \
+				and Juego.personal.size() < DatosPersonal.MAX_PERSONAL:
+			var nivel: int = clampi(int(e.get("nivel", 1)), 1, 3)
+			Juego.personal.append({"id": str(e.get("id", "")), "nombre": str(e.get("nombre", "Empleado")),
+					"oficio": str(e["oficio"]), "nivel": nivel, "sueldo": maxi(0, int(e.get("sueldo", 30))),
+					"destino": str(e.get("destino", ""))})
+	var alm = datos.get("almacen", {})
+	if alm is Dictionary:
+		for id_o in alm:
+			if DatosObjetos.LISTA.has(str(id_o)):
+				Juego.almacen[str(id_o)] = maxi(0, int(alm[id_o]))
+	var ult = datos.get("almacen_ultima_semilla", {})
+	if ult is Dictionary:
+		for id_h in ult:
+			Juego.almacen_ultima_semilla[str(id_h)] = str(ult[id_h])
+	Juego.dia_pago = clampi(int(datos.get("dia_pago", Juego.dia)), 1, maxi(1, Juego.dia))
 
 
 static func _leer_vehiculos(guardados) -> void:
