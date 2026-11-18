@@ -37,6 +37,7 @@ var dinero: int = 0
 var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
+var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
@@ -92,6 +93,7 @@ func reiniciar() -> void:
 	vida = VIDA_MAX
 	hora = 20.0
 	dia = 1
+	reloj = 0.0
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	ha_ganado = false
@@ -129,6 +131,7 @@ func reiniciar() -> void:
 
 
 func _process(delta: float) -> void:
+	reloj += delta * velocidad_tiempo
 	# La búsqueda baja sola con el tiempo: más rápido si te escondes dentro de un edificio.
 	_t_sospecha += delta
 	if _t_sospecha >= 1.0:

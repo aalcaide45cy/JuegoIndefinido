@@ -13,7 +13,7 @@ extends Interactuable
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const ESPECIES: Dictionary = {
 	"gallina": {"producto": "huevo", "tiempo": 60.0, "color": Color(0.95, 0.93, 0.85), "tam": Vector3(0.35, 0.35, 0.45)},
-	"vaca": {"producto": "leche", "tiempo": 120.0, "color": Color(0.9, 0.9, 0.9), "tam": Vector3(0.9, 0.9, 1.6)},
+	"vaca": {"producto": "leche", "tiempo": 180.0, "color": Color(0.9, 0.9, 0.9), "tam": Vector3(0.9, 0.9, 1.6)},
 }
 const MAX_ACUMULADO: int = 20
 
@@ -39,7 +39,7 @@ func _ready() -> void:
 
 func _estado() -> Dictionary:
 	if not Juego.granja.has(id_corral):
-		Juego.granja[id_corral] = {"n": 0, "prod": 0, "t": 0.0, "nivel": 1}
+		Juego.granja[id_corral] = {"n": 0, "prod": 0, "t": 0.0, "nivel": 1, "u": Juego.reloj}
 	return Juego.granja[id_corral]
 
 
@@ -47,11 +47,14 @@ func capacidad() -> int:
 	return 4 * int(_estado()["nivel"])
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var e: Dictionary = _estado()
 	var n: int = int(e["n"])
+	# Reloj absoluto: aunque el corral estuviera descargado (lejos), al volver se cuenta el tiempo que pasó.
+	var pasado: float = maxf(0.0, Juego.reloj - float(e.get("u", Juego.reloj)))
+	e["u"] = Juego.reloj
 	if n > 0 and not Juego.huertos.is_empty():
-		e["t"] = float(e["t"]) + delta * n
+		e["t"] = float(e["t"]) + pasado * n
 		var tiempo: float = ESPECIES[especie]["tiempo"]
 		while float(e["t"]) >= tiempo and int(e["prod"]) < MAX_ACUMULADO:
 			e["t"] = float(e["t"]) - tiempo

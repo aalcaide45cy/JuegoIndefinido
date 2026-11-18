@@ -21,6 +21,7 @@ var nivel: int = 1           # 1-3: sube con "Mejora de maceta" (más rápida y 
 var riego: bool = false      # Kit de riego instalado: +20% de velocidad.
 var abonada_extra: bool = false   # Ya recibió abono mejorado.
 var _bonus_foco: float = 1.0
+var _ultimo_reloj: float = -1.0   # Reloj absoluto de la última vez que creció.
 var _t_foco: float = 0.0
 var _anillo: Node3D
 var _grifo: Node3D
@@ -72,8 +73,12 @@ func _process(delta: float) -> void:
 			var foco: Colocable = f as Colocable
 			if foco != null and foco.global_position.distance_to(global_position) < 3.5:
 				_bonus_foco = maxf(_bonus_foco, foco.bonus_cultivo())
+	if _ultimo_reloj < 0.0:
+		_ultimo_reloj = Juego.reloj
+	var pasado: float = maxf(0.0, Juego.reloj - _ultimo_reloj)
+	_ultimo_reloj = Juego.reloj
 	if estado == Estado.CRECIENDO:
-		adelantar(delta)
+		adelantar(pasado)
 	elif estado == Estado.LISTA:
 		# La planta lista brilla un poco, como respirando.
 		var pulso: float = 0.6 + 0.5 * sin(Time.get_ticks_msec() / 300.0)
@@ -203,7 +208,7 @@ func plantar(id_hierba: String, nota: float, con_abono: bool) -> void:
 func exportar() -> Dictionary:
 	return {"estado": int(estado), "tipo": tipo_hierba, "progreso": progreso,
 			"cosecha": cosecha, "calidad": calidad, "velocidad": velocidad,
-			"nivel": nivel, "riego": riego, "extra": abonada_extra}
+			"nivel": nivel, "riego": riego, "extra": abonada_extra, "reloj": Juego.reloj}
 
 
 # Restaura una maceta guardada (lo inverso de exportar).
@@ -226,6 +231,10 @@ func importar(d: Dictionary) -> void:
 	else:
 		estado = Estado.CRECIENDO
 	_planta.scale = Vector3.ONE * lerpf(0.15, 1.0, progreso)
+	# Tiempo que pasó desde que se guardó (partida cerrada o maceta descargada).
+	_ultimo_reloj = Juego.reloj
+	if estado == Estado.CRECIENDO and d.has("reloj"):
+		adelantar(maxf(0.0, Juego.reloj - float(d["reloj"])))
 
 
 func _crear_planta(id_hierba: String) -> void:
