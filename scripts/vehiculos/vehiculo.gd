@@ -255,11 +255,36 @@ func bajar() -> void:
 	chasis.velocity = Vector3.ZERO
 	_faros.visible = false
 	set_physics_process(false)
-	var lado: Vector3 = chasis.global_transform.basis.x * -(_ancho / 2.0 + 0.9)
-	var destino: Vector3 = chasis.global_position + lado + Vector3(0, 0.3, 0)
+	var destino: Vector3 = _sitio_para_bajar()
 	if j.has_method("bajar_de"):
 		j.bajar_de(self, destino)
 	guardar_estado()
+
+
+# Dónde te bajas: primero a la izquierda y, si ahí hay una pared u otra cosa, a la
+# derecha, detrás o delante (cada vez más lejos). Antes siempre era a la izquierda y
+# en una calle de 8 m, junto a una fachada, aparecías dentro del muro.
+func _sitio_para_bajar() -> Vector3:
+	var espacio: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var capsula: CapsuleShape3D = CapsuleShape3D.new()
+	capsula.radius = 0.4
+	capsula.height = 1.7
+	var consulta: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
+	consulta.shape = capsula
+	consulta.exclude = [chasis.get_rid()]
+	if conductor is CollisionObject3D:
+		consulta.exclude.append((conductor as CollisionObject3D).get_rid())
+	var b: Basis = chasis.global_transform.basis
+	var dirs: Array = [-b.x, b.x, b.z, -b.z]
+	var medios: Array = [_ancho / 2.0, _ancho / 2.0, _largo / 2.0, _largo / 2.0]
+	for margen in [0.9, 1.6, 2.6]:
+		for i in 4:
+			var p: Vector3 = chasis.global_position + (dirs[i] as Vector3) * (float(medios[i]) + margen)
+			p.y = chasis.global_position.y + 0.3
+			consulta.transform = Transform3D(Basis(), p + Vector3(0, 0.9, 0))
+			if espacio.intersect_shape(consulta, 1).is_empty():
+				return p
+	return chasis.global_position + Vector3(0, 2.5, 0)
 
 
 # Lo que te pagan por un vehículo usado: 60 % del precio, menos según lo dañado que esté.
@@ -389,6 +414,7 @@ func _physics_process(delta: float) -> void:
 	var v_antes: float = _v
 	var vy_antes: float = _vy
 	chasis.move_and_slide()
+	_contener_en_el_mundo()
 	_v = chasis.velocity.dot(adelante)
 	if aire and chasis.is_on_floor() and vy_antes < -7.0:
 		salud = maxf(0.0, salud - absf(vy_antes) * 4.0)
@@ -421,6 +447,22 @@ func _physics_process(delta: float) -> void:
 
 func is_on_ground_safe() -> bool:
 	return chasis.is_on_floor()
+
+
+# Techo de vuelo y muros invisibles: los vehículos (sobre todo los de aire, que pasan
+# por encima de los muros de la ciudad) no pueden salir del rectángulo del mundo.
+const ALTURA_MAXIMA: float = 45.0
+
+func _contener_en_el_mundo() -> void:
+	var lim: Rect2 = Juego.limites_mundo.grow(-2.0)
+	var p: Vector3 = chasis.global_position
+	var q: Vector3 = Vector3(clampf(p.x, lim.position.x, lim.end.x), minf(p.y, ALTURA_MAXIMA), clampf(p.z, lim.position.y, lim.end.y))
+	if q != p:
+		chasis.global_position = q
+		if q.y < p.y:
+			_vy = minf(_vy, 0.0)
+		if q.x != p.x or q.z != p.z:
+			_v *= 0.5
 
 
 # Golpes: si frenas de golpe contra algo te haces daño y dañas el coche; si es

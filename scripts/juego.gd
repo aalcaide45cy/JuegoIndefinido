@@ -47,6 +47,7 @@ var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado)
 var en_propiedad: Dictionary = {}     # id -> true: casas y huertos COMPRADOS (se pueden vender).
 var granja: Dictionary = {}           # corrales y árboles: id -> estado (animales, producción, nivel).
 var parcelas: Dictionary = {}         # id_huerto -> {semilla, t, total}: cultivo en curso.
+var limites_mundo: Rect2 = Rect2(-47, -111, 354, 222)   # Lo fija mundo.gd al cerrar la ciudad.
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1

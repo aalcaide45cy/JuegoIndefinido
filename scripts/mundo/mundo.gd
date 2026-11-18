@@ -108,6 +108,7 @@ func _cerrar_ciudad() -> void:
 		limites = rect if primero else limites.merge(rect)
 		primero = false
 	limites = limites.grow(MARGEN_CIUDAD)
+	Juego.limites_mundo = limites
 
 	var centro: Vector2 = limites.get_center()
 	# Suelo de seguridad bajo todo el rectángulo (su cara de arriba queda un pelín
