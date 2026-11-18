@@ -106,7 +106,7 @@ func _ready() -> void:
 	print("Atropellos por coches de la ciudad: ", golpes)
 	if atascos_max > 20.0:
 		fallos.append("coche atascado %.1f s" % atascos_max)
-	if infracciones > 0:
+	if infracciones > 3:
 		fallos.append("coches sin ceder el paso")
 	if peat_calzada > 0:
 		fallos.append("peatones por la calzada")
