@@ -203,7 +203,7 @@ func _objetivo_peatones() -> int:
 		n = int(tarde[tipo])
 	if Clima.lluvia > 0.6:
 		n = int(n * 0.4)
-	return n
+	return int(roundf(n * Graficos.factor_peatones()))   # Ajuste de gráficos: densidad de peatones.
 
 
 func _gestionar() -> void:
@@ -243,7 +243,7 @@ func _gestionar() -> void:
 		if a != null:
 			_peatones.append(a)
 	creados = 0
-	while _coches.size() < MAX_COCHES and creados < 2:
+	while _coches.size() < int(roundf(MAX_COCHES * Graficos.factor_trafico())) and creados < 2:
 		creados += 1
 		var red: Dictionary = _cerca[randi() % _cerca.size()]
 		if not red["coches"]:

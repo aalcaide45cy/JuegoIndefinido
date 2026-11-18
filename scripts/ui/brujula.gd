@@ -47,6 +47,7 @@ func _draw() -> void:
 	estilo.border_color = Color(0.88, 0.74, 0.38, 0.8)
 	estilo.set_border_width_all(1)
 	estilo.set_corner_radius_all(8)
+	estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 	draw_style_box(estilo, Rect2(0, 0, ancho, alto_tira))
 
 	# Marcas cada 5 grados; letras en los puntos cardinales.

@@ -38,6 +38,7 @@ func _draw() -> void:
 		fondo.border_color = Color(0.5, 0.85, 0.5, 0.8) if datos["bueno"] else Color(0.95, 0.3, 0.3, 0.9)
 		fondo.set_border_width_all(1)
 		fondo.set_corner_radius_all(6)
+		fondo.corner_detail = 1   # Esquina cortada: estilo low poly
 		draw_style_box(fondo, fila)
 		draw_rect(Rect2(6, y + 5, 16, 16), datos["color"])
 		draw_string(fuente, Vector2(30, y + 15), str(datos["nombre"]), HORIZONTAL_ALIGNMENT_LEFT, 120, 13,

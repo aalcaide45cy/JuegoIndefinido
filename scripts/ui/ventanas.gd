@@ -24,7 +24,7 @@ const CATEGORIAS: Dictionary = {
 
 # Muestra un resumen: dinero, nivel y vida.
 static func texto_estado() -> String:
-	return "%d $    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.nivel,
+	return "%d $ (negro %d $)    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.dinero_negro, Juego.nivel,
 			Juego.xp, Juego.xp_necesaria(), int(Juego.vida), int(Juego.VIDA_MAX)]
 
 
@@ -54,7 +54,7 @@ class Pausa extends Ventana:
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(380, 420))
+		var caja: VBoxContainer = panel_centrado(Vector2(380, 480))
 		var titulo: Label = Hud.crear_label(32, Color(0.6, 0.9, 0.6))
 		titulo.text = "Pausa"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -63,6 +63,7 @@ class Pausa extends Ventana:
 		caja.add_child(Ventanas.boton_grande("Guardar (ranura %d)" % Guardado.ranura, _guardar))
 		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
 		caja.add_child(Ventanas.boton_grande("Logros", _logros))
+		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
 		caja.add_child(Ventanas.boton_grande("Salir del juego", _salir))
 		_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
 		_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -101,7 +102,7 @@ class Inicio extends Ventana:
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(420, 440))
+		var caja: VBoxContainer = panel_centrado(Vector2(420, 500))
 		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
 		titulo.text = "Elixir Clandestino"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -117,6 +118,7 @@ class Inicio extends Ventana:
 		caja.add_child(Ventanas.boton_grande("Nueva partida", _nueva))
 		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
 		caja.add_child(Ventanas.boton_grande("Logros", func(): add_child(VentanaLogros.new())))
+		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
 		caja.add_child(Ventanas.boton_grande("Salir", _salir))
 
 	func cerrar() -> void:
@@ -260,6 +262,7 @@ class Tienda extends Ventana:
 		var estilo: StyleBoxFlat = StyleBoxFlat.new()
 		estilo.bg_color = Color(0.12, 0.13, 0.12)
 		estilo.set_corner_radius_all(6)
+		estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 		estilo.set_content_margin_all(6)
 		fondo.add_theme_stylebox_override("panel", estilo)
 		var fila: HBoxContainer = HBoxContainer.new()
@@ -307,6 +310,7 @@ class ZonaVenta extends PanelContainer:
 		estilo.border_color = Color(0.7, 0.45, 0.3)
 		estilo.set_border_width_all(2)
 		estilo.set_corner_radius_all(6)
+		estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 		add_theme_stylebox_override("panel", estilo)
 		var texto: Label = Hud.crear_label(15, Color(1, 0.8, 0.65))
 		texto.text = "Arrastra aquí algo de tu inventario para venderlo (a mitad de precio) · o Mayús + clic"

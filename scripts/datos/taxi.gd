@@ -64,7 +64,7 @@ static func pedir(jugador: Node, destino: Dictionary) -> String:
 		return motivo
 	if float(destino["dist"]) < DISTANCIA_MINIMA:
 		return "Está ahí al lado: ve andando."
-	if not Juego.gastar(int(destino["precio"])):
+	if not Juego.gastar_con_negro(int(destino["precio"])):
 		return "El trayecto cuesta %d $." % int(destino["precio"])
 	jugador.viajar_a(destino["pos"], float(destino["horas"]))
 	Juego.avisar("El taxi te lleva a %s (%d $)." % [destino["nombre"], int(destino["precio"])])

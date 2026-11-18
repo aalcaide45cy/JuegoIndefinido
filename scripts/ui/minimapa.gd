@@ -203,6 +203,7 @@ func _dibujar_marcas() -> void:
 	estilo.border_color = Color(0.88, 0.74, 0.38, 0.8)
 	estilo.set_border_width_all(1)
 	estilo.set_corner_radius_all(14)
+	estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 	_marcas.draw_style_box(estilo, pastilla)
 	var icono: Vector2 = pastilla.position + Vector2(20.0, 14.0)
 	if Juego.es_de_noche():

@@ -38,7 +38,12 @@ static func modelo(nombre: String) -> Node3D:
 		if ResourceLoader.exists(ruta):
 			var escena = load(ruta)
 			if escena is PackedScene:
-				return (escena as PackedScene).instantiate() as Node3D
+				var nodo: Node3D = (escena as PackedScene).instantiate() as Node3D
+				# Low poly: los modelos de Quaternius llevan texturas pintadas; se
+				# cambian por colores lisos. Kenney (paleta plana) y personajes se dejan.
+				if nodo != null and nombre.begins_with("quaternius/") and not nombre.begins_with(PERSONAJES) 						and not nombre.begins_with("quaternius/farm-animals"):
+					Estilo.aplanar(nodo)
+				return nodo
 	return null
 
 

@@ -193,7 +193,7 @@ func cerrar_trato(precio: int) -> void:
 		Juego.motivo_alerta = "Te vieron vender de noche por la ventana"
 	precio = int(round(float(precio) * clampf(1.0 + Juego.mod("precio"), 0.5, 2.0) * Economia.bonus_nivel(Juego.nivel) * float(Regiones.actual()["precio"])))   # Carisma y región.
 	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.pocion(pedido)["efecto"]])
-	Juego.cobrar(precio)
+	Juego.cobrar_negro(precio)   # Trato ilegal: dinero negro.
 	Juego.ganar_xp(25)
 	Juego.reputacion = mini(100, Juego.reputacion + 1)
 	_se_marcha()

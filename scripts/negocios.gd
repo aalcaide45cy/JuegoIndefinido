@@ -113,6 +113,15 @@ static func importar(datos) -> void:
 	e["ultimo_dia"] = int(datos.get("ultimo_dia", Juego.dia))
 	e["ingresos"] = maxi(0, int(datos.get("ingresos", 0)))
 	e["sig_id"] = maxi(int(datos.get("sig_id", 1)), max_id + 1)
+	var bl = datos.get("blanqueo", {})
+	if bl is Dictionary:
+		var hoy: Dictionary = {}
+		var h = bl.get("hoy", {})
+		if h is Dictionary:
+			for id in h:
+				if Blanqueo.Datos.FRENTES.has(str(id)):
+					hoy[str(id)] = maxi(0, int(h[id]))
+		e["blanqueo"] = {"dia": int(bl.get("dia", Juego.dia)), "hoy": hoy, "total": maxi(0, int(bl.get("total", 0)))}
 
 
 static func _activo(uid: int, e: Dictionary = {}) -> Variant:

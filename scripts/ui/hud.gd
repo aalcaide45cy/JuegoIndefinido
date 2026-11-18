@@ -306,6 +306,8 @@ func _actualizar_alerta() -> void:
 func _actualizar_estado() -> void:
 	var lineas: PackedStringArray = []
 	lineas.append("%d $   ·   Nivel %d  (%d/%d XP)" % [Juego.dinero, Juego.nivel, Juego.xp, Juego.xp_necesaria()])
+	if Juego.dinero_negro > 0:
+		lineas.append("Dinero negro: %d $" % Juego.dinero_negro)
 	lineas.append("Vida")
 	_label_estado.text = "\n".join(lineas)
 	_barra_vida.value = Juego.vida
@@ -457,12 +459,12 @@ func fundido(en_medio: Callable, pausa: float = 0.0) -> void:
 
 # ------------------- Ayudas (las usan también los menús) ----------------------
 
-static func crear_label(tam: int, color: Color = Color(0.9, 0.9, 0.85)) -> Label:
+static func crear_label(tam: int, color: Color = Estilo.TEXTO) -> Label:
 	var label: Label = Label.new()
 	label.add_theme_font_size_override("font_size", tam)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 6)
+	label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.03, 0.85))
+	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
@@ -473,62 +475,102 @@ static func crear_boton(texto: String, al_pulsar: Callable) -> Button:
 	boton.add_theme_font_size_override("font_size", 16)
 	boton.focus_mode = Control.FOCUS_NONE  # Así ESPACIO no pulsa botones sin querer.
 	boton.pressed.connect(al_pulsar)
+	Estilo.animar_boton(boton)
 	return boton
 
 
-# El estilo común de toda la interfaz: botones, pestañas y deslizadores con el
-# mismo aspecto oscuro con borde verde que los paneles.
+# Caja de estilo común: fondo liso, borde fino y esquinas cortadas (low poly).
+static func caja_estilo(fondo: Color, borde: Color, radio: int = 8, grosor: int = 2,
+		margen_h: float = 12.0, margen_v: float = 6.0) -> StyleBoxFlat:
+	var c: StyleBoxFlat = StyleBoxFlat.new()
+	c.bg_color = fondo
+	c.border_color = borde
+	c.set_border_width_all(grosor)
+	c.set_corner_radius_all(radio)
+	c.corner_detail = 1   # Esquina cortada: estilo low poly
+	c.content_margin_left = margen_h
+	c.content_margin_right = margen_h
+	c.content_margin_top = margen_v
+	c.content_margin_bottom = margen_v
+	return c
+
+
+# El estilo común de toda la interfaz: botones, pestañas, casillas, deslizadores,
+# barras, campos de texto y menús con la misma paleta (ver Estilo).
 static func crear_tema() -> Theme:
+	Estilo.aplicar_fuente()
 	var tema: Theme = Theme.new()
-	var estados: Dictionary = {
-		"normal": Color(0.12, 0.16, 0.13), "hover": Color(0.18, 0.28, 0.2),
-		"pressed": Color(0.1, 0.35, 0.2), "disabled": Color(0.1, 0.1, 0.1),
-		"focus": Color(0.12, 0.16, 0.13),
+	var botones: Dictionary = {
+		"normal": [Estilo.FONDO_2, Estilo.BORDE_SUAVE],
+		"hover": [Color(0.16, 0.27, 0.2), Estilo.ACENTO],
+		"pressed": [Color(0.09, 0.30, 0.18), Estilo.ACENTO],
+		"disabled": [Color(0.09, 0.1, 0.1), Color(0.2, 0.23, 0.21)],
+		"focus": [Estilo.FONDO_2, Estilo.BORDE],
 	}
-	for estado in estados:
-		var caja: StyleBoxFlat = StyleBoxFlat.new()
-		caja.bg_color = estados[estado]
-		caja.border_color = Color(0.3, 0.55, 0.35) if estado != "disabled" else Color(0.22, 0.25, 0.22)
-		caja.set_border_width_all(2)
-		caja.set_corner_radius_all(6)
-		caja.content_margin_left = 12
-		caja.content_margin_right = 12
-		caja.content_margin_top = 6
-		caja.content_margin_bottom = 6
+	for estado in botones:
+		var caja: StyleBoxFlat = caja_estilo(botones[estado][0], botones[estado][1], 8, 2, 14, 7)
+		if estado == "normal" or estado == "hover":
+			caja.border_width_bottom = 4   # Un canto más grueso abajo: aspecto de pieza con volumen.
 		tema.set_stylebox(estado, "Button", caja)
-	tema.set_color("font_color", "Button", Color(0.9, 0.95, 0.88))
-	tema.set_color("font_hover_color", "Button", Color(1, 1, 0.9))
-	tema.set_color("font_pressed_color", "Button", Color(0.7, 1, 0.75))
-	tema.set_color("font_disabled_color", "Button", Color(0.45, 0.47, 0.45))
-	# Pestañas de la tienda.
+		tema.set_stylebox(estado, "OptionButton", caja)
+	tema.set_color("font_color", "Button", Estilo.TEXTO)
+	tema.set_color("font_hover_color", "Button", Color(1, 1, 0.92))
+	tema.set_color("font_pressed_color", "Button", Color(0.75, 1, 0.8))
+	tema.set_color("font_disabled_color", "Button", Color(0.45, 0.48, 0.46))
+	tema.set_color("font_color", "OptionButton", Estilo.TEXTO)
+	tema.set_color("font_hover_color", "OptionButton", Color(1, 1, 0.92))
+	# Etiquetas, casillas de marcar y campos de texto.
+	tema.set_color("font_color", "Label", Estilo.TEXTO)
+	tema.set_color("font_color", "CheckBox", Estilo.TEXTO)
+	tema.set_color("font_color", "CheckButton", Estilo.TEXTO)
+	tema.set_stylebox("normal", "LineEdit", caja_estilo(Color(0.04, 0.05, 0.055), Estilo.BORDE_SUAVE, 6, 2, 10, 6))
+	tema.set_stylebox("focus", "LineEdit", caja_estilo(Color(0.05, 0.07, 0.07), Estilo.ACENTO, 6, 2, 10, 6))
+	tema.set_color("font_color", "LineEdit", Estilo.TEXTO)
+	tema.set_color("caret_color", "LineEdit", Estilo.ACENTO)
+	tema.set_color("selection_color", "LineEdit", Color(0.25, 0.55, 0.35, 0.6))
+	# Pestañas.
 	for estado in ["tab_selected", "tab_unselected", "tab_hovered"]:
-		var pestana: StyleBoxFlat = StyleBoxFlat.new()
-		pestana.bg_color = {"tab_selected": Color(0.15, 0.3, 0.2), "tab_unselected": Color(0.09, 0.11, 0.1),
-				"tab_hovered": Color(0.14, 0.2, 0.15)}[estado]
-		pestana.border_color = Color(0.3, 0.55, 0.35)
-		pestana.set_border_width_all(1)
-		pestana.corner_radius_top_left = 6
-		pestana.corner_radius_top_right = 6
-		pestana.content_margin_left = 12
-		pestana.content_margin_right = 12
-		pestana.content_margin_top = 5
-		pestana.content_margin_bottom = 5
+		var pestana: StyleBoxFlat = caja_estilo(
+				{"tab_selected": Color(0.14, 0.30, 0.2), "tab_unselected": Color(0.08, 0.1, 0.095),
+				"tab_hovered": Color(0.13, 0.2, 0.16)}[estado],
+				Estilo.BORDE if estado == "tab_selected" else Estilo.BORDE_SUAVE, 6, 1, 14, 6)
+		pestana.corner_radius_bottom_left = 0
+		pestana.corner_radius_bottom_right = 0
 		tema.set_stylebox(estado, "TabContainer", pestana)
-	tema.set_color("font_selected_color", "TabContainer", Color(0.75, 1, 0.8))
-	tema.set_color("font_unselected_color", "TabContainer", Color(0.65, 0.7, 0.65))
+	tema.set_stylebox("panel", "TabContainer", caja_estilo(Color(0.06, 0.075, 0.075, 0.9), Estilo.BORDE_SUAVE, 6, 1, 10, 8))
+	tema.set_color("font_selected_color", "TabContainer", Color(0.78, 1, 0.82))
+	tema.set_color("font_unselected_color", "TabContainer", Color(0.65, 0.72, 0.67))
 	tema.set_color("font_hovered_color", "TabContainer", Color(0.9, 1, 0.9))
+	# Deslizadores y barras de progreso.
+	var surco: StyleBoxFlat = caja_estilo(Color(0.04, 0.05, 0.055), Estilo.BORDE_SUAVE, 4, 1, 0, 3)
+	var relleno: StyleBoxFlat = caja_estilo(Estilo.BORDE, Estilo.BORDE, 4, 0, 0, 3)
+	tema.set_stylebox("slider", "HSlider", surco)
+	tema.set_stylebox("grabber_area", "HSlider", relleno)
+	tema.set_stylebox("grabber_area_highlight", "HSlider", caja_estilo(Estilo.ACENTO, Estilo.ACENTO, 4, 0, 0, 3))
+	tema.set_stylebox("background", "ProgressBar", surco)
+	tema.set_stylebox("fill", "ProgressBar", relleno)
+	tema.set_color("font_color", "ProgressBar", Estilo.TEXTO)
+	# Barras de desplazamiento finas.
+	tema.set_stylebox("scroll", "VScrollBar", caja_estilo(Color(0.05, 0.06, 0.06, 0.6), Color(0, 0, 0, 0), 4, 0, 4, 0))
+	tema.set_stylebox("grabber", "VScrollBar", caja_estilo(Estilo.BORDE_SUAVE, Estilo.BORDE_SUAVE, 4, 0, 4, 0))
+	tema.set_stylebox("grabber_highlight", "VScrollBar", caja_estilo(Estilo.BORDE, Estilo.BORDE, 4, 0, 4, 0))
+	tema.set_stylebox("grabber_pressed", "VScrollBar", caja_estilo(Estilo.ACENTO, Estilo.ACENTO, 4, 0, 4, 0))
+	# Menús desplegables y avisos flotantes.
+	tema.set_stylebox("panel", "PopupMenu", caja_estilo(Estilo.FONDO, Estilo.BORDE, 6, 2, 8, 6))
+	tema.set_stylebox("hover", "PopupMenu", caja_estilo(Color(0.16, 0.27, 0.2), Color(0, 0, 0, 0), 4, 0, 8, 4))
+	tema.set_color("font_color", "PopupMenu", Estilo.TEXTO)
+	tema.set_stylebox("panel", "TooltipPanel", caja_estilo(Estilo.FONDO, Estilo.ORO, 6, 1, 8, 5))
 	return tema
 
 
-# Panel oscuro con borde verde para las ventanas.
+# Panel oscuro con borde verde y esquinas cortadas para las ventanas.
 static func crear_panel() -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
-	var estilo: StyleBoxFlat = StyleBoxFlat.new()
-	estilo.bg_color = Color(0.07, 0.08, 0.08, 0.96)
-	estilo.border_color = Color(0.3, 0.55, 0.35)
-	estilo.set_border_width_all(2)
-	estilo.set_corner_radius_all(8)
-	estilo.set_content_margin_all(18)
+	var estilo: StyleBoxFlat = caja_estilo(Estilo.FONDO, Estilo.BORDE, 12, 2, 20, 18)
+	estilo.border_width_top = 5   # Franja superior más gruesa: cabecera de la ventana.
+	estilo.shadow_color = Color(0, 0, 0, 0.45)
+	estilo.shadow_size = 18
+	estilo.shadow_offset = Vector2(0, 6)
 	panel.add_theme_stylebox_override("panel", estilo)
 	return panel
 

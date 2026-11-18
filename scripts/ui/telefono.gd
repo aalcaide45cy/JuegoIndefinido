@@ -43,6 +43,7 @@ func construir() -> void:
 	estilo.border_color = Color(0.28, 0.3, 0.36)
 	estilo.set_border_width_all(4)
 	estilo.set_corner_radius_all(44)
+	estilo.corner_detail = 2   # Bordes facetados: low poly
 	estilo.set_content_margin_all(14)
 	marco.add_theme_stylebox_override("panel", estilo)
 	Hud.centrar(marco, Vector2(410.0, 700.0))
@@ -51,6 +52,7 @@ func construir() -> void:
 	var est2: StyleBoxFlat = StyleBoxFlat.new()
 	est2.bg_color = FONDO_APP
 	est2.set_corner_radius_all(32)
+	est2.corner_detail = 2   # Bordes facetados: low poly
 	est2.set_content_margin_all(14)
 	pantalla.add_theme_stylebox_override("panel", est2)
 	marco.add_child(pantalla)
@@ -101,7 +103,7 @@ func _cambiar_pestana(i: int) -> void:
 
 
 func _process(_delta: float) -> void:
-	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
+	_cabecera_info.text = ("%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]) + (("     Negro %d $" % Juego.dinero_negro) if Juego.dinero_negro > 0 else "")
 	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios", "Metas", "Taxi"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
 	var firma: String = _calcular_firma()
@@ -142,7 +144,7 @@ func _calcular_firma() -> String:
 	for e in Juego.encargos:
 		firma += "%s%s," % [e["id"], e["estado"]]
 	if _pestana == 5:
-		firma += "d%d|" % Juego.dinero
+		firma += "d%d|n%d|" % [Juego.dinero, Juego.dinero_negro]
 	firma += "|%d|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel, Juego.metas_cobradas.size()]
 	return firma
 
@@ -171,7 +173,7 @@ func _pintar_taxi() -> void:
 		_texto(v, "%.1f km  ·  %d $  ·  %s" % [float(d["dist"]) / 1000.0, int(d["precio"]), _texto_duracion(float(d["horas"]))], 13,
 				Color(1.0, 0.85, 0.4))
 		var b: Button = Hud.crear_boton("Ir en taxi", _pedir_taxi.bind(d))
-		b.disabled = motivo != "" or Juego.dinero < int(d["precio"]) or float(d["dist"]) < Taxi.DISTANCIA_MINIMA
+		b.disabled = motivo != "" or Juego.dinero_total() < int(d["precio"]) or float(d["dist"]) < Taxi.DISTANCIA_MINIMA
 		v.add_child(b)
 
 
@@ -203,6 +205,7 @@ func _tarjeta() -> VBoxContainer:
 	est.border_color = ACENTO
 	est.border_width_left = 5
 	est.set_corner_radius_all(16)
+	est.corner_detail = 1   # Esquina cortada: estilo low poly
 	est.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -40,6 +40,11 @@ func cerrar() -> void:
 	super()
 
 
+# Llevar mucho dinero negro también se puede esconder (o te lo quitan).
+func _negro_en_juego() -> bool:
+	return Juego.dinero_negro >= Juego.DatosBlanqueo.UMBRAL_SOSPECHOSO
+
+
 func _ilegales() -> Array:
 	var r: Array = []
 	for i in Juego.inventario.size():
@@ -65,6 +70,17 @@ func _pintar() -> void:
 		var b: Button = Hud.crear_boton("Esconder: " + texto, _esconder.bind(i))
 		b.disabled = e != ""
 		_lista.add_child(b)
+	if _negro_en_juego():
+		hay = true
+		var en: String = _estado.get(-1, "")
+		var tn: String = "Esconder dinero negro: %d $" % Juego.dinero_negro
+		if en == "escondido":
+			tn += "   (escondido)"
+		elif en == "visible":
+			tn += "   (¡lo ven!)"
+		var bn: Button = Hud.crear_boton(tn, _esconder.bind(-1))
+		bn.disabled = en != ""
+		_lista.add_child(bn)
 	if not hay:
 		subtitulo(_lista, "No llevas nada ilegal. Con suerte te dejan ir.")
 
@@ -98,6 +114,11 @@ func _terminar() -> void:
 		Juego.inventario[i] = null
 	# Solo hay multa si encuentran algo: antes también cobraban el % del dinero cuando "no
 	# encuentran nada y te dejan ir".
+	var negro_quitado: int = 0
+	if _negro_en_juego() and _estado.get(-1, "") != "escondido":
+		negro_quitado = int(Juego.dinero_negro * Juego.DatosBlanqueo.CACHEO_CONFISCA)
+		Juego.dinero_negro -= negro_quitado
+		confiscados += 1
 	var multa: int = 0
 	if confiscados > 0:
 		multa = mini(Juego.dinero, 20 * confiscados + 5 * unidades + int(Juego.dinero * Economia.MULTA_CACHEO_PORCENTAJE))
@@ -109,5 +130,6 @@ func _terminar() -> void:
 		subtitulo(_lista, "El guardia no encuentra nada y te deja ir.")
 		Juego.avisar("El cacheo terminó sin problemas.")
 	else:
-		subtitulo(_lista, "Te confiscan %d montón(es) y te cobran una multa de %d $." % [confiscados, multa])
+		subtitulo(_lista, "Te confiscan %d montón(es)%s y te cobran una multa de %d $." % [confiscados,
+				(" (y %d $ de dinero negro)" % negro_quitado) if negro_quitado > 0 else "", multa])
 		Juego.avisar("Cacheo: confiscado lo ilegal y multa de %d $." % multa)

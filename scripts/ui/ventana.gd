@@ -16,10 +16,25 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var fondo: ColorRect = ColorRect.new()
-	fondo.color = Color(0, 0, 0, 0.55)
+	fondo.color = Color(0.01, 0.03, 0.03, 0.6)
 	fondo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fondo)
 	construir()
+	_entrada_suave()
+
+
+# Aparece con un fundido corto y el panel crece un poco (sin molestar al jugar).
+func _entrada_suave() -> void:
+	modulate.a = 0.0
+	var t: Tween = create_tween()
+	t.set_parallel(true)
+	t.tween_property(self, "modulate:a", 1.0, 0.14)
+	for h in get_children():
+		if h is PanelContainer:
+			var p: PanelContainer = h as PanelContainer
+			p.pivot_offset = p.custom_minimum_size / 2.0
+			p.scale = Vector2(0.96, 0.96)
+			t.tween_property(p, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func construir() -> void:
@@ -46,7 +61,7 @@ func panel_centrado(tam: Vector2) -> VBoxContainer:
 func cabecera(caja: Container, titulo: String) -> HBoxContainer:
 	var fila: HBoxContainer = HBoxContainer.new()
 	caja.add_child(fila)
-	var label: Label = Hud.crear_label(26, Color(0.6, 0.9, 0.6))
+	var label: Label = Hud.crear_label(28, Estilo.ACENTO)
 	label.text = titulo
 	fila.add_child(label)
 	var hueco: Control = Control.new()
@@ -58,7 +73,7 @@ func cabecera(caja: Container, titulo: String) -> HBoxContainer:
 
 # Un subtítulo pequeño.
 func subtitulo(caja: Container, texto: String) -> Label:
-	var label: Label = Hud.crear_label(16, Color(0.75, 0.8, 0.72))
+	var label: Label = Hud.crear_label(16, Estilo.TEXTO_SUAVE)
 	label.text = texto
 	caja.add_child(label)
 	return label

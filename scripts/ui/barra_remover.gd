@@ -31,6 +31,7 @@ func _ready() -> void:
 	estilo.border_color = Color(0.95, 0.65, 0.25)
 	estilo.set_border_width_all(3)
 	estilo.set_corner_radius_all(10)
+	estilo.corner_detail = 1   # Esquina cortada: estilo low poly
 	estilo.set_content_margin_all(18)
 	add_theme_stylebox_override("panel", estilo)
 	Hud.centrar(self, Vector2(520.0, 190.0))

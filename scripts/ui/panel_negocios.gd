@@ -47,9 +47,9 @@ func _ready() -> void:
 	_info.custom_minimum_size.x = ancho
 	add_child(_info)
 	var nav: GridContainer = GridContainer.new()
-	nav.columns = 3 if compacto else 5
+	nav.columns = 3 if compacto else 6
 	nav.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for par in [["resumen", "Resumen"], ["mercado", "Mercado"], ["cartera", "Cartera"], ["clientes", "Clientes"], ["licencias", "Licencias"]]:
+	for par in [["resumen", "Resumen"], ["mercado", "Mercado"], ["cartera", "Cartera"], ["clientes", "Clientes"], ["licencias", "Licencias"], ["lavado", "Lavado"]]:
 		var b: Button = Hud.crear_boton(par[1], _ir.bind(par[0]))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		nav.add_child(b)
@@ -67,7 +67,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var e: Dictionary = Negocios.estado()
-	_info.text = "%d $  ·  Cartera %d/%d  ·  +%d / -%d $ al día" % [Juego.dinero, e["activos"].size(), Negocios.capacidad(),
+	_info.text = ("Negro %d $  ·  " % Juego.dinero_negro if Juego.dinero_negro > 0 else "") + "%d $  ·  Cartera %d/%d  ·  +%d / -%d $ al día" % [Juego.dinero, e["activos"].size(), Negocios.capacidad(),
 			Negocios.ingreso_diario(), Negocios.gasto_diario()]
 	# Si cambia algo por su cuenta (pasa un día, llega un cliente) se redibuja,
 	# salvo en medio de un regateo para no cortarlo.
@@ -84,6 +84,7 @@ func _tarjeta(color: Color = ACENTO) -> VBoxContainer:
 	est.border_color = color
 	est.border_width_left = 5
 	est.set_corner_radius_all(14)
+	est.corner_detail = 1   # Esquina cortada: estilo low poly
 	est.set_content_margin_all(10)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -149,6 +150,7 @@ func _pintar() -> void:
 		"cartera": _pintar_cartera()
 		"clientes": _pintar_clientes()
 		"licencias": _pintar_licencias()
+		"lavado": _pintar_lavado()
 		"trato": _pintar_trato()
 
 
@@ -221,6 +223,39 @@ func _pintar_licencias() -> void:
 
 func _comprar_licencia(id: String) -> void:
 	_hecho(Negocios.comprar_licencia(id))
+
+
+# ----------------------------------- Lavado -----------------------------------
+# Dinero negro -> limpio a través de tus negocios (mecánica de ficción del juego).
+
+func _pintar_lavado() -> void:
+	var v: VBoxContainer = _tarjeta(MAL)
+	_txt(v, "Dinero negro: %d $" % Juego.dinero_negro, 18, MAL)
+	_txt(v, "Lo que ganas con el trato ilegal es dinero negro. El banco, las casas, los coches, las licencias y los sueldos solo aceptan dinero limpio. Pásalo por un negocio tuyo: cada uno tiene un límite al día y se queda una comisión.", 14, GRIS)
+	_txt(v, "Vigilancia fiscal: %d / 100. Si llega a %d, puede haber una inspección: te quitan parte del dinero negro, te multan y la policía te busca. Baja %d puntos al día." % [
+			int(Juego.vigilancia_fiscal), int(Blanqueo.Datos.VIGILANCIA_INSPECCION), int(Blanqueo.Datos.VIGILANCIA_BAJA_DIA)], 14,
+			MAL if Juego.vigilancia_fiscal >= Blanqueo.Datos.VIGILANCIA_INSPECCION else AVISO)
+	_txt(v, "Ahora llevas la sospecha en %d / 100. Llevar mucho dinero negro encima atrae cacheos." % int(Juego.sospecha), 14, GRIS)
+	for id in Blanqueo.Datos.FRENTES:
+		var f: Dictionary = Blanqueo.Datos.FRENTES[id]
+		var l: Dictionary = DatosNegocios.LICENCIAS[id]
+		var t: VBoxContainer = _tarjeta()
+		_txt(t, str(l["nombre"]), 17, ACENTO)
+		_txt(t, "Comisión %d %%  ·  Riesgo x%.1f" % [int(f["comision"] * 100.0), float(f["riesgo"])], 14, GRIS)
+		if not Negocios.tiene_licencia(str(id)):
+			_txt(t, "Necesitas su licencia (pestaña Licencias).", 14, MAL)
+			continue
+		var disp: int = Blanqueo.disponible(str(id))
+		_txt(t, "Hoy puede mover %d $ más (límite %d $; crece si tienes propiedades o vehículos de su tipo)." % [disp, Blanqueo.limite(str(id))], 14, BIEN if disp > 0 else AVISO)
+		var fila: HFlowContainer = _fila(t)
+		for cant in [100, 500, 2000]:
+			_boton(fila, "Pasar %d $" % cant, _blanquear.bind(str(id), cant), Juego.dinero_negro > 0 and disp > 0)
+		_boton(fila, "Todo lo posible", _blanquear.bind(str(id), 1000000000), Juego.dinero_negro > 0 and disp > 0)
+	_txt(v, "Has blanqueado %d $ en total." % Blanqueo.total_blanqueado(), 14, GRIS)
+
+
+func _blanquear(id: String, cantidad: int) -> void:
+	_hecho(Blanqueo.blanquear(id, cantidad))
 
 
 # ---------------------------------- Mercado -----------------------------------
