@@ -197,3 +197,28 @@ Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola e
 - **Vehículos** (`scripts/vehiculos/`): `vehiculo.gd` tiene la tabla `TIPOS` (añadir un modelo = una entrada: nombre, modelo de `assets/kenney/car-kit`, largo, velocidad, precio, `clase` suelo/remolque/aire, `cat`). Coches, furgoneta, camión, tractor, excavadora, cabeza de tráiler, remolques (H engancha/suelta), portacoches, helicóptero y avioneta (hechos con cajas). E sube/baja; robar sube la sospecha; gasolina (bidón) y reparación (kit) en la ferretería. Si un coche sale girado, cambia `GIRO_MODELO`. `GestorVehiculos` crea los tuyos (`Juego.vehiculos`, guardados) y 7 coches robables en la ciudad. Concesionario en la Zona de Campo (comprar, vender a tasación o negociar +15/+30 %).
 - **Personal**: Bolsa de trabajo en la plaza (`oficina_empleo.gd`, `bolsa_trabajo.gd`, `gestor_personal.gd`). Agricultor (cosecha y resiembra su huerto), ganadero (recoge el corral), guardaespaldas (baja la sospecha). Sueldo por día; lo producido va a `Juego.almacen`.
 - Pendiente de estos: probar en Godot (orientación de los modelos de coche, cámara en vuelo), trabajadores visibles en el huerto, tráfico y vehículos aparcados en el mapa grande.
+
+
+## Negocios y propiedades (sistema común)
+
+Hecho en la rama `claude/project-thread-mgta8x` (SIN PROBAR en Godot):
+
+- **Datos** en `scripts/datos/negocios.gd`: categorías (pisos, coches, camiones y
+  maquinaria, helicópteros y aviones), catálogo de lo que se puede tratar y las
+  **licencias** que abren cada negocio (inmobiliaria, concesionario, alquiler de coches,
+  alquiler de maquinaria, aeródromo, oficina grande). Añadir un negocio o un objeto nuevo
+  es copiar una entrada. Lo que tiene `"vehiculo"` usa el precio y se puede sacar a la
+  calle con `Vehiculo.TIPOS`; el resto (limusina, volquete, jet...) es genérico.
+- **Lógica** en `scripts/negocios.gd` (estado en `Juego.negocio`, se guarda): mercado de
+  ofertas que cambia cada día, cartera, clientes (compradores e inquilinos), regateo
+  con paciencia y límite oculto (la habilidad Negociación y la reputación ayudan),
+  alquileres que se cobran solos cada día, morosos, averías, desgaste y robos de vehículos.
+- **Economía**: alquiler diario 2 a 3,5 % del valor; gastos fijos diarios (impuestos,
+  seguro, aparcamiento y cuota de licencia); 3 % de impuesto al comprar y 4 % de comisión
+  al vender. Todas las cifras están al principio de `datos/negocios.gd`.
+- **Pantallas**: `ui/panel_negocios.gd` (pestaña Negocios del móvil y ventana grande
+  `ui/ventana_negocios.gd` desde la inmobiliaria y el concesionario).
+- `gestor_negocios.gd` avanza los días (señal `Juego.dia_nuevo`).
+- Pendiente: edificios con interior para cada piso, que el inquilino aparezca en el mundo,
+  conducir lo que alquilas a un cliente, empleados del negocio, y revisar el equilibrio
+  jugando.

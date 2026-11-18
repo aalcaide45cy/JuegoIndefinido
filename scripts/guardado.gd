@@ -50,6 +50,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"almacen": Juego.almacen,
 		"almacen_ultima_semilla": Juego.almacen_ultima_semilla,
 		"dia_pago": Juego.dia_pago,
+		"negocio": Juego.negocio,
 		"contador_vehiculos": Juego._contador_vehiculos,
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
@@ -139,6 +140,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	Juego.aspecto = Juego.DatosAspecto.valido(datos.get("aspecto", {}))
 	_leer_vehiculos(datos.get("vehiculos", {}))
 	_leer_personal(datos)
+	Negocios.importar(datos.get("negocio", {}))
 	Juego._contador_vehiculos = maxi(0, int(datos.get("contador_vehiculos", Juego.vehiculos.size())))
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
@@ -173,6 +175,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	if jug != null:
 		jug.vestir()
 	arbol.call_group("gestor_vehiculos", "sincronizar")
+	Negocios.ponerse_al_dia()
 	Juego.cambio.emit()
 	return true
 

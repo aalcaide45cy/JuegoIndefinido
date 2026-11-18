@@ -26,6 +26,7 @@ func construir() -> void:
 	caja.add_child(pestanas)
 	pestanas.add_child(Hud.crear_boton("Comprar", _cambiar_modo.bind("comprar")))
 	pestanas.add_child(Hud.crear_boton("Vender / negociar", _cambiar_modo.bind("vender")))
+	caja.add_child(Hud.crear_boton("Mi negocio: comprar para revender, alquilar vehículos, helicópteros y aviones...", _abrir_negocio))
 	subtitulo(caja, "Gasolina y reparaciones: ferretería. Los vehículos se guardan donde los dejes. H engancha remolques.")
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -37,6 +38,21 @@ func construir() -> void:
 	_texto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	caja.add_child(_texto)
 	_pintar()
+
+
+# Cierra esta ventana y abre la gestión de tu negocio de vehículos (con la plaza de entrega).
+func _abrir_negocio() -> void:
+	var hud: Node = self
+	while hud != null and not hud is Hud:
+		hud = hud.get_parent()
+	cerrar()
+	if hud != null:
+		var v: VentanaNegocios = VentanaNegocios.new()
+		v.titulo = "Mi negocio de vehículos"
+		v.cat_inicial = "coche"
+		v.punto = punto
+		v.giro = giro
+		(hud as Hud).abrir_ventana(v)
 
 
 func _cambiar_modo(m: String) -> void:

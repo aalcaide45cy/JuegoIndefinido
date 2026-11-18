@@ -21,6 +21,7 @@ const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
+signal dia_nuevo                  # Ha empezado un día nuevo del juego (lo usan los negocios).
 
 const TAM_BARRA: int = 9
 const TAM_INVENTARIO: int = 63    # 9 de la barra + 54 de la mochila.
@@ -59,6 +60,7 @@ var personal: Array = []             # Empleados contratados (ver scripts/datos/
 var almacen: Dictionary = {}         # Lo que produce el personal: id_objeto -> cantidad.
 var almacen_ultima_semilla: Dictionary = {}   # id_huerto -> última semilla (para volver a sembrar).
 var dia_pago: int = 1                # Último día en que se pagó al personal.
+var negocio: Dictionary = {}         # Licencias, cartera, mercado y clientes de tus negocios (ver scripts/negocios.gd).
 var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: vehículos tuyos (ver vehiculo.gd).
 var _contador_vehiculos: int = 0
 var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
@@ -103,6 +105,7 @@ func reiniciar() -> void:
 	almacen.clear()
 	almacen_ultima_semilla.clear()
 	dia_pago = 1
+	negocio = {}
 	_contador_vehiculos = 0
 	reputacion = 0
 	sospecha = 0.0
@@ -139,6 +142,7 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+		dia_nuevo.emit()
 
 
 func siguiente_vehiculo() -> int:
