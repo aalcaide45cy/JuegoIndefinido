@@ -291,7 +291,7 @@ static func oferta(id: int) -> Variant:
 
 
 static func comprar_oferta(id: int, precio: int) -> String:
-	var o = oferta(id)
+	var o: Variant = oferta(id)
 	if o == null:
 		return "Esa oferta ya no está."
 	var motivo: String = motivo_no_compra(str(o["tipo"]))
@@ -397,7 +397,7 @@ static func pista(t: Dictionary, modo: String) -> String:
 
 
 static func retirar_oferta(id: int) -> void:
-	var o = oferta(id)
+	var o: Variant = oferta(id)
 	if o != null:
 		estado()["mercado"].erase(o)
 		_tocar()
@@ -406,7 +406,7 @@ static func retirar_oferta(id: int) -> void:
 # ------------------------------- Cartera --------------------------------------
 
 static func poner_venta(uid: int, valor_nuevo: bool) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null:
 		return ""
 	if valor_nuevo and not permite(DatosNegocios.cat_de(str(a["tipo"])), "vender"):
@@ -417,7 +417,7 @@ static func poner_venta(uid: int, valor_nuevo: bool) -> String:
 
 
 static func poner_alquiler(uid: int, valor_nuevo: bool) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null:
 		return ""
 	if valor_nuevo and not permite(DatosNegocios.cat_de(str(a["tipo"])), "alquilar"):
@@ -464,7 +464,7 @@ static func _crear_lead(a: Dictionary, kind: String) -> Dictionary:
 
 # Paga publicidad y llega un cliente ahora mismo.
 static func buscar_cliente(uid: int, kind: String) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null:
 		return ""
 	var cat: String = DatosNegocios.cat_de(str(a["tipo"]))
@@ -487,7 +487,7 @@ static func coste_reparacion(a: Dictionary) -> int:
 
 
 static func reparar(uid: int) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null:
 		return ""
 	var coste: int = coste_reparacion(a)
@@ -502,7 +502,7 @@ static func reparar(uid: int) -> String:
 
 # Venta rápida a un chatarrero o liquidador: sin regatear, pero al 68%.
 static func liquidar(uid: int) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null:
 		return ""
 	var precio: int = int(round(valor_activo(a) * 0.68))
@@ -529,7 +529,7 @@ static func _vender_activo(a: Dictionary, precio: int, verbo: String) -> String:
 
 
 static func rescindir(uid: int) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null or not esta_alquilado(a):
 		return ""
 	var quien: String = str(a["alq"]["cliente"])
@@ -548,14 +548,14 @@ static func lead(id: int) -> Variant:
 
 
 static func quitar_lead(id: int) -> void:
-	var l = lead(id)
+	var l: Variant = lead(id)
 	if l != null:
 		estado()["leads"].erase(l)
 		_tocar()
 
 
 static func texto_lead(l: Dictionary) -> String:
-	var a = _activo(int(l["uid"]))
+	var a: Variant = _activo(int(l["uid"]))
 	var nombre: String = DatosNegocios.nombre(str(a["tipo"])) if a != null else "?"
 	if str(l["kind"]) == "venta":
 		return "%s quiere COMPRAR tu %s." % [str(l["persona"]), nombre]
@@ -563,10 +563,10 @@ static func texto_lead(l: Dictionary) -> String:
 
 
 static func aceptar_lead(id: int, precio: int) -> String:
-	var l = lead(id)
+	var l: Variant = lead(id)
 	if l == null:
 		return "Ese cliente ya no está."
-	var a = _activo(int(l["uid"]))
+	var a: Variant = _activo(int(l["uid"]))
 	if a == null:
 		quitar_lead(id)
 		return "Eso ya no es tuyo."
@@ -592,7 +592,7 @@ static func es_conducible(a: Dictionary) -> bool:
 
 
 static func sacar_a_calle(uid: int, gestor: Node, punto: Vector3, giro: float) -> String:
-	var a = _activo(uid)
+	var a: Variant = _activo(uid)
 	if a == null or gestor == null or not es_conducible(a):
 		return "No se puede sacar."
 	var d: Dictionary = DatosNegocios.CATALOGO[str(a["tipo"])]
