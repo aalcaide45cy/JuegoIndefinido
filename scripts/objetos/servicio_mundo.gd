@@ -7,6 +7,8 @@
 #   taller      E repara el vehículo más cercano.
 #   hospital    E te cura del todo y quita los efectos malos.
 #   taberna     E tomas algo: algo de vida y baja la sospecha.
+#   comisaria / bomberos   E ficha (policía / bombero) y entra o sale de servicio. En el
+#               hospital y el taller, Mayús+E ficha (médico / mecánico) y hace turno.
 #   banco       E ingresa casi todo tu dinero (a salvo de multas y de la muerte, con
 #               interés diario); Mayús+E lo retira.
 # Si "con_visual" es true dibuja él mismo el edificio (para la ciudad original).
@@ -18,7 +20,7 @@ extends Interactuable
 const Economia = preload("res://scripts/datos/economia.gd")
 
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
-		"taller": "Taller", "gasolinera": "Gasolinera"}
+		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -75,11 +77,13 @@ func texto_accion() -> String:
 					_precio_gasolina(v), Economia.BIDON_EN_SURTIDOR] if falta > 0.5 else "El depósito está lleno"
 		"taller":
 			if v == null:
-				return "Taller (acerca un vehículo a menos de 15 m)"
+				return "Taller (acerca un vehículo a menos de 15 m)  ·  Mayús+E: " + _texto_oficio()
 			return "Reparar %s: %d $" % [Vehiculo.TIPOS[v.tipo]["nombre"], _precio_reparacion(v)] \
 					if float(v.get("salud")) < 99.5 else "No necesita reparación"
 		"hospital":
-			return "Hospital: curarte del todo (%d $)" % _precio_cura()
+			return "Hospital: curarte (%d $)  ·  Mayús+E: %s" % [_precio_cura(), _texto_oficio()]
+		"comisaria", "bomberos":
+			return _texto_oficio()
 		"taberna":
 			return "Tomar algo (%d $): algo de vida y menos sospecha" % Economia.TABERNA_PRECIO
 		"banco":
@@ -91,8 +95,17 @@ func usar(_jugador: Node) -> void:
 	var mayus: bool = Input.is_action_pressed("correr")
 	match servicio:
 		"gasolinera": _usar_gasolinera(mayus)
-		"taller": _usar_taller()
-		"hospital": _usar_hospital()
+		"taller":
+			if mayus:
+				_usar_oficio()
+			else:
+				_usar_taller()
+		"hospital":
+			if mayus:
+				_usar_oficio()
+			else:
+				_usar_hospital()
+		"comisaria", "bomberos": _usar_oficio()
 		"taberna": _usar_taberna()
 		"banco": _usar_banco(mayus)
 
@@ -102,11 +115,39 @@ func _precio_gasolina(v) -> int:
 
 
 func _precio_reparacion(v) -> int:
-	return maxi(1, int(ceil((100.0 - float(v.get("salud"))) * Economia.REPARACION_POR_PORCENTAJE)))
+	var base: int = maxi(1, int(ceil((100.0 - float(v.get("salud"))) * Economia.REPARACION_POR_PORCENTAJE)))
+	return maxi(1, int(round(base * (1.0 - Juego.descuento_servicio("taller")))))
 
 
 func _precio_cura() -> int:
-	return maxi(Economia.CURA_MINIMA, int(ceil((Juego.VIDA_MAX - Juego.vida) * Economia.CURA_POR_PUNTO)))
+	var base: int = maxi(Economia.CURA_MINIMA, int(ceil((Juego.VIDA_MAX - Juego.vida) * Economia.CURA_POR_PUNTO)))
+	return maxi(1, int(round(base * (1.0 - Juego.descuento_servicio("hospital")))))
+
+
+# Lo que hace Mayús+E (o E) aquí con el oficio de este lugar.
+func _texto_oficio() -> String:
+	var id: String = Juego.DatosOficios.oficio_de_lugar(servicio)
+	if id == "":
+		return ""
+	var nombre: String = Juego.DatosOficios.nombre(id)
+	if Juego.oficio != id:
+		return "hacerte %s" % nombre.to_lower()
+	return "terminar turno (cobras %d $)" % int(round(Juego.turno_pago)) if Juego.en_turno else "entrar de servicio (%s)" % nombre.to_lower()
+
+
+func _usar_oficio() -> void:
+	var id: String = Juego.DatosOficios.oficio_de_lugar(servicio)
+	if id == "":
+		return
+	if Juego.oficio != id:
+		var msg: String = Juego.fichar(id)
+		if msg != "":
+			Juego.avisar(msg)
+		return
+	if Juego.en_turno:
+		Juego.terminar_turno()
+	else:
+		Juego.empezar_turno()
 
 
 func _usar_gasolinera(comprar_bidon: bool) -> void:
@@ -164,6 +205,7 @@ func _usar_hospital() -> void:
 	Juego.quitar_efectos_malos()
 	Juego.cambio.emit()
 	Juego.avisar("Te curan del todo por %d $." % precio)
+	Juego.empezar_convalecencia(Juego.DatosOficios.CONVALECENCIA_HOSPITAL * (0.5 if Juego.oficio == "medico" else 1.0))
 
 
 func _usar_taberna() -> void:

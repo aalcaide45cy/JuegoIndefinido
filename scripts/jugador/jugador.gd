@@ -221,7 +221,7 @@ func _physics_process(delta: float) -> void:
 			_excluir_en_camara()
 	_pivote.position.y = lerpf(_pivote.position.y, altura_ojos, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
-	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
+	var velocidad: float = VELOCIDAD_CORRER if (Input.is_action_pressed("correr") and Juego.sin_correr <= 0.0) else VELOCIDAD_ANDAR
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
 	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.

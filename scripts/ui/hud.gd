@@ -300,6 +300,15 @@ func _actualizar_alerta() -> void:
 			lineas.append("Agachado: te ven menos")
 		if jugador.en_sombra and Juego.interiores == 0:
 			lineas.append("En la sombra: te ven menos")
+	if Juego.sin_correr > 0.0:
+		lineas.append("Convalecencia: sin correr %d s" % int(ceil(Juego.sin_correr)))
+	if Juego.oficio != "":
+		var xp_sig: int = Juego.DatosOficios.xp_siguiente(Juego.oficio, Juego.xp_oficio())
+		lineas.append("%s · %s%s%s" % [Juego.DatosOficios.nombre(Juego.oficio), Juego.DatosOficios.nombre_rango(Juego.oficio, Juego.xp_oficio()),
+				"  [EN SERVICIO]" if Juego.en_turno else "",
+				"  (%d/%d XP)" % [Juego.xp_oficio(), xp_sig] if xp_sig > 0 else ""])
+	if Juego.texto_aviso_oficio != "":
+		lineas.append(Juego.texto_aviso_oficio)
 	_label_sigilo.text = "\n".join(lineas)
 
 

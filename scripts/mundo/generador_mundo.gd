@@ -752,12 +752,14 @@ const DISTRITOS: Dictionary = {
 # Servicios de la ciudad (edificios con letrero y un uso con la tecla E). Posición: bloque (k, l).
 # Una ciudad tiene banco, taberna, hospital, taller y gasolinera; un pueblo, gasolinera y taberna.
 const SERVICIOS_CIUDAD: Dictionary = {Vector2i(1, 1): "banco", Vector2i(-2, -1): "taberna",
-		Vector2i(2, -3): "hospital", Vector2i(-3, 2): "taller", Vector2i(2, 1): "gasolinera"}
-const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna"}
+		Vector2i(2, -3): "hospital", Vector2i(-3, 2): "taller", Vector2i(2, 1): "gasolinera",
+		Vector2i(-1, 2): "comisaria", Vector2i(3, -1): "bomberos"}
+const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna", Vector2i(-2, 1): "hospital"}
 const COLOR_SERVICIO: Dictionary = {"banco": Color(0.7, 0.62, 0.35), "taberna": Color(0.5, 0.3, 0.18),
-		"hospital": Color(0.88, 0.88, 0.86), "taller": Color(0.3, 0.32, 0.36), "gasolinera": Color(0.85, 0.85, 0.8)}
+		"hospital": Color(0.88, 0.88, 0.86), "taller": Color(0.3, 0.32, 0.36), "gasolinera": Color(0.85, 0.85, 0.8),
+		"comisaria": Color(0.32, 0.38, 0.55), "bomberos": Color(0.72, 0.28, 0.22)}
 const NOMBRE_SERVICIO: Dictionary = {"banco": "BANCO", "taberna": "TABERNA", "hospital": "HOSPITAL",
-		"taller": "TALLER", "gasolinera": "GASOLINERA"}
+		"taller": "TALLER", "gasolinera": "GASOLINERA", "comisaria": "COMISARÍA", "bomberos": "BOMBEROS"}
 
 
 static func servicio_de(s: Dictionary, k: int, l: int) -> String:
@@ -1217,7 +1219,8 @@ static func _decorar_servicio(mb: ConstructorMalla, c: Dictionary) -> void:
 	var d: float = c["d"]
 	var cara: float = c["puerta"]
 	var franjas: Dictionary = {"banco": Color(0.15, 0.45, 0.25), "taberna": Color(0.7, 0.2, 0.15),
-			"hospital": Color(0.85, 0.15, 0.15), "taller": Color(0.95, 0.7, 0.1), "gasolinera": Color(0.9, 0.2, 0.1)}
+			"hospital": Color(0.85, 0.15, 0.15), "taller": Color(0.95, 0.7, 0.1), "gasolinera": Color(0.9, 0.2, 0.1),
+			"comisaria": Color(0.15, 0.25, 0.75), "bomberos": Color(0.95, 0.85, 0.2)}
 	var franja: Color = franjas[serv]
 	mb.caja(Vector3(x, y + 3.4, z + cara * (d / 2.0 + 0.1)), Vector3(minf(w - 2.0, 8.0), 0.9, 0.14), franja)
 	if serv == "hospital":

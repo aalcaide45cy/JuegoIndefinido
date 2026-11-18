@@ -23,6 +23,7 @@ const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 const DatosEfectos = preload("res://scripts/datos/efectos.gd")
+const DatosOficios = preload("res://scripts/datos/oficios.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
@@ -43,6 +44,13 @@ var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
 var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
 var metas_cobradas: Dictionary = {}   # id de meta -> true (ver datos/metas.gd).
+# Oficios (ver datos/oficios.gd): el actual, la experiencia en cada uno y si estás de servicio.
+var oficio: String = ""
+var oficios_xp: Dictionary = {}       # id de oficio -> experiencia de oficio.
+var en_turno: bool = false
+var turno_pago: float = 0.0           # Sueldo acumulado en este turno (se cobra al terminarlo).
+var texto_aviso_oficio: String = ""  # Lo escribe gestor_oficio.gd para el HUD.
+var sin_correr: float = 0.0           # Segundos de convalecencia: tras curarte no puedes correr.
 var _t_metas: float = 0.0
 var _t_aviso_regen: float = 0.0
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
@@ -118,6 +126,11 @@ func reiniciar() -> void:
 	reloj = 0.0
 	impagos.clear()
 	metas_cobradas.clear()
+	oficio = ""
+	oficios_xp = {}
+	en_turno = false
+	turno_pago = 0.0
+	sin_correr = 0.0
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	modo_volar = false
@@ -180,6 +193,7 @@ func _process(delta: float) -> void:
 		delta_s -= 1.5 * mod("calma")   # Efecto "Calma": la sospecha baja más rápido.
 		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
+	sin_correr = maxf(0.0, sin_correr - delta)
 	atropello_visto = maxf(0.0, atropello_visto - delta)
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
@@ -712,11 +726,91 @@ func quitar_efectos_malos() -> void:
 # mod("velocidad") = 0.35 con "Velocidad" activa: multiplica la velocidad por 1.35.
 func mod(clave: String) -> float:
 	var total: float = 0.0
+	if clave == "dano_recibido" and oficio == "bombero" and en_turno:
+		total -= float(DatosOficios.REDUCCION_DANO_BOMBERO[rango_oficio()])   # Equipo ignífugo.
 	for id in efectos_activos:
 		var m: Dictionary = DatosEfectos.LISTA[id].get("mods", {})
 		if m.has(clave):
 			total += float(m[clave]) * float(efectos_activos[id]["f"])
 	return total
+
+
+# ------------------------------ Oficios y convalecencia ------------------------
+
+# Tras un tratamiento médico no puedes correr durante unos segundos.
+func empezar_convalecencia(segundos: float) -> void:
+	sin_correr = maxf(sin_correr, segundos)
+	avisar("Estás convaleciente: no podrás correr durante %d s." % int(segundos))
+
+
+func xp_oficio(id: String = "") -> int:
+	return int(oficios_xp.get(oficio if id == "" else id, 0))
+
+
+func rango_oficio() -> int:
+	return DatosOficios.indice_rango(oficio, xp_oficio())
+
+
+func es_policia_activo() -> bool:
+	return oficio == "policia" and (en_turno or rango_oficio() >= 1)
+
+
+# Multiplicador de precio en servicios para quien trabaja en ellos (hospital: médico, taller: mecánico).
+func descuento_servicio(servicio: String) -> float:
+	if oficio == "medico" and servicio == "hospital":
+		return float(DatosOficios.DESCUENTO_HOSPITAL[rango_oficio()])
+	if oficio == "mecanico" and servicio == "taller":
+		return float(DatosOficios.DESCUENTO_TALLER[rango_oficio()])
+	return 0.0
+
+
+# Suma experiencia de oficio y avisa si asciendes.
+func ganar_xp_oficio(cantidad: int) -> void:
+	if oficio == "":
+		return
+	var antes: int = rango_oficio()
+	oficios_xp[oficio] = xp_oficio() + cantidad
+	var ahora: int = rango_oficio()
+	if ahora > antes:
+		avisar("¡Ascenso! Ahora eres %s (sueldo x%.1f)." % [DatosOficios.nombre_rango(oficio, xp_oficio()),
+				DatosOficios.multiplicador(oficio, xp_oficio())])
+	cambio.emit()
+
+
+# Ficha en un oficio (si hacía otro, lo deja; conserva su rango en cada uno). Devuelve el aviso a mostrar.
+func fichar(id: String) -> String:
+	if not DatosOficios.existe(id):
+		return ""
+	if id == "policia" and (estrellas > 0 or sospecha >= 40.0):
+		return "La policía no te acepta: te buscan o das mala espina."
+	if oficio == id:
+		return ""
+	if en_turno:
+		terminar_turno()
+	oficio = id
+	cambio.emit()
+	return "Te contratan como %s (%s)." % [DatosOficios.nombre(id), DatosOficios.nombre_rango(id, xp_oficio())]
+
+
+func empezar_turno() -> void:
+	if oficio == "" or en_turno:
+		return
+	en_turno = true
+	turno_pago = 0.0
+	avisar("Entras de servicio como %s. Saldrán avisos por la calle." % DatosOficios.nombre(oficio))
+	cambio.emit()
+
+
+func terminar_turno() -> void:
+	if not en_turno:
+		return
+	en_turno = false
+	var cobro: int = int(round(turno_pago))
+	turno_pago = 0.0
+	if cobro > 0:
+		cobrar(cobro)
+	avisar("Terminas el turno. Cobras %d $ de sueldo." % cobro)
+	cambio.emit()
 
 
 # Fuerza de los efectos en pantalla: "ondas" y "vineta" (0..1), "tinte" (Color).

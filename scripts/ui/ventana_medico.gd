@@ -88,6 +88,7 @@ func _curar(precio: int) -> void:
 		Juego.vida = Juego.VIDA_MAX
 		Juego.avisar("El médico te cose, te venda y te cobra %d $. Vida completa." % precio)
 		Juego.cambio.emit()
+		Juego.empezar_convalecencia(Juego.DatosOficios.CONVALECENCIA_MEDICO)
 
 
 func _desintoxicar(precio: int) -> void:
@@ -103,6 +104,7 @@ func _revision(precio: int) -> void:
 		Juego.aplicar_efecto("regeneracion", DURACION_REGENERACION, 1.0)
 		Juego.avisar("Revisión completa por %d $: como nuevo." % precio)
 		Juego.cambio.emit()
+		Juego.empezar_convalecencia(Juego.DatosOficios.CONVALECENCIA_MEDICO)
 
 
 func _refuerzo(precio: int) -> void:
