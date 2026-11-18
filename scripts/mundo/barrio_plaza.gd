@@ -62,7 +62,7 @@ func construir() -> void:
 	add_child(inmo)
 	registrar_poi(inmo, "Inmobiliaria", Color(0.5, 0.75, 1.0))
 	var bolsa: OficinaEmpleo = OficinaEmpleo.new()
-	bolsa.position = Vector3(-6.5, 0, -12.5)
+	bolsa.position = Vector3(7.5, 0, -9)   # (A (-6.5,-12.5) tapaba el camino de patrulla de los guardias.)
 	add_child(bolsa)
 	registrar_poi(bolsa, "Bolsa de trabajo", Color(1.0, 0.9, 0.5))
 	_decorar_plaza()
