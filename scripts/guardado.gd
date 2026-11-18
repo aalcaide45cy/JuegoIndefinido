@@ -1,7 +1,7 @@
 # guardado.gd
 # -----------------------------------------------------------------------------
 # Guardar y cargar la partida en un archivo. Hay 5 ranuras (user://partida_1.json
-# ... partida_5.json; en Windows quedan en %APPDATA%\Godot\app_userdata\Elixir Clandestino).
+# ... partida_5.json; en Windows quedan en %APPDATA%\Godot\app_userdata\Elixir Clandestino; la carpeta conserva ese nombre a propósito para no perder partidas, ver project.godot).
 # Los logros NO van aquí: son de toda la cuenta (ver logros.gd).
 #
 # Se guarda: dinero, vida, nivel, habilidades, hora y día, inventario,
