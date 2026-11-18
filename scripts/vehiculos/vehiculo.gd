@@ -238,10 +238,6 @@ func subir(jugador: Node) -> void:
 	if conductor != null or not jugador.has_method("subir_a"):
 		return
 	conductor = jugador as Node3D
-	# Que no desaparezca con el trozo de mapa donde estaba aparcado.
-	var escena: Node = get_tree().current_scene
-	if escena != null and get_parent() != escena:
-		reparent(escena)
 	_ultimo_suelo = global_position
 	jugador.subir_a(self)
 	set_physics_process(true)
