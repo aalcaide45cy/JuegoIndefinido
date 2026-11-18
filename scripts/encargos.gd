@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 		if e["estado"] == "aceptado":
 			var t: int = int(e["t"])
 			lineas.append("%s: %d x %s (%d $)\n  %s  -  %d:%02d" % [e["cliente"], e["cantidad"],
-					GameData.POCIONES[e["pocion"]]["nombre"], e["pago"], e["lugar"], t / 60, t % 60])
+					GameData.pocion(e["pocion"])["nombre"], e["pago"], e["lugar"], t / 60, t % 60])
 	_lateral.text = ("ENCARGOS\n" + "\n".join(lineas)) if not lineas.is_empty() and not Juego.menu_abierto else ""
 	# Aviso fijo en pantalla mientras haya ofertas sin responder.
 	var ofertas: int = 0
@@ -141,10 +141,10 @@ func _crear_oferta() -> void:
 			ofertas += 1
 	if ofertas >= 3 or Juego.encargos.size() >= 6:
 		return
-	var ids: Array = GameData.POCIONES.keys()
+	var ids: Array = GameData.pedibles()
 	var pocion: String = ids[randi() % ids.size()]
 	var cantidad: int = randi_range(1, 3) + (1 if Juego.nivel >= 3 else 0)
-	var precio: int = int(GameData.POCIONES[pocion]["precio"])
+	var precio: int = int(GameData.pocion(pocion)["precio"])
 	var factor: float = randf_range(1.15, 1.6) * (1.0 + clampf(Juego.reputacion, 0, 100) / 250.0)
 	var lugar: Array = LUGARES[randi() % LUGARES.size()]
 	var pos: Vector3 = lugar[0]
@@ -158,7 +158,7 @@ func _crear_oferta() -> void:
 	}
 	_siguiente_id += 1
 	Juego.encargos.append(e)
-	_notificar("Mensaje de %s: quiere %d x %s. Mira el móvil (P)." % [e["cliente"], cantidad, GameData.POCIONES[pocion]["nombre"]])
+	_notificar("Mensaje de %s: quiere %d x %s. Mira el móvil (P)." % [e["cliente"], cantidad, GameData.pocion(pocion)["nombre"]])
 	Sonido.tocar(self, "alerta", -10.0)
 	Juego.cambio.emit()
 
@@ -249,7 +249,7 @@ func entregar(id: int) -> String:
 			item = paquete
 			bonus = 1.3   # Empaquetado: +30%.
 		elif not Juego.tiene(item, cant):
-			return "Te faltan pociones: necesitas %d x %s (mejor si van empaquetadas)." % [cant, GameData.POCIONES[e["pocion"]]["nombre"]]
+			return "Te faltan pociones: necesitas %d x %s (mejor si van empaquetadas)." % [cant, GameData.pocion(e["pocion"])["nombre"]]
 		Juego.quitar(item, cant)
 		if Juego.interiores == 0:
 			Juego.delito_visto = 30.0   # Vender ilegal en la calle: los guardias cercanos lo notan.

@@ -18,10 +18,13 @@ extends Node
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
+const DatosEfectos = preload("res://scripts/datos/efectos.gd")
+const Mezclas = preload("res://scripts/datos/mezclas.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
 signal dia_nuevo                  # Ha empezado un día nuevo del juego (lo usan los negocios).
+signal efectos_cambiados          # Se ha añadido o quitado un efecto temporal.
 
 const TAM_BARRA: int = 9
 const TAM_INVENTARIO: int = 63    # 9 de la barra + 54 de la mochila.
@@ -66,6 +69,8 @@ var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: veh�
 var _contador_vehiculos: int = 0
 var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
+var recetario: Dictionary = {}       # Recetas generadas que ya has descubierto: id -> veces preparada.
+var efectos_activos: Dictionary = {} # Efectos temporales: id -> {"t": segundos que quedan, "f": fuerza}.
 
 var inventario: Array = []
 var estanteria: Array = []
@@ -108,6 +113,8 @@ func reiniciar() -> void:
 	dia_pago = 1
 	negocio = {}
 	_contador_vehiculos = 0
+	recetario.clear()
+	efectos_activos.clear()
 	reputacion = 0
 	sospecha = 0.0
 	encargos.clear()
@@ -134,11 +141,15 @@ func _process(delta: float) -> void:
 				delta_s += 0.6
 		if delito_visto > 0.0:
 			delta_s += 3.0
+		delta_s -= 1.5 * mod("calma")   # Efecto "Calma": la sospecha baja más rápido.
 		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	if alerta > 0.0:
-		alerta = maxf(0.0, alerta - delta * (30.0 if interiores > 0 else 6.0))
+		var bajada: float = 30.0 if interiores > 0 else 6.0
+		alerta = maxf(0.0, alerta - delta * bajada / (1.0 + mod("alerta")))   # Paranoia: baja más despacio.
+	if not efectos_activos.is_empty():
+		_avanzar_efectos(delta)
 	hora += delta * 24.0 / (maxf(1.0, duracion_dia_min) * 60.0) * velocidad_tiempo
 	if hora >= 24.0:
 		hora -= 24.0
@@ -188,7 +199,7 @@ func xp_necesaria() -> int:
 
 # Suma experiencia (plantar, cosechar, preparar y vender dan XP) y sube de nivel.
 func ganar_xp(cantidad: int) -> void:
-	xp += cantidad
+	xp += int(round(float(cantidad) * (1.0 + mod("xp"))))
 	while xp >= xp_necesaria():
 		xp -= xp_necesaria()
 		nivel += 1
@@ -248,6 +259,9 @@ func cobrar(cantidad: int) -> void:
 
 
 func cambiar_vida(cantidad: float) -> void:
+	if cantidad < 0.0:
+		# Los efectos de resistencia (o debilidad) cambian el daño que recibes.
+		cantidad *= clampf(1.0 + mod("dano_recibido"), 0.1, 2.0)
 	vida = clampf(vida + cantidad, 0.0, VIDA_MAX)
 	cambio.emit()
 
@@ -472,23 +486,154 @@ func motivo_no_compra(id: String) -> String:
 	return ""
 
 
-# Usa lo que llevas en la mano con el clic izquierdo (comida y medicinas curan).
+# Usa lo que llevas en la mano con el clic izquierdo: comida y medicinas curan
+# y las pociones se beben (dan efectos temporales; ver scripts/datos/efectos.gd).
 func usar_en_mano() -> void:
 	var casilla = en_mano()
 	if casilla == null:
 		return
-	var datos: Dictionary = DatosObjetos.datos(casilla["id"])
-	if not datos.has("cura"):
-		return
-	if vida >= VIDA_MAX:
+	var id: String = casilla["id"]
+	var datos: Dictionary = DatosObjetos.datos(id)
+	var cura: float = float(datos.get("cura", 0))
+	var efectos: Array = []
+	var secundarios: Array = []
+	var quita: Array = datos.get("quita", [])
+	if datos["tipo"] == "pocion":
+		var info: Dictionary = Mezclas.info(id.trim_prefix("pocion_"))
+		if info.is_empty():
+			return
+		efectos = info["efectos"]
+		secundarios = info["secundarios"]
+	else:
+		efectos = datos.get("efectos", [])
+	if cura <= 0.0 and efectos.is_empty() and quita.is_empty():
+		return   # No se puede usar (armas, semillas...).
+	var cura_util: bool = cura > 0.0 and vida < VIDA_MAX
+	var quita_util: bool = false
+	for q in quita:
+		if efectos_activos.has(q):
+			quita_util = true
+	if not cura_util and not quita_util and efectos.is_empty():
 		avisar("Ya tienes la vida completa.")
 		return
-	cambiar_vida(datos["cura"])
 	casilla["cantidad"] -= 1
 	if casilla["cantidad"] <= 0:
 		inventario[seleccion] = null
-	avisar("Usas %s (+%d de vida)." % [datos["nombre"], datos["cura"]])
+	var partes: PackedStringArray = []
+	if cura > 0.0:
+		var antes: float = vida
+		cambiar_vida(cura)
+		partes.append("+%d de vida" % int(round(vida - antes)))
+	for q in quita:
+		if efectos_activos.erase(q):
+			partes.append("quita %s" % DatosEfectos.nombre(q).to_lower())
+	for e in efectos:
+		aplicar_efecto(str(e["id"]), float(e["dur"]), float(e.get("f", 1.0)))
+		partes.append(DatosEfectos.nombre(str(e["id"])))
+	for e in secundarios:
+		if randf() < float(e.get("prob", 1.0)):
+			aplicar_efecto(str(e["id"]), float(e["dur"]), float(e.get("f", 1.0)))
+			partes.append("¡efecto secundario: %s!" % DatosEfectos.nombre(str(e["id"])).to_lower())
+	avisar("Usas %s (%s)." % [datos["nombre"], ", ".join(partes)])
+	efectos_cambiados.emit()
 	cambio.emit()
+
+
+# ---------------------------- Efectos temporales --------------------------------
+
+# Activa un efecto. Si ya lo tenías, se queda el que dure más y sea más fuerte.
+func aplicar_efecto(id: String, duracion: float, fuerza: float = 1.0) -> void:
+	if not DatosEfectos.existe(id):
+		return
+	var actual: Dictionary = efectos_activos.get(id, {})
+	efectos_activos[id] = {
+		"t": maxf(duracion, float(actual.get("t", 0.0))),
+		"total": maxf(duracion, float(actual.get("total", 0.0))),
+		"f": maxf(fuerza, float(actual.get("f", 0.0))),
+	}
+	efectos_cambiados.emit()
+
+
+func quitar_efecto(id: String) -> void:
+	if efectos_activos.erase(id):
+		efectos_cambiados.emit()
+
+
+func quitar_efectos_malos() -> void:
+	for id in efectos_activos.keys():
+		if not DatosEfectos.es_bueno(id):
+			efectos_activos.erase(id)
+	efectos_cambiados.emit()
+
+
+# Suma de un modificador de todos los efectos activos. Por ejemplo
+# mod("velocidad") = 0.35 con "Velocidad" activa: multiplica la velocidad por 1.35.
+func mod(clave: String) -> float:
+	var total: float = 0.0
+	for id in efectos_activos:
+		var m: Dictionary = DatosEfectos.LISTA[id].get("mods", {})
+		if m.has(clave):
+			total += float(m[clave]) * float(efectos_activos[id]["f"])
+	return total
+
+
+# Fuerza de los efectos en pantalla: "ondas" y "vineta" (0..1), "tinte" (Color).
+func visual(clave: String) -> float:
+	var total: float = 0.0
+	for id in efectos_activos:
+		var v: Dictionary = DatosEfectos.LISTA[id].get("visual", {})
+		if v.has(clave) and v[clave] is float:
+			total = maxf(total, float(v[clave]) * minf(1.0, float(efectos_activos[id]["f"])))
+	return total
+
+
+func tinte() -> Color:
+	var c: Color = Color(0, 0, 0, 0)
+	for id in efectos_activos:
+		var v: Dictionary = DatosEfectos.LISTA[id].get("visual", {})
+		if v.has("tinte"):
+			var t: Color = v["tinte"]
+			c.r += t.r * t.a
+			c.g += t.g * t.a
+			c.b += t.b * t.a
+			c.a += t.a
+	if c.a > 0.0:
+		c.r /= c.a
+		c.g /= c.a
+		c.b /= c.a
+		c.a = minf(c.a, 0.2)
+	return c
+
+
+func _avanzar_efectos(delta: float) -> void:
+	var caducados: Array = []
+	var regen: float = 0.0
+	for id in efectos_activos:
+		var e: Dictionary = efectos_activos[id]
+		e["t"] = float(e["t"]) - delta
+		regen += float(DatosEfectos.LISTA[id].get("regen", 0.0)) * float(e["f"])
+		if float(e["t"]) <= 0.0:
+			caducados.append(id)
+	if regen > 0.0 and vida < VIDA_MAX:
+		vida = minf(VIDA_MAX, vida + regen * delta)
+		cambio.emit()
+	elif regen < 0.0 and vida > 1.0:
+		vida = maxf(1.0, vida + regen * delta)   # El veneno baja la vida pero nunca mata.
+		cambio.emit()
+	for id in caducados:
+		efectos_activos.erase(id)
+		avisar("Se acaba el efecto: %s." % DatosEfectos.nombre(id))
+	if not caducados.is_empty():
+		efectos_cambiados.emit()
+
+
+# Apunta una receta nueva en el recetario. Devuelve true si es la primera vez.
+func descubrir_receta(id_pocion: String) -> bool:
+	if GameData.POCIONES.has(id_pocion):
+		return false
+	var primera: bool = not recetario.has(id_pocion)
+	recetario[id_pocion] = int(recetario.get(id_pocion, 0)) + 1
+	return primera
 
 
 # Vende una casilla entera a una tienda por la mitad de su precio.

@@ -19,8 +19,11 @@ const DINERO_INICIAL: int = 200
 # Dinero que necesitas para "ganar" el prototipo (pagar el alquiler al casero).
 const OBJETIVO_DINERO: int = 1000
 
-# Cuántos ingredientes caben en el caldero antes de mezclar.
-const INGREDIENTES_POR_POCION: int = 2
+# Cuántos ingredientes caben en el caldero depende del nivel (2, 3 o 4): ver
+# Mezclas.CASILLAS_POR_NIVEL en scripts/datos/mezclas.gd, que también genera una
+# poción distinta por cada combinación.
+
+const Mezclas = preload("res://scripts/datos/mezclas.gd")
 
 
 # Hierbas que se pueden plantar en el huerto.
@@ -46,6 +49,39 @@ const HIERBAS: Dictionary = {
 		"tiempo": 25.0,
 		"precio_semilla": 15,
 	},
+	# Hierbas nuevas (cada una aporta efectos distintos a las pociones; ver mezclas.gd).
+	"raiz_ardiente": {
+		"nombre": "Raíz Ardiente", "forma": "hoja", "color": Color(0.85, 0.3, 0.15),
+		"tiempo": 45.0, "precio_semilla": 14,
+	},
+	"lirio_lunar": {
+		"nombre": "Lirio Lunar", "forma": "hoja", "color": Color(0.55, 0.7, 0.95),
+		"tiempo": 150.0, "precio_semilla": 20,
+	},
+	"cardo_hierro": {
+		"nombre": "Cardo de Hierro", "forma": "hoja", "color": Color(0.5, 0.55, 0.6),
+		"tiempo": 75.0, "precio_semilla": 16,
+	},
+	"musgo_dulce": {
+		"nombre": "Musgo Dulce", "forma": "hoja", "color": Color(0.5, 0.85, 0.4),
+		"tiempo": 40.0, "precio_semilla": 12,
+	},
+	"baya_noche": {
+		"nombre": "Baya de Noche", "forma": "hoja", "color": Color(0.3, 0.2, 0.5),
+		"tiempo": 110.0, "precio_semilla": 15,
+	},
+	"flor_sol": {
+		"nombre": "Flor de Sol", "forma": "hoja", "color": Color(0.95, 0.8, 0.25),
+		"tiempo": 130.0, "precio_semilla": 16,
+	},
+	"ortiga_negra": {
+		"nombre": "Ortiga Negra", "forma": "hoja", "color": Color(0.15, 0.3, 0.2),
+		"tiempo": 35.0, "precio_semilla": 11,
+	},
+	"hongo_risueno": {
+		"nombre": "Hongo Risueño", "forma": "seta", "color": Color(0.95, 0.6, 0.7),
+		"tiempo": 80.0, "precio_semilla": 14,
+	},
 }
 
 
@@ -63,6 +99,8 @@ const POCIONES: Dictionary = {
 		"receta": ["bruma", "bruma"],
 		"precio": 40,
 		"efecto": "El cliente olvida su nombre, sus deudas y dónde enterró a su suegra.",
+		"efectos": [{"id": "calma", "dur": 90.0}, {"id": "euforia", "dur": 40.0}],
+		"secundarios": [{"id": "mareo", "dur": 30.0, "prob": 0.4}],
 	},
 	"sueno": {
 		"nombre": "Elixir del Mal Sueño",
@@ -70,6 +108,8 @@ const POCIONES: Dictionary = {
 		"receta": ["bruma", "sepulcral"],
 		"precio": 65,
 		"efecto": "Esta noche soñará con sus antepasados. Ellos no están contentos.",
+		"efectos": [{"id": "sigilo", "dur": 100.0}],
+		"secundarios": [{"id": "somnolencia", "dur": 40.0, "prob": 0.6}],
 	},
 	"sombra": {
 		"nombre": "Tónico de la Sombra Propia",
@@ -77,30 +117,38 @@ const POCIONES: Dictionary = {
 		"receta": ["sepulcral", "sepulcral"],
 		"precio": 85,
 		"efecto": "La sombra del cliente se marcha por su cuenta. Volverá... quizá.",
+		"efectos": [{"id": "sigilo", "dur": 150.0, "f": 1.3}, {"id": "vision", "dur": 120.0}],
+		"secundarios": [{"id": "paranoia", "dur": 40.0, "prob": 0.5}],
 	},
 }
 
 
-# Recibe la lista de ingredientes que hay en el caldero y devuelve el
-# identificador de la poción que sale (por ejemplo "humo").
-# Si no coincide con ninguna receta, devuelve un texto vacío "".
-static func buscar_pocion(ingredientes: Array) -> String:
-	# Ordenamos para que ["sepulcral", "bruma"] y ["bruma", "sepulcral"] cuenten igual.
-	var ordenados: Array = []
-	ordenados.append_array(ingredientes)
-	ordenados.sort()
-	for id_pocion in POCIONES:
-		var receta: Array = []
-		receta.append_array(POCIONES[id_pocion]["receta"])
-		receta.sort()
-		if receta == ordenados:
-			return id_pocion
-	return ""
+# Recibe los objetos que hay en el caldero (por ejemplo ["hierba_bruma",
+# "aditivo_miel"]) y devuelve el identificador de la poción que sale (por
+# ejemplo "humo" o "m_bruma+miel"). Si no se puede hacer nada, devuelve "".
+static func buscar_pocion(items: Array) -> String:
+	return Mezclas.buscar(items)
+
+
+# Todos los datos de una poción (de autor o generada): ver Mezclas.info().
+static func pocion(id: String) -> Dictionary:
+	return Mezclas.info(id)
+
+
+static func existe_pocion(id: String) -> bool:
+	return Mezclas.es_valida(id)
 
 
 # Devuelve el texto de la receta, por ejemplo "Hoja de Bruma + Hongo Sepulcral".
 static func texto_receta(id_pocion: String) -> String:
-	var nombres: PackedStringArray = []
-	for id_hierba in POCIONES[id_pocion]["receta"]:
-		nombres.append(HIERBAS[id_hierba]["nombre"])
-	return " + ".join(nombres)
+	return Mezclas.texto_receta(id_pocion)
+
+
+# Las pociones que los clientes pueden pedir: las de autor y las recetas que
+# ya has descubierto tú.
+static func pedibles() -> Array:
+	var r: Array = POCIONES.keys()
+	for id in Juego.recetario:
+		if not POCIONES.has(id) and Mezclas.es_valida(id):
+			r.append(id)
+	return r

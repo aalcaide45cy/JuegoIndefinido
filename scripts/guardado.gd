@@ -62,6 +62,8 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"encargos": Juego.encargos,
 		"pedidos_material": Juego.pedidos_material,
 		"avisos": Juego.avisos,
+		"recetario": Juego.recetario,
+		"efectos": Juego.efectos_activos,
 		"seleccion": Juego.seleccion,
 		"inventario": Juego.inventario,
 		"estanteria": Juego.estanteria,
@@ -124,7 +126,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 						"t": maxf(0.0, float(gg.get("t", 0.0))), "nivel": clampi(int(gg.get("nivel", 1)), 1, 3)}
 	Juego.reputacion = clampi(int(datos.get("reputacion", 0)), -50, 100)
 	for e in datos.get("encargos", []):
-		if e is Dictionary and GameData.POCIONES.has(str(e.get("pocion", ""))) and e.get("pos", []) is Array \
+		if e is Dictionary and GameData.existe_pocion(str(e.get("pocion", ""))) and e.get("pos", []) is Array \
 				and e["pos"].size() == 3 and str(e.get("estado", "")) in ["oferta", "aceptado"]:
 			Juego.encargos.append({"id": int(e.get("id", 0)), "cliente": str(e.get("cliente", "Cliente")),
 					"pocion": str(e["pocion"]), "cantidad": clampi(int(e.get("cantidad", 1)), 1, 20),
@@ -132,9 +134,22 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 					"t": maxf(1.0, float(e.get("t", 60.0))), "lugar": str(e.get("lugar", "")),
 					"pos": [float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2])]})
 	for pm in datos.get("pedidos_material", []):
-		if pm is Dictionary and DatosObjetos.LISTA.has(str(pm.get("id", ""))):
+		if pm is Dictionary and DatosObjetos.existe(str(pm.get("id", ""))):
 			Juego.pedidos_material.append({"id": str(pm["id"]), "cantidad": clampi(int(pm.get("cantidad", 1)), 1, 20),
 					"t": maxf(1.0, float(pm.get("t", 10.0)))})
+	var recetario_g = datos.get("recetario", {})
+	if recetario_g is Dictionary:
+		for id_r in recetario_g:
+			if GameData.existe_pocion(str(id_r)):
+				Juego.recetario[str(id_r)] = maxi(1, int(recetario_g[id_r]))
+	var efectos_g = datos.get("efectos", {})
+	if efectos_g is Dictionary:
+		for id_e in efectos_g:
+			var eg = efectos_g[id_e]
+			if eg is Dictionary and Juego.DatosEfectos.existe(str(id_e)) and float(eg.get("t", 0.0)) > 0.0:
+				var total: float = clampf(float(eg.get("total", eg["t"])), 1.0, 3600.0)
+				Juego.efectos_activos[str(id_e)] = {"t": clampf(float(eg["t"]), 0.1, total), "total": total,
+						"f": clampf(float(eg.get("f", 1.0)), 0.1, 3.0)}
 	for a in datos.get("avisos", []):
 		Juego.avisos.append(str(a))
 	Juego.aspecto = Juego.DatosAspecto.valido(datos.get("aspecto", {}))
@@ -235,7 +250,7 @@ static func _exportar_colocables(arbol: SceneTree) -> Array:
 static func _leer_lista(guardada: Array, destino: Array) -> void:
 	for i in mini(guardada.size(), destino.size()):
 		var c = guardada[i]
-		if not c is Dictionary or not c.has("id") or not DatosObjetos.LISTA.has(str(c["id"])):
+		if not c is Dictionary or not c.has("id") or not DatosObjetos.existe(str(c["id"])):
 			destino[i] = null
 			continue
 		var id: String = str(c["id"])

@@ -80,7 +80,14 @@ var _hora_previa: float = -100.0
 var _t_luces: float = 0.0
 
 
+# Al empezar o acabar un efecto (visión nocturna) hay que recalcular la luz.
+func _al_cambiar_efectos() -> void:
+	_hora_previa = -1000.0
+
+
 func _process(delta: float) -> void:
+	if not Juego.efectos_cambiados.is_connected(_al_cambiar_efectos):
+		Juego.efectos_cambiados.connect(_al_cambiar_efectos)
 	if absf(Juego.hora - _hora_previa) >= PASO_HORA or _ventanas_encendidas == -1:
 		_hora_previa = Juego.hora
 		actualizar()
@@ -141,6 +148,12 @@ func actualizar() -> void:
 	_ambiente.ambient_light_energy = lerpf(0.35, 0.6, dia)
 	_ambiente.fog_light_color = NIEBLA_NOCHE.lerp(NIEBLA_DIA, dia)
 	_ambiente.fog_density = lerpf(0.03, 0.0018, dia)   # De día casi sin niebla: lo lejano no se ve lavado.
+	# Efecto "Ojos de gato" (visión nocturna): de noche se ve casi como de día.
+	var vision: float = clampf(Juego.mod("vision"), 0.0, 1.0) * (1.0 - dia)
+	if vision > 0.0:
+		_ambiente.ambient_light_color = _ambiente.ambient_light_color.lerp(Color(0.55, 0.65, 0.8), vision * 0.7)
+		_ambiente.ambient_light_energy = lerpf(_ambiente.ambient_light_energy, 1.1, vision * 0.8)
+		_ambiente.fog_density = lerpf(_ambiente.fog_density, 0.006, vision)
 
 	# Luces de la ciudad: encendidas de noche, apagadas de día.
 	var encendido: float = 1.0 - smoothstep(0.0, 0.35, altura)
