@@ -56,7 +56,7 @@ func cuenta(tipo: String) -> int:
 		"habilidades": return Juego.habilidades.size()
 		"viviendas": return Juego.viviendas.size()
 		# Huertos y viviendas son listas distintas (lo comprado está también en en_propiedad: no se suma).
-		"propiedades": return Juego.huertos.size() + Juego.viviendas.size()
+		"propiedades": return _propiedades_distintas()
 		"granja": return _animales_y_frutas()
 		"vehiculos": return Juego.vehiculos.size()
 		"personal": return Juego.personal.size()
@@ -65,13 +65,24 @@ func cuenta(tipo: String) -> int:
 	return 0
 
 
-# Animales que tienes (corrales) más árboles que ya han dado fruta. Un corral vacío no cuenta.
+# Casas y huertos distintos que tienes (si un id estuviera en las dos listas, cuenta una sola vez).
+func _propiedades_distintas() -> int:
+	var ids: Dictionary = {}
+	for id in Juego.huertos:
+		ids[id] = true
+	for id in Juego.viviendas:
+		ids[id] = true
+	return ids.size()
+
+
+# Animales que tienes en los corrales. Los árboles NO cuentan: dan fruta solos desde el principio
+# y el logro "Granjero" saltaba nada más empezar.
 func _animales_y_frutas() -> int:
 	var n: int = 0
 	for id in Juego.granja:
 		var g = Juego.granja[id]
 		if g is Dictionary:
-			n += int(g.get("n", 0)) if g.has("n") else (1 if int(g.get("prod", 0)) > 0 else 0)
+			n += int(g.get("n", 0))
 	return n
 
 

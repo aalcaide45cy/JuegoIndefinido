@@ -337,6 +337,8 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			serv.servicio = pr["serv"]
 			serv.position = pr["pos"]
 			raiz.add_child(serv)
+		elif pr["tipo"] == "luces_casa":
+			_poner_luces_casa(raiz, pr)
 		elif pr["tipo"] == "casa":
 			var puerta: PropiedadMundo = PropiedadMundo.new()
 			puerta.id_prop = pr["id"]
@@ -350,6 +352,36 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			parcela.tam_cultivo = pr["tam"]
 			parcela.position = pr["pos"]
 			raiz.add_child(parcela)
+
+
+# Ventanas encendidas (grupo "ventanas_noche": ciclo_dia.gd las muestra al anochecer) y una luz cálida
+# junto a la puerta (grupo "luces_noche"). Nacen ya en el estado que toca a esta hora.
+static var _mat_ventana_luz: StandardMaterial3D = null
+static var _malla_ventana_luz: BoxMesh = null
+
+
+func _poner_luces_casa(raiz: Node3D, pr: Dictionary) -> void:
+	if _mat_ventana_luz == null:
+		_mat_ventana_luz = StandardMaterial3D.new()
+		_mat_ventana_luz.albedo_color = Color(1.0, 0.85, 0.45)
+		_mat_ventana_luz.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_malla_ventana_luz = BoxMesh.new()
+		_malla_ventana_luz.size = Vector3(0.9, 1.1, 0.06)
+		_malla_ventana_luz.material = _mat_ventana_luz
+	var noche: bool = Juego.es_de_noche()
+	var ventanas: Node3D = Node3D.new()
+	ventanas.add_to_group("ventanas_noche")
+	ventanas.visible = noche
+	raiz.add_child(ventanas)
+	for v in pr["ventanas"]:
+		var m: MeshInstance3D = MeshInstance3D.new()
+		m.mesh = _malla_ventana_luz
+		m.position = v
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ventanas.add_child(m)
+	var foco: OmniLight3D = Construir.luz_noche(raiz, pr["luz"], Color(1.0, 0.78, 0.45), 0.9, 9.0)
+	foco.light_energy = 0.9 if noche else 0.0
+	foco.visible = noche
 
 
 func _montar_lejos(c: Vector2i, d: Dictionary) -> void:
