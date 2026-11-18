@@ -67,7 +67,7 @@ func _terminar() -> void:
 	Juego.quitar(hierba, 2)
 	var sale: int = 3 if _golpes >= 14 else (2 if _golpes >= 8 else 1)
 	var polvo: String = "polvo_" + hierba.trim_prefix("hierba_")
-	if not DatosObjetos.LISTA.has(polvo):
+	if not DatosObjetos.existe(polvo):
 		Juego.anadir(hierba, 2)
 		_fin.text = "Esta hierba no se puede machacar."
 		return

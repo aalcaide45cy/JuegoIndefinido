@@ -142,7 +142,7 @@ func _process(delta: float) -> void:
 		return
 	# Barra de paciencia hecha con texto: #### = le queda paciencia.
 	var llenos: int = ceili(paciencia / PACIENCIA_MAX * 10.0)
-	_cartel.text = "%s\nQuiere: %s\n[%s%s]" % [nombre, GameData.POCIONES[pedido]["nombre"],
+	_cartel.text = "%s\nQuiere: %s\n[%s%s]" % [nombre, GameData.pocion(pedido)["nombre"],
 			"#".repeat(llenos), ".".repeat(10 - llenos)]
 
 
@@ -155,7 +155,7 @@ func _item_para_vender() -> String:
 
 
 func precio_base() -> int:
-	var base: int = int(GameData.POCIONES[pedido]["precio"])
+	var base: int = int(GameData.pocion(pedido)["precio"])
 	return int(base * 1.3) if _item_para_vender().begins_with("paquete") else base
 
 
@@ -164,7 +164,7 @@ func texto_accion() -> String:
 		return "No hay nadie en el mostrador"
 	if not llegado:
 		return "%s se acerca a la ventanilla..." % nombre
-	var datos: Dictionary = GameData.POCIONES[pedido]
+	var datos: Dictionary = GameData.pocion(pedido)
 	if _item_para_vender() != "":
 		return "Atender a %s: %s (%d $, se puede negociar)" % [nombre, datos["nombre"], precio_base()]
 	return "Te pide %s (prepárala en el caldero)" % datos["nombre"]
@@ -174,7 +174,7 @@ func usar(jugador: Node) -> void:
 	if not presente or not llegado:
 		return
 	if _item_para_vender() == "":
-		Juego.avisar("No tienes %s. Receta: %s." % [GameData.POCIONES[pedido]["nombre"],
+		Juego.avisar("No tienes %s. Receta: %s." % [GameData.pocion(pedido)["nombre"],
 				GameData.texto_receta(pedido)])
 		return
 	jugador.hud.abrir_negociacion(self)
@@ -189,7 +189,8 @@ func cerrar_trato(precio: int) -> void:
 	if Juego.es_de_noche() and Juego.policia_activa:
 		Juego.alerta = 100.0   # De noche, vender por la ventana sí te puede costar una detención.
 		Juego.motivo_alerta = "Te vieron vender de noche por la ventana"
-	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.POCIONES[pedido]["efecto"]])
+	precio = int(round(float(precio) * clampf(1.0 + Juego.mod("precio"), 0.5, 2.0)))   # Efecto "Carisma".
+	Juego.avisar("Vendido por %d $. %s" % [precio, GameData.pocion(pedido)["efecto"]])
 	Juego.cobrar(precio)
 	Juego.ganar_xp(25)
 	Juego.reputacion = mini(100, Juego.reputacion + 1)
@@ -206,7 +207,7 @@ func _llega_cliente() -> void:
 	presente = true
 	llegado = false
 	nombre = NOMBRES.pick_random()
-	pedido = GameData.POCIONES.keys().pick_random()
+	pedido = GameData.pedibles().pick_random()
 	paciencia = PACIENCIA_MAX
 	_material_ropa.albedo_color = Color.from_hsv(randf(), 0.35, 0.35)
 	_cliente.position = _inicio()

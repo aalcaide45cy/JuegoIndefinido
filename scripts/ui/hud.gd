@@ -29,6 +29,8 @@ var _barra_rapida: HBoxContainer
 var _panel_estado: PanelEstado
 var _brujula: Brujula
 var _minimapa: Minimapa
+var _panel_efectos: PanelEfectos
+var _efectos_pantalla: EfectosPantalla
 var _mira: ColorRect
 var _negro: ColorRect
 var _menu = null   # La ventana abierta ahora mismo (o null).
@@ -138,6 +140,13 @@ func _ready() -> void:
 	_minimapa.offset_top = 12.0
 	_minimapa.offset_bottom = 12.0 + Minimapa.DIAMETRO + 40.0
 	_raiz.add_child(_minimapa)
+	# Efectos de las pociones: lista a la izquierda y efectos en toda la pantalla (detrás de la interfaz).
+	_panel_efectos = PanelEfectos.new()
+	_panel_efectos.position = Vector2(16, 218)
+	_raiz.add_child(_panel_efectos)
+	_efectos_pantalla = EfectosPantalla.new()
+	_raiz.add_child(_efectos_pantalla)
+	_raiz.move_child(_efectos_pantalla, 0)
 
 	# Abajo en el centro: mensajes, la acción disponible, lo que llevas en la mano y la barra rápida.
 	_label_mensaje = crear_label(18, Color(0.85, 0.95, 0.8))

@@ -167,7 +167,7 @@ func _pintar_encargos() -> void:
 	for e in Juego.encargos:
 		hay = true
 		var v: VBoxContainer = _tarjeta()
-		var nombre_p: String = GameData.POCIONES[e["pocion"]]["nombre"]
+		var nombre_p: String = GameData.pocion(e["pocion"])["nombre"]
 		var pos: Array = e["pos"]
 		_texto(v, "%s" % e["cliente"], 18, ACENTO)
 		_texto(v, "Quiere: %d x %s" % [e["cantidad"], nombre_p])
