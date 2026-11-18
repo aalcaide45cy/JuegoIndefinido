@@ -19,8 +19,9 @@ class_name GestorTrozos
 extends Node3D
 
 const SEMILLA: int = 1847
-const RADIO_CERCA: float = 4.5      # En trozos de 128 m.
-const RADIO_LEJOS: float = 4.5      # En trozos de 512 m.
+# (Son variables, no constantes: las cambia Graficos según la opción "distancia de carga".)
+var RADIO_CERCA: float = 4.5        # En trozos de 128 m.
+var RADIO_LEJOS: float = 4.5        # En trozos de 512 m.
 const MAX_TAREAS: int = 4           # Trozos generándose a la vez.
 const MAX_MONTAJES: int = 2         # Trozos montados por fotograma.
 const USAR_HILOS: bool = true
@@ -161,6 +162,15 @@ func _process(delta: float) -> void:
 
 func _clave(lejos: bool, c: Vector2i) -> String:
 	return "%s:%d:%d" % ["l" if lejos else "n", c.x, c.y]
+
+
+# Tira los trozos cercanos y se vuelven a generar (la vegetación cambió en los ajustes).
+func recargar() -> void:
+	for c in _cerca:
+		if is_instance_valid(_cerca[c]):
+			_cerca[c].queue_free()
+	_cerca.clear()
+	_actualizar_lejos_visibles()
 
 
 func _planificar() -> void:
