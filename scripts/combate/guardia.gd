@@ -9,6 +9,7 @@ class_name Guardia
 extends CharacterBody3D
 
 const Economia = preload("res://scripts/datos/economia.gd")
+const DatosPolicia = preload("res://scripts/datos/policia.gd")
 
 const VELOCIDAD_PATRULLA: float = 1.8
 const VELOCIDAD_PERSECUCION: float = 4.5
@@ -22,7 +23,13 @@ var solo_noche: bool = false
 # true: pasea por toda la ciudad por la red de calles (como una persona), en vez de su ruta fija.
 var pasea_ciudad: bool = true
 
+# true: refuerzo que aparece cerca de ti cuando tienes estrellas (lo crea gestor_policia.gd).
+var refuerzo: bool = false
+var estrellas_minimas: int = 2   # Un refuerzo desaparece si tus estrellas bajan de esto.
+
 var _vida: float = VIDA_MAXIMA
+var _t_captura: float = 0.0       # Segundos agarrándote (detención con 2 o más estrellas).
+var _t_visto: float = 0.0
 var _punto: int = 0
 var _persiguiendo: bool = false
 var _ultima_pos: Vector3 = Vector3.ZERO   # Dónde te vieron por última vez.
@@ -47,6 +54,11 @@ func _ready() -> void:
 		add_collision_exception_with(otro)
 		(otro as PhysicsBody3D).add_collision_exception_with(self)
 	add_to_group("guardias")
+	if refuerzo:
+		add_to_group("policia_refuerzo")
+		pasea_ciudad = false
+		solo_noche = false
+		_persiguiendo = true
 	var forma: CollisionShape3D = CollisionShape3D.new()
 	var capsula: CapsuleShape3D = CapsuleShape3D.new()
 	capsula.radius = 0.35
@@ -91,6 +103,9 @@ func _physics_process(delta: float) -> void:
 		_persiguiendo = false
 	if not activo:
 		return
+	if refuerzo and (Juego.estrellas < estrellas_minimas or not Juego.policia_activa):
+		queue_free()
+		return
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	_golpe -= delta
@@ -108,6 +123,11 @@ func _physics_process(delta: float) -> void:
 		_persiguiendo = true
 		_ultima_pos = jugador.global_position
 		Juego.alerta = 100.0
+		_t_visto += delta
+		Juego.exigir_estrellas(1)
+		if _t_visto > 20.0 and Juego.estrellas < 3:
+			_t_visto = 0.0
+			Juego.subir_estrellas(1)   # Si te siguen viendo mucho rato, la cosa se pone fea.
 		if de_noche:
 			Juego.motivo_alerta = "Un guardia te ha visto con: " + ", ".join(Juego.motivos_ilegales())
 		else:
@@ -118,17 +138,28 @@ func _physics_process(delta: float) -> void:
 
 	var destino: Vector3 = global_position
 	var velocidad: float = 0.0
+	if refuerzo and jugador != null and Juego.alerta > 0.0:
+		_ultima_pos = jugador.global_position   # Los refuerzos van avisados por radio: saben dónde estás.
+		_persiguiendo = true
 	if _persiguiendo and jugador != null:
 		destino = _ultima_pos
-		velocidad = VELOCIDAD_PERSECUCION
+		velocidad = VELOCIDAD_PERSECUCION * float(DatosPolicia.VELOCIDAD_GUARDIA[Juego.estrellas])
 		if not ve and global_position.distance_to(Vector3(destino.x, global_position.y, destino.z)) < 1.0:
 			velocidad = 0.0   # Ha llegado donde te vio y mira a su alrededor.
-		if ve and global_position.distance_to(jugador.global_position) < 1.6:
+		var cerca_j: bool = global_position.distance_to(jugador.global_position) < 1.8
+		if (ve or refuerzo) and cerca_j and jugador.get("vehiculo") == null:
 			velocidad = 0.0
-			if _golpe <= 0.0:
+			if Juego.estrellas >= 2:
+				_t_captura += delta   # Con 2 o más estrellas no te pegan: te detienen.
+				if _t_captura > 1.2 and jugador.has_method("ser_detenido"):
+					_t_captura = 0.0
+					jugador.ser_detenido()
+			elif _golpe <= 0.0:
 				_golpe = 1.0
-				Juego.cambiar_vida(-8.0)
+				Juego.cambiar_vida(-float(DatosPolicia.DANO_GUARDIA[Juego.estrellas]))
 				Juego.avisar("¡Un guardia te golpea!")
+		else:
+			_t_captura = maxf(0.0, _t_captura - delta)
 	elif pasea_ciudad:
 		velocidad = VELOCIDAD_PATRULLA
 		if _espera > 0.0:
@@ -256,6 +287,7 @@ func _vigilar_trafico(jugador: Node3D) -> bool:
 	if not _le_ve_el_choque(get_world_3d().direct_space_state.intersect_ray(consulta), jugador):
 		return false
 	Juego.motivo_alerta = "Un guardia te ha visto: " + motivo.to_lower()
+	Juego.exigir_estrellas(2 if Juego.atropello_visto > 0.0 else 1)
 	if global_position.distance_to(jugador.global_position) < 5.0 and Juego.multa_trafico_enfriamiento <= 0.0:
 		var multa: int = mini(Juego.dinero, Economia.MULTA_ATROPELLO if Juego.atropello_visto > 0.0 else Economia.MULTA_SIN_CARNET)
 		Juego.dinero -= multa
@@ -298,6 +330,7 @@ func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
 	if Juego.lleva_ilegal():
 		prob *= 1.5
 	prob *= 1.0 + Juego.sospecha / 40.0
+	prob *= 1.0 + DatosPolicia.riqueza(Juego.dinero)   # Cuanto más rico pareces, más te miran.
 	if randf() < prob / 6.0 and "hud" in jugador and jugador.hud != null:
 		Juego.enfriamiento_cacheo = 150.0
 		Juego.avisar("¡Alto! Un guardia quiere registrarte.")
@@ -310,7 +343,7 @@ func recibir_dano(cantidad: float) -> void:
 	_vida -= cantidad
 	_persiguiendo = true
 	Juego.alerta = 100.0
-	Juego.motivo_alerta = "Has atacado a un guardia"
+	Juego.exigir_estrellas(2, "Has atacado a un guardia")
 	var jug: Node3D = _buscar_jugador()
 	if jug != null:
 		_ultima_pos = jug.global_position
@@ -328,7 +361,11 @@ func _caer() -> void:
 	_poner_activo(false)
 	_material.emission_enabled = false
 	Juego.cobrar(15)
+	Juego.subir_estrellas(1, "Has abatido a un guardia")
 	Juego.avisar("Un guardia cae. Llevaba 15 $ encima.")
+	if refuerzo:
+		queue_free()
+		return
 	await get_tree().create_timer(90.0).timeout
 	_vida = VIDA_MAXIMA
 	_persiguiendo = false

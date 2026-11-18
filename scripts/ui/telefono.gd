@@ -12,6 +12,8 @@ class_name Telefono
 extends Ventana
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+const Economia = preload("res://scripts/datos/economia.gd")
+const Taxi = preload("res://scripts/datos/taxi.gd")
 const ACENTO: Color = Color(0.35, 0.8, 1.0)
 
 var _gestor: Encargos
@@ -75,8 +77,8 @@ func construir() -> void:
 	var apps: HBoxContainer = HBoxContainer.new()
 	apps.add_theme_constant_override("separation", 6)
 	caja.add_child(apps)
-	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"], ["Metas", "trophy"]]
-	for i in 5:
+	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"], ["Metas", "trophy"], ["Taxi", "fastForward"]]
+	for i in 6:
 		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
 		b.icon = _icono(datos[i][1])
 		b.expand_icon = true
@@ -100,7 +102,7 @@ func _cambiar_pestana(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
-	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios", "Metas"][_pestana]
+	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios", "Metas", "Taxi"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
 	var firma: String = _calcular_firma()
 	if firma != _firma:
@@ -128,6 +130,7 @@ func _reconstruir() -> void:
 		2: _pintar_avisos()
 		3: _pintar_negocios()
 		4: _pintar_metas()
+		5: _pintar_taxi()
 
 
 # Resume lo que obliga a redibujar la pestaña. La de Negocios se cuida sola (el
@@ -138,6 +141,8 @@ func _calcular_firma() -> String:
 		return firma
 	for e in Juego.encargos:
 		firma += "%s%s," % [e["id"], e["estado"]]
+	if _pestana == 5:
+		firma += "d%d|" % Juego.dinero
 	firma += "|%d|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel, Juego.metas_cobradas.size()]
 	return firma
 
@@ -149,6 +154,39 @@ func _pintar_metas() -> void:
 		_texto(v, ("✔ " if hecha else "○ ") + str(m["texto"]), 15,
 				Color(0.55, 0.9, 0.55) if hecha else Color(0.9, 0.92, 0.95))
 		_texto(v, "Premio: %d $" % int(m["premio"]), 13, Color(1.0, 0.85, 0.4))
+
+
+func _pintar_taxi() -> void:
+	var jugador: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D
+	var v0: VBoxContainer = _tarjeta()
+	_texto(v0, "Taxi: te lleva a cualquier barrio, aldea, pueblo o ciudad. Pasa el tiempo del trayecto (unos %d km/h)." % int(Economia.TAXI_VELOCIDAD_MS * 3.6), 14)
+	var motivo: String = Taxi.motivo_no(jugador)
+	if motivo != "":
+		_texto(v0, motivo, 14, Color(1.0, 0.6, 0.4))
+	if jugador == null:
+		return
+	for d in Taxi.destinos(jugador.global_position):
+		var v: VBoxContainer = _tarjeta()
+		_texto(v, str(d["nombre"]), 15)
+		_texto(v, "%.1f km  ·  %d $  ·  %s" % [float(d["dist"]) / 1000.0, int(d["precio"]), _texto_duracion(float(d["horas"]))], 13,
+				Color(1.0, 0.85, 0.4))
+		var b: Button = Hud.crear_boton("Ir en taxi", _pedir_taxi.bind(d))
+		b.disabled = motivo != "" or Juego.dinero < int(d["precio"]) or float(d["dist"]) < Taxi.DISTANCIA_MINIMA
+		v.add_child(b)
+
+
+func _texto_duracion(horas: float) -> String:
+	var minutos: int = int(round(horas * 60.0))
+	return "%d min" % minutos if minutos < 60 else "%d h %d min" % [minutos / 60, minutos % 60]
+
+
+func _pedir_taxi(d: Dictionary) -> void:
+	var jugador: Node = get_tree().get_first_node_in_group("jugador")
+	var error: String = Taxi.pedir(jugador, d)
+	if error != "":
+		Juego.avisar(error)
+		return
+	cerrar()
 
 
 func _pintar_negocios() -> void:

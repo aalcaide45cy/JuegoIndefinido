@@ -270,9 +270,15 @@ func _actualizar_alerta() -> void:
 	var alerta: float = Juego.alerta
 	_label_alerta.visible = alerta > 0.0
 	_barra_alerta.visible = alerta > 0.0
+	if alerta <= 0.0 and Juego.estrellas > 0:
+		# Te han perdido de vista pero aún hay búsqueda: las estrellas parpadean hasta que bajen.
+		_label_alerta.visible = true
+		_label_alerta.text = "%s\nTe han perdido de vista. Mantente escondido…" % Juego.DatosPolicia.texto_estrellas(Juego.estrellas)
 	if alerta > 0.0:
 		_barra_alerta.value = alerta
 		var estado: String = "¡DETECTADO!" if alerta >= 99.0 else "BUSCÁNDOTE…"
+		if Juego.estrellas > 0:
+			estado += "  " + Juego.DatosPolicia.texto_estrellas(Juego.estrellas)
 		_label_alerta.text = "%s\n%s\nEscóndete: sal de su vista, entra en un edificio, agáchate (C) en la sombra o guarda lo ilegal en tu estantería." % [
 				estado, Juego.motivo_alerta]
 	# Aviso de sigilo.

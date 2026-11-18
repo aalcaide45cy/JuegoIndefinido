@@ -43,6 +43,9 @@ var _inclinacion: float = -0.2  # Arriba/abajo de la cámara.
 var _bloqueado: bool = false   # Para quietos momentáneos (por ejemplo, escenas).
 
 var _cuerpo: Node3D
+var _detenido: bool = false
+var _suelo_pendiente: bool = false   # Tras un viaje rápido: esperando a que se cargue el suelo.
+var _t_suelo_pendiente: float = 0.0
 var vehiculo = null   # El vehículo que conduces ahora (o null). Ver vehiculo.gd.
 var _choque: CollisionShape3D
 var _primera_antes: bool = true
@@ -172,6 +175,10 @@ func _physics_process(delta: float) -> void:
 		# Conduciendo: el vehículo nos lleva (vehiculo.gd). Aquí solo se mueve la cámara.
 		velocity = Vector3.ZERO
 		objetivo = null
+		return
+
+	if _suelo_pendiente:
+		_esperar_suelo(delta)
 		return
 
 	# Gravedad.
@@ -418,6 +425,55 @@ func _reaparecer_en_la_plaza() -> void:
 	Juego.avisar("Te has caído del mapa. Vuelves a la plaza.")
 
 
+# La policía te atrapa: fundido, multa, calabozo y apareces en la comisaría (la plaza).
+func ser_detenido() -> void:
+	if _muerto or _detenido:
+		return
+	_detenido = true
+	if vehiculo != null:
+		vehiculo.bajar()
+	Juego.menu_abierto = true
+	hud.fundido(func() -> void:
+		var texto: String = Juego.detener()
+		global_position = Vector3(0, 0.2, 8)
+		velocity = Vector3.ZERO
+		get_tree().call_group("policia_refuerzo", "queue_free")
+		Juego.menu_abierto = false
+		_detenido = false
+		Juego.avisar(texto), 2.0)
+
+
+# Viaje rápido (taxi): fundido y aparece en el destino. Si el trozo de mundo de allí aún no
+# está cargado, espera sin caer (ver _esperar_suelo) hasta que haya suelo.
+func viajar_a(destino: Vector3, horas: float = 0.0) -> void:
+	if vehiculo != null or _detenido:
+		return
+	hud.fundido(func() -> void:
+		var h: float = GeneradorMundo.altura(destino.x, destino.z) if GeneradorMundo.listo else destino.y
+		if absf(destino.y - h) < 1.0 and destino.y > h:
+			h = destino.y
+		if horas > 0.0:
+			Juego.avanzar_horas(horas)
+		global_position = Vector3(destino.x, maxf(h, destino.y) + 3.0, destino.z)
+		velocity = Vector3.ZERO
+		_suelo_pendiente = true
+		_t_suelo_pendiente = 0.0, 1.0)
+
+
+func _esperar_suelo(delta: float) -> void:
+	velocity = Vector3.ZERO
+	_t_suelo_pendiente += delta
+	var desde: Vector3 = global_position + Vector3(0, 60, 0)
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, global_position + Vector3(0, -80, 0))
+	consulta.exclude = [get_rid()]
+	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
+	if not choque.is_empty():
+		global_position = choque["position"] + Vector3(0, 0.4, 0)
+		_suelo_pendiente = false
+	elif _t_suelo_pendiente > 15.0:
+		_suelo_pendiente = false   # Sin suelo tras 15 s: que actúe la red de seguridad del gestor de trozos.
+
+
 # Si la vida llega a cero: fundido a negro, reaparece en la plaza y pierdes
 # una parte del dinero.
 func _morir() -> void:
@@ -426,6 +482,9 @@ func _morir() -> void:
 	_muerto = true
 	Juego.avisar("Has caído. Despiertas en la plaza, y te falta dinero...")
 	hud.fundido(func() -> void:
+		Juego.estrellas = 0
+		Juego.alerta = 0.0
+		get_tree().call_group("policia_refuerzo", "queue_free")
 		var multa: int = mini(Juego.dinero, maxi(Economia.MULTA_MUERTE_MINIMA, int(Juego.dinero * Economia.MULTA_MUERTE_PORCENTAJE)))
 		Juego.dinero -= multa
 		Juego.vida = Juego.VIDA_MAX * 0.6

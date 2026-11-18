@@ -366,6 +366,112 @@ static func _dibujar_carreteras(mb: ConstructorMalla, segs: Array, rect: Rect2, 
 			prev_d = vd
 
 
+# --------------------------------- distritos ----------------------------------
+# Cada bloque (k, l) de una ciudad o pueblo pertenece a un distrito. El distrito cambia el
+# aspecto de las casas, el precio de las propiedades (prestigio) y cuánta vigilancia hay.
+#   centro: el corazón del asentamiento (más alto y claro)
+#   rico: barrio alto de la ciudad (casas grandes, caras)
+#   industrial: almacenes bajos y oscuros (baratos)
+#   residencial: el resto
+const DISTRITOS: Dictionary = {
+	"centro": {"nombre": "Centro", "prestigio": 1.5, "vigilancia": 1.3},
+	"rico": {"nombre": "Barrio alto", "prestigio": 2.2, "vigilancia": 1.6},
+	"residencial": {"nombre": "Barrio residencial", "prestigio": 1.0, "vigilancia": 1.0},
+	"industrial": {"nombre": "Zona industrial", "prestigio": 0.7, "vigilancia": 0.7},
+}
+
+# Servicios de la ciudad (edificios con letrero y un uso con la tecla E). Posición: bloque (k, l).
+# Una ciudad tiene banco, taberna, hospital, taller y gasolinera; un pueblo, gasolinera y taberna.
+const SERVICIOS_CIUDAD: Dictionary = {Vector2i(1, 1): "banco", Vector2i(-2, -1): "taberna",
+		Vector2i(2, -3): "hospital", Vector2i(-3, 2): "taller", Vector2i(2, 1): "gasolinera"}
+const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna"}
+const COLOR_SERVICIO: Dictionary = {"banco": Color(0.7, 0.62, 0.35), "taberna": Color(0.5, 0.3, 0.18),
+		"hospital": Color(0.88, 0.88, 0.86), "taller": Color(0.3, 0.32, 0.36), "gasolinera": Color(0.85, 0.85, 0.8)}
+const NOMBRE_SERVICIO: Dictionary = {"banco": "BANCO", "taberna": "TABERNA", "hospital": "HOSPITAL",
+		"taller": "TALLER", "gasolinera": "GASOLINERA"}
+
+
+static func servicio_de(s: Dictionary, k: int, l: int) -> String:
+	var tipo: int = s["tipo"]
+	if tipo == 2:
+		return str(SERVICIOS_CIUDAD.get(Vector2i(k, l), ""))
+	if tipo == 1:
+		return str(SERVICIOS_PUEBLO.get(Vector2i(k, l), ""))
+	return ""
+
+
+static func distrito_de(s: Dictionary, k: int, l: int) -> String:
+	var tipo: int = s["tipo"]
+	var dx: float = k + 0.5
+	var dz: float = l + 0.5
+	var cerca: float = maxf(absf(dx), absf(dz))
+	if tipo == 2:
+		if cerca < 2.0:
+			return "centro"
+		if dx > 0.0 and dz < 0.0:
+			return "rico"
+		if dx < 0.0 and dz > 0.0:
+			return "industrial"
+		return "residencial"
+	if tipo == 1 and cerca < 1.0:
+		return "centro"
+	return "residencial"
+
+
+# El distrito en el punto (x, z) del mundo: {id, nombre, prestigio, vigilancia, lugar} o {} si
+# estás en el campo (o en la ciudad original, que no tiene distritos de este tipo).
+static func distrito_en(x: float, z: float) -> Dictionary:
+	var punto: Vector2 = Vector2(x, z)
+	if nucleo.has_point(punto):
+		return {"id": "ciudad", "nombre": "Ciudad original", "prestigio": 1.0, "vigilancia": 1.2, "lugar": ""}
+	for s in asentamientos_cerca(Rect2(x - 2.0, z - 2.0, 4.0, 4.0)):
+		var p: Vector2 = s["pos"]
+		var m: float = s["mitad"]
+		if absf(x - p.x) > m or absf(z - p.y) > m:
+			continue
+		var k: int = floori((x - p.x) / BLOQUE)
+		var l: int = floori((z - p.y) / BLOQUE)
+		var id: String = distrito_de(s, k, l)
+		var d: Dictionary = (DISTRITOS[id] as Dictionary).duplicate()
+		d["id"] = id
+		d["lugar"] = "%s %s" % [nombre_tipo(int(s["tipo"])), s["nombre"]]
+		d["nombre"] = "%s (%s)" % [d["nombre"], s["nombre"]]
+		return d
+	return {}
+
+
+# Coordenadas y dibujo de un edificio de servicio (ocupa el solar 0 del bloque; el resto queda libre).
+static func _servicio_edificio(s: Dictionary, k: int, l: int, serv: String) -> Dictionary:
+	var p: Vector2 = s["pos"]
+	var bx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0
+	var bz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0
+	var ancho: float = 18.0
+	var fondo: float = 12.0
+	var pisos: int = 1
+	var cz: float = bz + 14.0
+	match serv:
+		"banco":
+			ancho = 20.0
+			pisos = 2
+		"hospital":
+			ancho = 22.0
+			fondo = 14.0
+			pisos = 3
+		"taberna":
+			ancho = 16.0
+			fondo = 11.0
+		"taller":
+			ancho = 20.0
+			fondo = 14.0
+		"gasolinera":
+			ancho = 8.0
+			fondo = 6.0
+			cz = bz + 8.0
+	return {"x": bx + 18.0, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
+			"alto": pisos * 3.2 + (0.8 if serv == "gasolinera" else 0.0), "puerta": 1, "plano": true,
+			"color": COLOR_SERVICIO[serv], "techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": serv}
+
+
 # ---------------------------------- casas -------------------------------------
 
 # La casa del solar "sub" (0-3) del bloque (k, l) de un asentamiento, o {} si ahí no hay.
@@ -374,6 +480,9 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	var tipo: int = s["tipo"]
 	if tipo == 2 and k >= -1 and k <= 0 and l >= -1 and l <= 0:
 		return {}   # La plaza mayor de la ciudad queda libre.
+	var serv: String = servicio_de(s, k, l)
+	if serv != "":
+		return _servicio_edificio(s, k, l, serv) if sub == 0 else {}
 	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
 	var clave: int = k * 101 + l
 	if _f(sid, clave + 7919, sub * 16) < (0.1 if tipo > 0 else 0.15):
@@ -390,10 +499,23 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	if tipo == 2:
 		var cerca: float = maxf(absf(k + 0.5), absf(l + 0.5))
 		pisos = 1 + int(r * 3.0) + (2 if cerca < 2.0 else 0)
+	var distrito: String = distrito_de(s, k, l)
+	if distrito == "rico":
+		ancho += 2.0
+		fondo += 1.0
+		pisos = maxi(2, pisos)
+	elif distrito == "industrial":
+		pisos = 1
+		ancho += 2.0
 	var c: Dictionary = {"x": cx, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
 			"alto": pisos * 3.2, "puerta": -1 if b == 0 else 1, "plano": pisos > 3,
 			"color": COLORES_PARED[_h(sid, clave, sub * 16 + 6) % COLORES_PARED.size()],
 			"techo": COLORES_TECHO[_h(sid, clave, sub * 16 + 7) % COLORES_TECHO.size()], "id": ""}
+	if distrito == "industrial":
+		c["color"] = (c["color"] as Color).darkened(0.35)
+	elif distrito == "rico":
+		c["color"] = (c["color"] as Color).lightened(0.18)
+	c["distrito"] = distrito
 	var prob_alquiler: float = [0.14, 0.1, 0.07][tipo]
 	if _f(sid, clave + 31, sub * 16 + 8) < prob_alquiler:
 		c["id"] = "w_c_%d_%d_%d_%d_%d" % [s["ci"], s["cj"], k, l, sub]
@@ -490,6 +612,7 @@ static func propiedad(id: String) -> Dictionary:
 			return {}
 		var m2: int = int(float(c["w"]) * float(c["d"]) * int(c["pisos"]))
 		var mult: float = [1.0, 1.3, 1.7][int(s["tipo"])]
+		mult *= float(DISTRITOS[distrito_de(s, int(partes[4]), int(partes[5]))]["prestigio"])   # El distrito encarece o abarata.
 		return {"id": id, "tipo": "casa", "nombre": "Casa de %d m² (%s)" % [m2, lugar], "m2": m2,
 				"alquiler": int((40.0 + m2 * 0.9) * mult), "lugar": s["nombre"],
 				"pos": Vector3(c["x"], c["y"], c["z"])}
@@ -607,6 +730,46 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 				mb.caja(Vector3(vx, y + 1.6 + piso * 3.2, vz), Vector3(1.0, 1.2, 0.08), vent)
 	if str(c["id"]) != "":
 		mb.caja(Vector3(c["x"], y + 2.9, zf + cara * 0.04), Vector3(1.6, 0.5, 0.08), Color(0.2, 0.65, 0.3))
+	if c.has("servicio"):
+		_decorar_servicio(mb, c)
+
+
+# Franja de color sobre la puerta de un servicio y, en la gasolinera, marquesina con dos surtidores.
+static func _decorar_servicio(mb: ConstructorMalla, c: Dictionary) -> void:
+	var serv: String = c["servicio"]
+	var y: float = c["y"]
+	var x: float = c["x"]
+	var z: float = c["z"]
+	var w: float = c["w"]
+	var d: float = c["d"]
+	var cara: float = c["puerta"]
+	var franjas: Dictionary = {"banco": Color(0.15, 0.45, 0.25), "taberna": Color(0.7, 0.2, 0.15),
+			"hospital": Color(0.85, 0.15, 0.15), "taller": Color(0.95, 0.7, 0.1), "gasolinera": Color(0.9, 0.2, 0.1)}
+	var franja: Color = franjas[serv]
+	mb.caja(Vector3(x, y + 3.4, z + cara * (d / 2.0 + 0.1)), Vector3(minf(w - 2.0, 8.0), 0.9, 0.14), franja)
+	if serv == "hospital":
+		var zc: float = z + cara * (d / 2.0 + 0.1)
+		mb.caja(Vector3(x, y + 6.6, zc), Vector3(3.0, 0.8, 0.14), franja)
+		mb.caja(Vector3(x, y + 6.6, zc), Vector3(0.8, 3.0, 0.14), franja)
+	if serv == "gasolinera":
+		var cz: float = z + cara * (d / 2.0 + 9.0)
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				mb.caja(Vector3(x + sx * 6.5, y + 2.3, cz + sz * 3.5), Vector3(0.5, 4.6, 0.5), Color(0.8, 0.8, 0.78))
+		mb.caja(Vector3(x, y + 4.8, cz), Vector3(14.5, 0.5, 8.5), franja)
+		mb.caja(Vector3(x, y + 0.1, cz), Vector3(10.0, 0.2, 1.4), Color(0.35, 0.35, 0.37))
+		for sx in [-2.5, 2.5]:
+			mb.caja(Vector3(x + sx, y + 0.95, cz), Vector3(0.8, 1.7, 0.6), Color(0.85, 0.15, 0.12))
+			mb.caja(Vector3(x + sx, y + 1.3, cz + 0.32), Vector3(0.5, 0.35, 0.05), Color(0.15, 0.15, 0.18))
+
+
+# Dónde se usa el servicio (E): en la puerta, o junto a los surtidores en la gasolinera.
+static func _punto_servicio(c: Dictionary) -> Vector3:
+	var cara: float = c["puerta"]
+	var d: float = c["d"]
+	if str(c["servicio"]) == "gasolinera":
+		return Vector3(c["x"], float(c["y"]) + 1.0, float(c["z"]) + cara * (d / 2.0 + 9.0))
+	return Vector3(c["x"], float(c["y"]) + 1.0, float(c["z"]) + cara * (d / 2.0 + 0.5))
 
 
 # Casa hueca: cuatro muros con un hueco de puerta de 1,3 m, suelo, techo bajo y unos muebles
@@ -726,6 +889,8 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 	for s in lista:
 		for casa_d in _casas_en(s, rect):
 			_edificio(objetos, casa_d, true)
+			if casa_d.has("servicio"):
+				props.append({"tipo": "servicio", "serv": casa_d["servicio"], "pos": _punto_servicio(casa_d)})
 			if str(casa_d["id"]) != "":
 				var cara: float = casa_d["puerta"]
 				props.append({"id": casa_d["id"], "tipo": "casa",

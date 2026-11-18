@@ -18,6 +18,7 @@ extends Node
 const DatosPropiedades = preload("res://scripts/datos/propiedades.gd")
 const DatosMetas = preload("res://scripts/datos/metas.gd")
 const Economia = preload("res://scripts/datos/economia.gd")
+const DatosPolicia = preload("res://scripts/datos/policia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
@@ -55,6 +56,10 @@ var _t_sospecha: float = 0.0
 var atropello_visto: float = 0.0    # Segundos que quedan de "has atropellado a alguien a la vista".
 var multa_trafico_enfriamiento: float = 0.0   # Evita multar una y otra vez por lo mismo.
 var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
+var estrellas: int = 0               # 0-5: nivel de búsqueda de la policía (ver datos/policia.gd).
+var _t_estrella: float = 0.0        # Segundos fuera de vista hacia la siguiente bajada de estrellas.
+var distrito_actual: Dictionary = {}   # El distrito donde estás (lo pone gestor_policia.gd; ver GeneradorMundo.distrito_en).
+var banco: int = 0                  # Dinero ingresado en el banco (a salvo de multas y de la muerte).
 var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
 var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado).
 var en_propiedad: Dictionary = {}     # id -> true: casas y huertos COMPRADOS (se pueden vender).
@@ -91,6 +96,7 @@ var menu_abierto: bool = false
 
 
 func _ready() -> void:
+	dia_nuevo.connect(_interes_banco)
 	randomize()
 	_crear_controles()
 	reiniciar()
@@ -113,6 +119,8 @@ func reiniciar() -> void:
 	parcelas.clear()
 	granja.clear()
 	alerta = 0.0
+	estrellas = 0
+	banco = 0
 	motivo_alerta = ""
 	nivel = 1
 	xp = 0
@@ -164,6 +172,7 @@ func _process(delta: float) -> void:
 	atropello_visto = maxf(0.0, atropello_visto - delta)
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
+	_avanzar_estrellas(delta)
 	if alerta > 0.0:
 		var bajada: float = 30.0 if interiores > 0 else 6.0
 		alerta = maxf(0.0, alerta - delta * bajada / (1.0 + mod("alerta")))   # Paranoia: baja más despacio.
@@ -175,6 +184,92 @@ func _process(delta: float) -> void:
 		dia += 1
 		DatosPropiedades.cobrar_dia()
 		dia_nuevo.emit()
+
+
+# Sube el nivel de búsqueda (nunca pasa de 5). Solo cuenta si la policía está activa.
+func subir_estrellas(cantidad: int, motivo: String = "") -> void:
+	if not policia_activa or cantidad <= 0:
+		return
+	var antes: int = estrellas
+	estrellas = mini(DatosPolicia.MAX_ESTRELLAS, estrellas + cantidad)
+	_t_estrella = 0.0
+	if motivo != "":
+		motivo_alerta = motivo
+	if estrellas > antes:
+		avisar("Búsqueda policial: %s" % DatosPolicia.texto_estrellas(estrellas))
+		cambio.emit()
+
+
+# Cada día el banco paga un interés sobre lo ingresado.
+func _interes_banco() -> void:
+	if banco > 0:
+		banco += int(ceil(banco * Economia.BANCO_INTERES_DIARIO))
+
+
+# Garantiza al menos "minimo" estrellas (sin pasarse si ya tienes más).
+func exigir_estrellas(minimo: int, motivo: String = "") -> void:
+	if estrellas < minimo:
+		subir_estrellas(minimo - estrellas, motivo)
+	elif motivo != "":
+		motivo_alerta = motivo
+	_t_estrella = 0.0
+
+
+# Mientras te buscan (alerta > 0) no baja. Cuando te pierden de vista pierdes una
+# estrella cada cierto tiempo; con la policía desactivada se quitan de golpe.
+func _avanzar_estrellas(delta: float) -> void:
+	if estrellas <= 0:
+		_t_estrella = 0.0
+		return
+	if not policia_activa:
+		estrellas = 0
+		return
+	if alerta > 0.0:
+		_t_estrella = 0.0
+		return
+	_t_estrella += delta * (3.0 if interiores > 0 else 1.0)
+	if _t_estrella >= float(DatosPolicia.SEGUNDOS_PARA_BAJAR[estrellas]):
+		_t_estrella = 0.0
+		estrellas -= 1
+		avisar("Te han perdido la pista." if estrellas == 0 else "Búsqueda policial: %s" % DatosPolicia.texto_estrellas(estrellas))
+		cambio.emit()
+
+
+# Pasa tiempo de golpe (calabozo, taxi): mueve la hora y el día, cobra el día si cambia
+# y adelanta el reloj absoluto (cultivos, corrales, macetas).
+func avanzar_horas(horas: float) -> void:
+	hora += horas
+	while hora >= 24.0:
+		hora -= 24.0
+		dia += 1
+		DatosPropiedades.cobrar_dia()
+		dia_nuevo.emit()
+	reloj += horas * maxf(1.0, duracion_dia_min) * 60.0 / 24.0
+
+
+# Te detienen: pierdes dinero (multa), lo ilegal, unas horas, y apareces en la comisaría
+# (la plaza). Devuelve el texto para el aviso.
+func detener() -> String:
+	var n: int = maxi(1, estrellas)
+	var multa: int = mini(dinero, maxi(int(DatosPolicia.MULTA_DETENCION[n]), int(dinero * DatosPolicia.MULTA_DETENCION_PORCENTAJE * n)))
+	dinero -= multa
+	var confiscado: int = 0
+	for i in inventario.size():
+		var casilla = inventario[i]
+		if casilla == null:
+			continue
+		var tipo: String = DatosObjetos.datos(casilla["id"])["tipo"]
+		if tipo == "pocion" or tipo == "paquete" or tipo == "hierba" or tipo == "arma_fuego" or tipo == "explosivo":
+			confiscado += int(casilla["cantidad"])
+			inventario[i] = null
+	var horas: float = float(DatosPolicia.HORAS_CARCEL[n])
+	avanzar_horas(horas)
+	estrellas = 0
+	alerta = 0.0
+	sospecha = maxf(0.0, sospecha - 40.0)
+	vida = maxf(vida, VIDA_MAX * 0.5)
+	cambio.emit()
+	return "Detenido. Multa de %d $, %d objetos ilegales confiscados y %d horas en el calabozo." % [multa, confiscado, int(horas)]
 
 
 func siguiente_vehiculo() -> int:

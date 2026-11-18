@@ -37,6 +37,13 @@ func construir() -> void:
 	conc.entrega = Vector3(0, 0.05, -14.0)
 	add_child(conc)
 	registrar_poi(conc, "Concesionario", Color(1.0, 0.6, 0.3))
+	# Gasolinera junto al concesionario: surtidores en x = -88, z = 14 (se entra desde la carretera).
+	var gas: ServicioMundo = ServicioMundo.new()
+	gas.servicio = "gasolinera"
+	gas.con_visual = true
+	gas.position = Vector3(-88, 0.0, 16)
+	add_child(gas)
+	registrar_poi(gas, "Gasolinera", Color(1.0, 0.4, 0.3))
 	tapon_de_calle(Vector3(98, 0, 0), 14.0, Color(0.2, 0.2, 0.23), true)
 	var cartel: Label3D = Construir.texto(self, Vector3(95.9, 6.0, 0), "ZONA DE CAMPO", 160, Color(0.7, 0.85, 0.6))
 	cartel.rotation.y = -PI / 2.0

@@ -271,7 +271,12 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			troncos.add_child(cs_t)
 		raiz.add_child(troncos)
 	for pr in d["props"]:
-		if pr["tipo"] == "casa":
+		if pr["tipo"] == "servicio":
+			var serv: ServicioMundo = ServicioMundo.new()
+			serv.servicio = pr["serv"]
+			serv.position = pr["pos"]
+			raiz.add_child(serv)
+		elif pr["tipo"] == "casa":
 			var puerta: PropiedadMundo = PropiedadMundo.new()
 			puerta.id_prop = pr["id"]
 			puerta.position = pr["pos"]

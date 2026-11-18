@@ -44,3 +44,18 @@ static func bonus_nivel(nivel: int) -> float:
 
 static func alquiler_diario(precio_compra: int) -> int:
 	return maxi(1, int(round(precio_compra * ALQUILER_DIARIO)))
+
+# Gasolineras, taller, hospital, taberna y banco (servicios de las ciudades del mundo).
+const GASOLINA_POR_PORCENTAJE: float = 0.375   # $ por % de depósito (un bidón da 40 % por 30 $: el surtidor sale a la mitad).
+const BIDON_EN_SURTIDOR: int = 15              # Comprar un bidón lleno en el surtidor.
+const REPARACION_POR_PORCENTAJE: float = 1.2   # $ por % de estado que arregla el taller (el kit cuesta 80 $).
+const CURA_POR_PUNTO: float = 1.5              # $ por punto de vida en el hospital.
+const CURA_MINIMA: int = 10
+const TABERNA_PRECIO: int = 12                 # Una copa: +10 de vida y baja la sospecha.
+const BANCO_INTERES_DIARIO: float = 0.005      # 0,5 % al día sobre lo ingresado.
+const BANCO_COMISION: float = 0.01             # Al retirar o ingresar se queda un 1 % (mínimo 1 $).
+
+# Taxi y viaje rápido.
+const TAXI_BAJADA: int = 8                     # Precio fijo de subir.
+const TAXI_POR_KM: int = 22                    # $ por kilómetro.
+const TAXI_VELOCIDAD_MS: float = 16.0          # Velocidad media del taxi (m/s): decide cuánto tiempo de juego pasa.

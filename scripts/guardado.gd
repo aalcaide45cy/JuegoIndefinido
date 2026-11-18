@@ -55,6 +55,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
+		"banco": Juego.banco,
 		"huertos": Juego.huertos.keys(),
 		"en_propiedad": Juego.en_propiedad.keys(),
 		"parcelas": Juego.parcelas,
@@ -98,6 +99,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	# Todo se comprueba al leer: un archivo tocado a mano o roto no debe dejar
 	# dinero negativo, vida a cero o montones más grandes de lo permitido.
 	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))
+	Juego.banco = maxi(0, int(datos.get("banco", 0)))
 	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
 	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
 	Juego.dia = maxi(1, int(datos.get("dia", 1)))

@@ -30,6 +30,7 @@ func _ready() -> void:
 	add_child(GestorVehiculos.new())
 	add_child(GestorNegocios.new())
 	add_child(GestorPersonal.new())
+	add_child(GestorPolicia.new())
 	_guardias_nocturnos()
 	var nucleo: Rect2 = _cerrar_ciudad()
 	# Junta las miles de piezas que no se mueven en pocas mallas grandes (ver

@@ -53,13 +53,13 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   o empaqueten (el personal básico ya existe en `gestor_personal.gd`).
 - [x] **Habilidades con efecto** (hecho: Cultivo, Sigilo y carnet de Conducción; faltan Mecánica y niveles) (M): Cultivo, Cocina, Persuasión, Sigilo, Conducción, Mecánica
   (3 niveles). `habilidades.gd`, y donde se use cada efecto.
-- [ ] **Policía que crece con tu riqueza** (M): estrellas 1 a 3, más guardias y retenes en barrios ricos,
+- [x] **Policía que crece con tu riqueza** (hecho: estrellas 1-5, refuerzos a pie, coches patrulla desde 3, detención con multa/calabozo; faltan retenes fijos y barrios con más patrullas) (M): estrellas 1 a 3, más guardias y retenes en barrios ricos,
   persecución en coche, cárcel corta con pérdida de tiempo y multa. `guardia.gd`, `jugador.gd`.
 - [ ] **Encargos con lugares generados** (M): elegidos entre puntos de interés cercanos al jugador, con
   más pago por distancia y por riesgo. `encargos.gd`.
-- [ ] **Gasolineras y taxi / viaje rápido** (M): gasolina a precio de surtidor (la mitad que el bidón),
+- [x] **Gasolineras y taxi / viaje rápido** (hecho: surtidores, pestaña Taxi del móvil) (M): gasolina a precio de surtidor (la mitad que el bidón),
   taxi con tarifa por distancia, estaciones. Sirven de gasto y de transporte.
-- [ ] **Distritos de ciudad** (L): ampliar los 4 barrios actuales a una ciudad de 2 x 2 km con tiendas
+- [x] **Distritos de ciudad** (hecho en las ciudades del mundo grande: 4 distritos, banco, taberna, hospital, taller y gasolinera; falta ampliar la ciudad original) (L): ampliar los 4 barrios actuales a una ciudad de 2 x 2 km con tiendas
   nuevas (banco, taberna, taller, hospital) y propiedades con precio por prestigio.
 - [ ] **Dormir y esperar** (S): que dormir en la cama pase el tiempo con aviso de lo que pasa (cosechas
   listas, cobros, encargos que caducan).
