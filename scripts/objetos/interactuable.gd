@@ -15,6 +15,8 @@ extends Node3D
 
 # Hasta qué distancia (en metros) se puede usar.
 var distancia: float = 1.8
+# true para objetos grandes (vehículos): se pueden usar aunque el rayo choque antes con su propia carrocería.
+var ignora_vista: bool = false
 
 
 func _enter_tree() -> void:
