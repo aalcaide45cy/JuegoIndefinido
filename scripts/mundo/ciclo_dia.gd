@@ -140,7 +140,7 @@ func actualizar() -> void:
 	_ambiente.ambient_light_color = AMBIENTE_NOCHE.lerp(AMBIENTE_DIA, dia)
 	_ambiente.ambient_light_energy = lerpf(0.35, 0.6, dia)
 	_ambiente.fog_light_color = NIEBLA_NOCHE.lerp(NIEBLA_DIA, dia)
-	_ambiente.fog_density = lerpf(0.03, 0.004, dia)   # De día casi sin niebla: lo lejano no se ve lavado.
+	_ambiente.fog_density = lerpf(0.03, 0.0018, dia)   # De día casi sin niebla: lo lejano no se ve lavado.
 
 	# Luces de la ciudad: encendidas de noche, apagadas de día.
 	var encendido: float = 1.0 - smoothstep(0.0, 0.35, altura)

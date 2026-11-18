@@ -29,3 +29,45 @@ const LISTA: Array = [
 
 static func precio_compra(p: Dictionary) -> int:
 	return int(p["alquiler"]) * FACTOR_COMPRA
+
+
+# ----------------------- Propiedades del mundo grande ------------------------
+# Las casas y huertos de aldeas, pueblos y ciudades del mundo generado tienen
+# ids que empiezan por "w_" y su ficha se calcula del id (ver generador_mundo.gd).
+
+static func es_del_mundo(id: String) -> bool:
+	return id.begins_with("w_")
+
+
+static func de_id(id: String) -> Dictionary:
+	return GeneradorMundo.propiedad(id)
+
+
+# Las casas y huertos del mundo grande que tienes ahora (para venderlos en la inmobiliaria).
+static func del_mundo_propias() -> Array:
+	var out: Array = []
+	for id in Juego.viviendas.keys() + Juego.huertos.keys():
+		if es_del_mundo(str(id)):
+			var p: Dictionary = de_id(str(id))
+			if not p.is_empty():
+				out.append(p)
+	return out
+
+
+# Alquila o compra una propiedad. Devuelve true si se pudo pagar.
+static func contratar(p: Dictionary, comprar: bool) -> bool:
+	var coste: int = precio_compra(p) if comprar else int(p["alquiler"])
+	if not Juego.gastar(coste):
+		Juego.avisar("No te llega el dinero: piden %d $." % coste)
+		return false
+	if p["tipo"] == "huerto":
+		Juego.huertos[p["id"]] = true
+	else:
+		Juego.viviendas[p["id"]] = true
+	if comprar:
+		Juego.en_propiedad[p["id"]] = true
+		Juego.avisar("¡Compraste: %s!" % p["nombre"])
+	else:
+		Juego.avisar("Alquilaste: %s." % p["nombre"])
+	Juego.cambio.emit()
+	return true

@@ -131,7 +131,7 @@ func _process(delta: float) -> void:
 	if _forzar_foto or _t_foto <= 0.0 or desvio.length() > DESVIO_MAXIMO:
 		_forzar_foto = false
 		_t_foto = INTERVALO_FOTO
-		_camara.position = Vector3(p.x, ALTURA_CAMARA, p.z)
+		_camara.position = Vector3(p.x, p.y + ALTURA_CAMARA, p.z)
 		_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 		desvio = Vector2.ZERO
 	_material.set_shader_parameter("giro", _jugador._giro)
