@@ -15,6 +15,8 @@ extends Node
 
 # Datos de objetos y habilidades (se cargan con preload para no depender de
 # que el editor haya registrado los nombres de clase).
+const DatosPropiedades = preload("res://scripts/datos/propiedades.gd")
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
@@ -37,6 +39,7 @@ var dinero: int = 0
 var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
+var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
@@ -94,6 +97,7 @@ func reiniciar() -> void:
 	hora = 20.0
 	dia = 1
 	reloj = 0.0
+	impagos.clear()
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
 	ha_ganado = false
@@ -157,6 +161,7 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+		DatosPropiedades.cobrar_dia()
 		dia_nuevo.emit()
 
 
@@ -197,16 +202,20 @@ func lleva_ilegal() -> bool:
 
 # Experiencia que hace falta para pasar del nivel actual al siguiente.
 func xp_necesaria() -> int:
-	return 100 * nivel
+	return Economia.xp_para_subir(nivel)
 
 
 # Suma experiencia (plantar, cosechar, preparar y vender dan XP) y sube de nivel.
 func ganar_xp(cantidad: int) -> void:
+	if nivel >= Economia.NIVEL_MAX:
+		return
 	xp += int(round(float(cantidad) * (1.0 + mod("xp"))))
-	while xp >= xp_necesaria():
+	while nivel < Economia.NIVEL_MAX and xp >= xp_necesaria():
 		xp -= xp_necesaria()
 		nivel += 1
 		avisar("¡Subes al nivel %d! Hay objetos nuevos en las tiendas." % nivel)
+	if nivel >= Economia.NIVEL_MAX:
+		xp = 0
 	cambio.emit()
 
 
@@ -256,9 +265,6 @@ func gastar(cantidad: int) -> bool:
 func cobrar(cantidad: int) -> void:
 	dinero += cantidad
 	cambio.emit()
-	if not ha_ganado and dinero >= GameData.OBJETIVO_DINERO:
-		ha_ganado = true
-		avisar("¡Has reunido %d $ para el Prefecto! Prototipo superado." % GameData.OBJETIVO_DINERO)
 
 
 func cambiar_vida(cantidad: float) -> void:
@@ -647,7 +653,8 @@ func vender(lista: Array, i: int) -> String:
 	var datos: Dictionary = DatosObjetos.datos(casilla["id"])
 	if datos["precio"] <= 0:
 		return "Aquí no compran %s." % datos["nombre"]
-	var pago: int = maxi(1, datos["precio"] / 2) * casilla["cantidad"]
+	var factor: float = Economia.VENTA_COSECHA if datos["tipo"] == "cosecha" else Economia.VENTA_TIENDA
+	var pago: int = maxi(1, int(datos["precio"] * factor)) * casilla["cantidad"]
 	lista[i] = null
 	cobrar(pago)
 	# Revender a una tienda no da experiencia: si no, comprar y vender sin parar
@@ -684,7 +691,7 @@ func registrar_casa() -> String:
 			estanteria[i] = null
 	if montones == 0:
 		return "La policía ha entrado en tu casa por la puerta abierta, no ha encontrado nada y se ha ido."
-	var multa: int = mini(dinero, 30 * montones + 5 * unidades)
+	var multa: int = mini(dinero, 30 * montones + 5 * unidades + int(dinero * Economia.MULTA_REGISTRO_PORCENTAJE))
 	dinero -= multa
 	cambio.emit()
 	return "¡La policía ha registrado tu casa (puerta abierta)! Confiscado lo ilegal de tu estantería y multa de %d $." % multa

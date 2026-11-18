@@ -8,11 +8,11 @@ extends RefCounted
 
 # sueldo = dólares por día del juego (para nivel 1; sube con el nivel).
 const OFICIOS: Dictionary = {
-	"agricultor": {"nombre": "Agricultor", "sueldo": 40,
+	"agricultor": {"nombre": "Agricultor", "sueldo": 280,
 			"descripcion": "Cosecha tu huerto asignado cuando madura y lo vuelve a sembrar."},
-	"ganadero": {"nombre": "Ganadero", "sueldo": 35,
+	"ganadero": {"nombre": "Ganadero", "sueldo": 200,
 			"descripcion": "Recoge los huevos o la leche del corral asignado."},
-	"guardaespaldas": {"nombre": "Guardaespaldas", "sueldo": 60,
+	"guardaespaldas": {"nombre": "Guardaespaldas", "sueldo": 240,
 			"descripcion": "Baja tu sospecha poco a poco mientras trabaja para ti."},
 }
 const NOMBRES: Array = ["Marta", "Eloy", "Inés", "Bruno", "Lola", "Teo", "Nuria", "Hugo", "Carmen", "Raúl",

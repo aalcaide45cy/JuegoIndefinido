@@ -19,6 +19,7 @@
 class_name Jugador
 extends CharacterBody3D
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const Aspecto = preload("res://scripts/jugador/aspecto.gd")
 
 # Si el jugador baja de esta altura (metros), reaparece en la plaza.
@@ -417,7 +418,7 @@ func _morir() -> void:
 	_muerto = true
 	Juego.avisar("Has caído. Despiertas en la plaza, y te falta dinero...")
 	hud.fundido(func() -> void:
-		var multa: int = Juego.dinero / 5
+		var multa: int = mini(Juego.dinero, maxi(Economia.MULTA_MUERTE_MINIMA, int(Juego.dinero * Economia.MULTA_MUERTE_PORCENTAJE)))
 		Juego.dinero -= multa
 		Juego.vida = Juego.VIDA_MAX * 0.6
 		Juego.efectos_activos.clear()

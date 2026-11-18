@@ -16,9 +16,6 @@ extends RefCounted
 # Dólares con los que empiezas la partida.
 const DINERO_INICIAL: int = 200
 
-# Dinero que necesitas para "ganar" el prototipo (pagar el alquiler al casero).
-const OBJETIVO_DINERO: int = 1000
-
 # Cuántos ingredientes caben en el caldero depende del nivel (2, 3 o 4): ver
 # Mezclas.CASILLAS_POR_NIVEL en scripts/datos/mezclas.gd, que también genera una
 # poción distinta por cada combinación.
@@ -38,7 +35,7 @@ const HIERBAS: Dictionary = {
 		"nombre": "Hoja de Bruma",
 		"forma": "hoja",
 		"color": Color(0.3, 0.6, 0.35),
-		"tiempo": 15.0,
+		"tiempo": 60.0,
 		"precio_semilla": 10,
 	},
 	# Un hongo pálido que solo crece donde hay huesos.
@@ -46,7 +43,7 @@ const HIERBAS: Dictionary = {
 		"nombre": "Hongo Sepulcral",
 		"forma": "seta",
 		"color": Color(0.62, 0.58, 0.7),
-		"tiempo": 25.0,
+		"tiempo": 120.0,
 		"precio_semilla": 15,
 	},
 	# Hierbas nuevas (cada una aporta efectos distintos a las pociones; ver mezclas.gd).

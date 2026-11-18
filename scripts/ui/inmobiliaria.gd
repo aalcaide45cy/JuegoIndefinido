@@ -16,7 +16,7 @@ var _lista: VBoxContainer
 func construir() -> void:
 	var caja: VBoxContainer = panel_centrado(Vector2(780, 640))
 	cabecera(caja, "Inmobiliaria")
-	subtitulo(caja, "Alquila (pago único) o compra (25 veces el alquiler; vendes por el 70%).")
+	subtitulo(caja, "Alquila (pago inicial y un 4 % del precio cada día) o compra (40 veces el alquiler; vendes por el 70 %).")
 	caja.add_child(Hud.crear_boton("Montar mi propia inmobiliaria (comprar pisos, venderlos y alquilarlos)...", _abrir_negocio))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

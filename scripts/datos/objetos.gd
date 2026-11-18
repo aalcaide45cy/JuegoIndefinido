@@ -126,20 +126,20 @@ const LISTA: Dictionary = {
 		"nombre": "Trigo", "tipo": "cosecha", "pila": 20, "precio": 14,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
-		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a un tercio del precio).",
 	},
 	"maiz": {
 		"nombre": "Maíz", "tipo": "cosecha", "pila": 20, "precio": 18,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
-		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a un tercio del precio).",
 		"cura": 5,
 	},
 	"tomate": {
 		"nombre": "Tomate", "tipo": "cosecha", "pila": 20, "precio": 24,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
-		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a un tercio del precio).",
 		"cura": 6,
 	},
 	"gallina": {

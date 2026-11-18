@@ -115,7 +115,7 @@ static func importar(datos) -> void:
 	e["sig_id"] = maxi(int(datos.get("sig_id", 1)), max_id + 1)
 
 
-static func _activo(uid: int, e: Dictionary = {}):
+static func _activo(uid: int, e: Dictionary = {}) -> Variant:
 	var est: Dictionary = estado() if e.is_empty() else e
 	for a in est["activos"]:
 		if int(a["uid"]) == uid:
@@ -283,7 +283,7 @@ static func motivo_no_compra(tipo: String) -> String:
 	return ""
 
 
-static func oferta(id: int):
+static func oferta(id: int) -> Variant:
 	for o in estado()["mercado"]:
 		if int(o["id"]) == id:
 			return o
@@ -435,7 +435,7 @@ static func coste_publicidad(a: Dictionary, kind: String) -> int:
 	return maxi(10, 2 * renta_ref(str(a["tipo"]), float(a["estado"])))
 
 
-static func _lead_de(uid: int, kind: String):
+static func _lead_de(uid: int, kind: String) -> Variant:
 	for l in estado()["leads"]:
 		if int(l["uid"]) == uid and str(l["kind"]) == kind:
 			return l
@@ -540,7 +540,7 @@ static func rescindir(uid: int) -> String:
 
 # ------------------------------- Clientes -------------------------------------
 
-static func lead(id: int):
+static func lead(id: int) -> Variant:
 	for l in estado()["leads"]:
 		if int(l["id"]) == id:
 			return l

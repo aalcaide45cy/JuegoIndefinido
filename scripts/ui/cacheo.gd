@@ -8,6 +8,7 @@
 class_name Cacheo
 extends Ventana
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const TIEMPO: float = 6.0
 const PROB_ESCONDER: float = 0.65
@@ -95,7 +96,7 @@ func _terminar() -> void:
 		unidades += int(c["cantidad"])
 		confiscados += 1
 		Juego.inventario[i] = null
-	var multa: int = mini(Juego.dinero, 20 * confiscados + 5 * unidades)
+	var multa: int = mini(Juego.dinero, 20 * confiscados + 5 * unidades + int(Juego.dinero * Economia.MULTA_CACHEO_PORCENTAJE))
 	Juego.dinero -= multa
 	Juego.cambio.emit()
 	for h in _lista.get_children():

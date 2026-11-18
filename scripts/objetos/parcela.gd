@@ -77,6 +77,7 @@ func texto_accion() -> String:
 	return "Cosechar %d x %s" % [_unidades(), DatosObjetos.nombre(CULTIVOS[e["semilla"]]["cosecha"])]
 
 
+const Economia = preload("res://scripts/datos/economia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const Propiedades = preload("res://scripts/datos/propiedades.gd")
 
@@ -86,7 +87,7 @@ func _semillas_necesarias() -> int:
 
 
 func _unidades() -> int:
-	return clampi(m2 / 12, 1, 60)
+	return clampi(m2 / Economia.M2_POR_UNIDAD, 1, Economia.MAX_UNIDADES_HUERTO)
 
 
 func usar(_jugador: Node) -> void:
@@ -109,7 +110,7 @@ func usar(_jugador: Node) -> void:
 			Juego.avisar("Necesitas %d semillas para sembrar este huerto." % n)
 			return
 		Juego.quitar(semilla, n)
-		var total: float = CULTIVOS[semilla]["tiempo"]
+		var total: float = CULTIVOS[semilla]["tiempo"] * Economia.FACTOR_TIEMPO_CULTIVO
 		Juego.parcelas[id_huerto] = {"semilla": semilla, "t": total, "total": total}
 		Juego.avisar("Huerto sembrado. Tardará %d s en madurar." % int(total))
 		return
