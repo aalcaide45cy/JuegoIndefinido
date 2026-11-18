@@ -61,7 +61,7 @@ func _decorar() -> void:
 
 
 func _factor_velocidad() -> float:
-	return (1.0 + 0.25 * (nivel - 1)) * (1.2 if riego else 1.0)
+	return (1.0 + 0.25 * (nivel - 1)) * (1.2 if riego else 1.0) * (1.15 if Juego.habilidades.has("cultivo") else 1.0)
 
 
 func _process(delta: float) -> void:

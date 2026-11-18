@@ -14,9 +14,9 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   producen. `parcela.gd`, `corral.gd`, `arbol_frutal.gd`, `maceta_3d.gd`, `guardado.gd`.
 - [x] **Quitar el objetivo de 1.000 $** (S). `GameData.OBJETIVO_DINERO` y el aviso "Prototipo superado"
   en `juego.gd` salen a los 10 minutos. Sustituir por metas del móvil (ver P1).
-- [ ] **Una sola fuente para precios** (S). Borrar `precio_semilla` y `PRECIO_ALQUILER` de `game_data.gd`;
+- [x] **Una sola fuente para precios** (S). Borrar `precio_semilla` y `PRECIO_ALQUILER` de `game_data.gd`;
   que `barrio_residencial.gd` y `barrio_campo.gd` lean `propiedades.gd`.
-- [ ] **Datos de cultivos, granja y vehículos a `scripts/datos/`** (S). `Parcela.CULTIVOS`, `Corral.ESPECIES`,
+- [x] **Datos de cultivos, granja y vehículos a `scripts/datos/`** (S). `Parcela.CULTIVOS`, `Corral.ESPECIES`,
   `Vehiculo.TIPOS` fuera de sus scripts (el hilo de vehículos debe hacerlo, para no chocar).
 - [x] **Archivo `scripts/datos/economia.gd` con los multiplicadores** (S): % de venta a tienda, factor de
   compra, factor de cosecha, multas. Cambiar el equilibrio será tocar un archivo.
@@ -36,10 +36,10 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   cada 5 min. `corral.gd`, `arbol_frutal.gd`.
 - [ ] **Más recetas e ingredientes** (M): 3 hierbas nuevas (nivel 3, 6, 9) y 8 pociones con recetas de
   2 a 4 ingredientes; precios de 40 a 600 $. `game_data.gd`, `objetos.gd`. (El hilo de recetas.)
-- [ ] **Desbloqueo por nivel de lo que no son armas** (S): según la tabla de 6.3 de `DISENO.md`
+- [x] **Desbloqueo por nivel de lo que no son armas** (S): según la tabla de 6.3 de `DISENO.md`
   (hierba Sepulcral nivel 2, empaquetadora nivel 2, vacas nivel 6, huertos grandes nivel 7-10…).
   Solo hace falta usar el campo `nivel` que ya existe.
-- [ ] **Metas encadenadas en el móvil** (M): 6 misiones con recompensa. `ui/telefono.gd`, `juego.gd`.
+- [x] **Metas encadenadas en el móvil** (M): 6 misiones con recompensa. `ui/telefono.gd`, `juego.gd`.
 - [x] **Subir los sueldos del personal** (S): hoy 35-60 $/día frente a 6.000+ $/h que rinde un huerto grande.
   Sueldo ≈ 25-40 % de lo que rinde el puesto, o día de 20-24 min. `datos/personal.gd`, `juego.gd`.
 - [x] **Multas proporcionales** (S): cacheo = 5 % del dinero + valor de lo confiscado; registro de casa
@@ -51,7 +51,7 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   `GestorChunks` + límite fijo + red de carreteras en datos.
 - [ ] **Negocio legal** (L): tienda propia (alquilar un local) con ingresos pasivos y empleados que vendan
   o empaqueten (el personal básico ya existe en `gestor_personal.gd`).
-- [ ] **Habilidades con efecto** (M): Cultivo, Cocina, Persuasión, Sigilo, Conducción, Mecánica
+- [x] **Habilidades con efecto** (hecho: Cultivo, Sigilo y carnet de Conducción; faltan Mecánica y niveles) (M): Cultivo, Cocina, Persuasión, Sigilo, Conducción, Mecánica
   (3 niveles). `habilidades.gd`, y donde se use cada efecto.
 - [ ] **Policía que crece con tu riqueza** (M): estrellas 1 a 3, más guardias y retenes en barrios ricos,
   persecución en coche, cárcel corta con pérdida de tiempo y multa. `guardia.gd`, `jugador.gd`.
@@ -96,3 +96,8 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 - Casas del mundo en alquiler/venta con interior (muros con puerta, cama y mesa).
 - Pendiente de la lista: datos de cultivos/granja a `scripts/datos/`, una sola fuente de precios, metas del móvil,
   desbloqueos por nivel de hierbas y huertos (no hecho), y P2/P3. Todo SIN PROBAR a mano en Godot (solo pruebas automáticas).
+
+Segunda tanda (misma fecha): metas del móvil (`datos/metas.gd`, pestaña Metas, premio una vez cada una),
+`datos/cultivos.gd` y `datos/granja.gd`, habilidades Cultivo y Sigilo. Los datos de vehículos siguen en `Vehiculo.TIPOS`
+(otro hilo). El resto de P2/P3 (chunks ya hechos en PR 5; policía por estrellas, taxi, distritos, clima, sonido, iconos,
+varias partidas, logros) sigue pendiente y es trabajo grande: conviene un hilo por tema.

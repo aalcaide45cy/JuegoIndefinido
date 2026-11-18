@@ -153,7 +153,7 @@ func _process(delta: float) -> void:
 		_t_sospecha = 0.0
 		var delta_s: float = -0.6   # Baja con el tiempo.
 		if lleva_ilegal():
-			delta_s += 0.9
+			delta_s += 0.9 * (0.7 if habilidades.has("sigilo") else 1.0)
 			if Input.is_action_pressed("correr"):
 				delta_s += 0.6
 		if delito_visto > 0.0:

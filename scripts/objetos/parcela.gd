@@ -107,7 +107,7 @@ func usar(_jugador: Node) -> void:
 			Juego.avisar("Necesitas %d semillas para sembrar este huerto." % n)
 			return
 		Juego.quitar(semilla, n)
-		var total: float = CULTIVOS[semilla]["tiempo"] * Economia.FACTOR_TIEMPO_CULTIVO
+		var total: float = CULTIVOS[semilla]["tiempo"] * Economia.FACTOR_TIEMPO_CULTIVO * (0.85 if Juego.habilidades.has("cultivo") else 1.0)
 		Juego.parcelas[id_huerto] = {"semilla": semilla, "t": total, "total": total}
 		Juego.avisar("Huerto sembrado. Tardará %d s en madurar." % int(total))
 		return

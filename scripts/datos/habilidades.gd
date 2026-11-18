@@ -8,6 +8,8 @@
 extends RefCounted
 
 const LISTA: Dictionary = {
+	"cultivo": {"nombre": "Cultivo (plantas un 15 % más rápido)", "precio": 350, "nivel": 3},
+	"sigilo": {"nombre": "Sigilo (la sospecha sube un 30 % más despacio)", "precio": 500, "nivel": 4},
 	"conduccion": {"nombre": "Carnet de conducir", "precio": 150, "nivel": 1},   # Sin él, los guardias te multan si te ven conduciendo.
 	"disparo": {"nombre": "Manejo de armas de fuego", "precio": 300, "nivel": 3},
 	"punteria": {"nombre": "Puntería avanzada", "precio": 800, "nivel": 8},
