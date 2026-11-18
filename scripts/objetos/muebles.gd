@@ -28,7 +28,7 @@ class Cama extends Interactuable:
 					Vector3.ONE * 0.8, false)
 
 	func texto_accion() -> String:
-		return "Dormir (pasan %d horas y las plantas crecen)" % int(HORAS_RELOJ)
+		return "Dormir (pasan %d horas, las plantas crecen y recuperas la vida)" % int(HORAS_RELOJ)
 
 	func usar(jugador: Node) -> void:
 		jugador.hud.fundido(func() -> void:
@@ -39,7 +39,11 @@ class Cama extends Interactuable:
 			if Juego.hora >= 24.0:
 				Juego.hora -= 24.0
 				Juego.dia += 1
-			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido mientras tanto."), 1.2)
+			# Dormir cura: vida completa y se te pasan los efectos malos de las pociones.
+			Juego.vida = Juego.VIDA_MAX
+			Juego.quitar_efectos_malos()
+			Juego.cambio.emit()
+			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido y te sientes recuperado (vida completa)."), 1.2)
 
 
 class Grifo extends Interactuable:

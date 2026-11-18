@@ -197,3 +197,31 @@ Nota de rendimiento: "100 veces más grande" en superficie NO cabe en una sola e
 - **Vehículos** (`scripts/vehiculos/`): `vehiculo.gd` tiene la tabla `TIPOS` (añadir un modelo = una entrada: nombre, modelo de `assets/kenney/car-kit`, largo, velocidad, precio, `clase` suelo/remolque/aire, `cat`). Coches, furgoneta, camión, tractor, excavadora, cabeza de tráiler, remolques (H engancha/suelta), portacoches, helicóptero y avioneta (hechos con cajas). E sube/baja; robar sube la sospecha; gasolina (bidón) y reparación (kit) en la ferretería. Si un coche sale girado, cambia `GIRO_MODELO`. `GestorVehiculos` crea los tuyos (`Juego.vehiculos`, guardados) y 7 coches robables en la ciudad. Concesionario en la Zona de Campo (comprar, vender a tasación o negociar +15/+30 %).
 - **Personal**: Bolsa de trabajo en la plaza (`oficina_empleo.gd`, `bolsa_trabajo.gd`, `gestor_personal.gd`). Agricultor (cosecha y resiembra su huerto), ganadero (recoge el corral), guardaespaldas (baja la sospecha). Sueldo por día; lo producido va a `Juego.almacen`.
 - Pendiente de estos: probar en Godot (orientación de los modelos de coche, cámara en vuelo), trabajadores visibles en el huerto, tráfico y vehículos aparcados en el mapa grande.
+## Recetas, efectos y curación (hilo "Añadir recetas, consumibles y curación")
+Hecho en la nube **y probado con Godot 4.6 sin pantalla** (`tests/prueba_recetas.gd` y
+`tests/prueba_ui.tscn`, ver `tests/LEEME.md`). Todo está en datos:
+- `scripts/datos/mezclas.gd`: ingredientes (10 hierbas + 8 aditivos) y el generador. Cada combinación de
+  2 a 4 ingredientes (en cualquier orden) da una poción distinta: **7.296 recetas**, con nombre, color,
+  precio, efectos buenos (máx. 3) y efectos secundarios con probabilidad. Añadir un ingrediente nuevo =
+  una línea en `INGREDIENTES` + su objeto en `objetos.gd` (+ la hierba en `GameData.HIERBAS` si se cultiva).
+- `scripts/datos/efectos.gd`: 18 efectos temporales (velocidad, salto, resistencia, fuerza, visión
+  nocturna, regeneración, sigilo, concentración, carisma, calma, euforia; veneno, náuseas, lentitud,
+  mareo, somnolencia, temblor, paranoia). Cada uno dice qué modifica (`mods`, `regen`, `visual`).
+- Beber una poción o usar comida/medicina: clic izquierdo con ella en la mano (`Juego.usar_en_mano`).
+  Los efectos viven en `Juego.efectos_activos`; el resto del juego los consulta con `Juego.mod("clave")`
+  (velocidad y salto del jugador, daño recibido y hecho, XP, precio de venta, sigilo, sospecha, visión).
+- HUD: lista de efectos con barra de tiempo (`ui/panel_efectos.gd`) y efectos en pantalla
+  (`ui/efectos_pantalla.gd`: ondas, bordes oscuros y tinte).
+- Caldero nuevo: recetario con las recetas descubiertas, de 2 a 4 casillas, vista previa si la mezcla ya
+  se conoce, "¡RECETA NUEVA!" con XP la primera vez. Las pociones de autor de `GameData.POCIONES` siguen.
+- Curva por niveles (docs/DISENO.md 6.3): casillas del caldero 2 (nivel 1), 3 (nivel 6), 4 (nivel 9) en
+  `Mezclas.CASILLAS_POR_NIVEL`; cada semilla y aditivo tiene su nivel en la tienda (hierbas nuevas de
+  nivel 1 a 7); el precio de una poción sube con los ingredientes (x1,4 con 3 y x1,8 con 4, tope 650 $).
+  Los clientes y encargos piden las pociones de autor y las recetas que ya has descubierto.
+- Curación: comida y medicina con `cura`, `efectos` y `quita` (pan, sopa, estofado, café, té, venda,
+  tónico, analgésico, antídoto, jarabe regenerador, botiquín, maletín médico), cosechas comestibles,
+  **médico** en las boticas (`objetos/medico.gd`, `ui/ventana_medico.gd`: curar, desintoxicar,
+  revisión, refuerzo) y **dormir en la cama cura del todo**.
+- Guardado: recetario y efectos activos. Panel F1: aplicar un efecto o darte 3 pociones al azar.
+Pendiente: recetas de cocina con las cosechas (huevo, leche, tomate...), poción de paranoia más común,
+sonidos al beber y a descubrir recetas, ajustar los números tras probar en el PC.

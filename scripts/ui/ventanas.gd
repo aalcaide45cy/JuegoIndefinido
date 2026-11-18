@@ -18,7 +18,7 @@ const CATEGORIAS: Dictionary = {
 	"semilla": "Semillas", "material": "Cultivo", "herramienta": "Herramientas",
 	"arma_cc": "Cuerpo a cuerpo", "arma_fuego": "Armas de fuego",
 	"municion": "Munición", "explosivo": "Explosivos",
-	"hierba": "Hierbas", "pocion": "Pociones", "paquete": "Paquetes", "mueble": "Muebles y montaje", "cosecha": "Cosechas", "animal": "Animales", "consumible": "Comida y medicina",
+	"hierba": "Hierbas", "pocion": "Pociones", "paquete": "Paquetes", "mueble": "Muebles y montaje", "cosecha": "Cosechas", "animal": "Animales", "consumible": "Comida y medicina", "aditivo": "Aditivos del caldero",
 }
 
 
@@ -679,7 +679,7 @@ class Admin extends Ventana:
 	var _texto_duracion: Label
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(640, 660))
+		var caja: VBoxContainer = panel_centrado(Vector2(640, 740))
 		cabecera(caja, "Panel de administrador (F1)")
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 		caja.add_child(_estado)
@@ -799,6 +799,33 @@ class Admin extends Ventana:
 		_cantidad.value = 1
 		fila_dar.add_child(_cantidad)
 		fila_dar.add_child(Hud.crear_boton("Dar", _dar))
+
+		# Efectos de pociones (para probarlos) y recetas.
+		subtitulo(caja, "Efectos y recetas")
+		var fila_efecto: HBoxContainer = HBoxContainer.new()
+		caja.add_child(fila_efecto)
+		var lista_efectos: OptionButton = OptionButton.new()
+		lista_efectos.focus_mode = Control.FOCUS_NONE
+		for id_e in Juego.DatosEfectos.LISTA:
+			lista_efectos.add_item(Juego.DatosEfectos.nombre(id_e))
+			lista_efectos.set_item_metadata(lista_efectos.item_count - 1, id_e)
+		fila_efecto.add_child(lista_efectos)
+		fila_efecto.add_child(Hud.crear_boton("Aplicar 2 min", func() -> void:
+			var id_e: String = lista_efectos.get_item_metadata(lista_efectos.selected)
+			Juego.aplicar_efecto(id_e, 120.0, 1.0)))
+		fila_efecto.add_child(Hud.crear_boton("Quitar todos", func() -> void:
+			Juego.efectos_activos.clear()
+			Juego.efectos_cambiados.emit()))
+		fila_efecto.add_child(Hud.crear_boton("3 pociones al azar", func() -> void:
+			var ids_i: Array = GameData.Mezclas.INGREDIENTES.keys()
+			var n: int = randi_range(2, GameData.Mezclas.max_ingredientes(Juego.nivel))
+			var mezcla: Array = []
+			for i in n:
+				mezcla.append(ids_i.pick_random())
+			var id_p: String = GameData.buscar_pocion(mezcla)
+			Juego.anadir("pocion_" + id_p, 3)
+			Juego.descubrir_receta(id_p)
+			Juego.avisar("Te has dado 3 x %s." % GameData.pocion(id_p)["nombre"])))
 
 		Juego.cambio.connect(_refrescar)
 		_refrescar()

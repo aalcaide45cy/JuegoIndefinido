@@ -510,6 +510,10 @@ func _decorar_tienda(tienda: Node3D, id_tienda: String) -> void:
 			Assets.colocar(tienda, f + "Candle_1", Vector3(2.2, 1.0, -5.2))
 			Assets.colocar_solido(tienda, f + "Cauldron", Vector3(3.6, 0, -3.2))
 			Assets.colocar_solido(tienda, f + "Bookcase_2", Vector3(-3.8, 0, -3.4), PI / 2.0)
+			if id_tienda == "botica":
+				var medico: Medico = Medico.new()
+				medico.position = Vector3(-2.6, 0, -1.9)
+				tienda.add_child(medico)
 		"panaderia":
 			Assets.colocar_solido(tienda, f + "Barrel_Apples", Vector3(-3.6, 0, -2.4))
 			Assets.colocar_solido(tienda, f + "Bench", Vector3(3.0, 0, -3.0))
