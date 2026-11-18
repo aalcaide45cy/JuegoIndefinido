@@ -113,7 +113,7 @@ func _usar_gasolinera(comprar_bidon: bool) -> void:
 	if comprar_bidon:
 		if not Juego.cabe("bidon_gasolina", 1):
 			Juego.avisar("No te cabe el bidón.")
-		elif not Juego.gastar(Economia.BIDON_EN_SURTIDOR):
+		elif not Juego.gastar_con_negro(Economia.BIDON_EN_SURTIDOR):
 			Juego.avisar("Un bidón cuesta %d $." % Economia.BIDON_EN_SURTIDOR)
 		else:
 			Juego.anadir("bidon_gasolina", 1)
@@ -127,7 +127,7 @@ func _usar_gasolinera(comprar_bidon: bool) -> void:
 		Juego.avisar("El depósito ya está lleno.")
 		return
 	var precio: int = _precio_gasolina(v)
-	if not Juego.gastar(precio):
+	if not Juego.gastar_con_negro(precio):
 		Juego.avisar("Llenar el depósito cuesta %d $." % precio)
 		return
 	v.set("gasolina", 100.0)
@@ -167,7 +167,7 @@ func _usar_hospital() -> void:
 
 
 func _usar_taberna() -> void:
-	if not Juego.gastar(Economia.TABERNA_PRECIO):
+	if not Juego.gastar_con_negro(Economia.TABERNA_PRECIO):
 		Juego.avisar("Una copa cuesta %d $." % Economia.TABERNA_PRECIO)
 		return
 	Juego.cambiar_vida(10.0)
@@ -185,6 +185,9 @@ func _usar_banco(retirar: bool) -> void:
 		Juego.banco = 0
 		Juego.cobrar(cantidad)
 		Juego.avisar("Retiras %d $ (comisión %d $)." % [cantidad, comision])
+		return
+	if Juego.dinero_negro > 0 and Juego.dinero <= 20:
+		Juego.avisar("El banco solo acepta dinero limpio. Blanquea el negro en uno de tus negocios (móvil > Negocios > Lavado).")
 		return
 	var libre: int = Juego.dinero - 20   # Te quedas con 20 $ en el bolsillo.
 	if libre < 20:

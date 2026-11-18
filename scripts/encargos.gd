@@ -256,7 +256,7 @@ func entregar(id: int) -> String:
 		if Juego.interiores == 0:
 			Juego.delito_visto = 30.0   # Vender ilegal en la calle: los guardias cercanos lo notan.
 		e["pago"] = int(int(e["pago"]) * bonus * Economia.bonus_nivel(Juego.nivel))
-		Juego.cobrar(int(e["pago"]))
+		Juego.cobrar_negro(int(e["pago"]))   # Trato ilegal: dinero negro.
 		Juego.ganar_xp(15 * cant)
 		Juego.reputacion = mini(100, Juego.reputacion + 3)
 		_quitar_comprador(id)
@@ -277,7 +277,7 @@ func pedir_material(id: String, cantidad: int) -> String:
 	if motivo != "":
 		return "%s para pedir %s." % [motivo, d["nombre"]]
 	var coste: int = int(d["precio"]) * cantidad + TASA_ENVIO
-	if not Juego.gastar(coste):
+	if not Juego.gastar_con_negro(coste):
 		return "No tienes %d $ (incluye %d $ de envío)." % [coste, TASA_ENVIO]
 	Juego.pedidos_material.append({"id": id, "cantidad": cantidad, "t": ENTREGA_MATERIAL})
 	_notificar("Pedido enviado: %d x %s. Llegará en %d s." % [cantidad, d["nombre"], int(ENTREGA_MATERIAL)])

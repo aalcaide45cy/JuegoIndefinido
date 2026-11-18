@@ -24,7 +24,7 @@ const CATEGORIAS: Dictionary = {
 
 # Muestra un resumen: dinero, nivel y vida.
 static func texto_estado() -> String:
-	return "%d $    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.nivel,
+	return "%d $ (negro %d $)    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.dinero_negro, Juego.nivel,
 			Juego.xp, Juego.xp_necesaria(), int(Juego.vida), int(Juego.VIDA_MAX)]
 
 

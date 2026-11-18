@@ -547,6 +547,7 @@ func _morir() -> void:
 		get_tree().call_group("policia_refuerzo", "queue_free")
 		var multa: int = mini(Juego.dinero, maxi(Economia.MULTA_MUERTE_MINIMA, int(Juego.dinero * Economia.MULTA_MUERTE_PORCENTAJE)))
 		Juego.dinero -= multa
+		Juego.dinero_negro -= int(Juego.dinero_negro * Juego.DatosBlanqueo.MUERTE_PIERDE)
 		Juego.vida = Juego.VIDA_MAX * 0.6
 		Juego.efectos_activos.clear()
 		Juego.efectos_cambiados.emit()

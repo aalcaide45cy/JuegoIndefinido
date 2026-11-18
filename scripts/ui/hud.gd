@@ -306,6 +306,8 @@ func _actualizar_alerta() -> void:
 func _actualizar_estado() -> void:
 	var lineas: PackedStringArray = []
 	lineas.append("%d $   ·   Nivel %d  (%d/%d XP)" % [Juego.dinero, Juego.nivel, Juego.xp, Juego.xp_necesaria()])
+	if Juego.dinero_negro > 0:
+		lineas.append("Dinero negro: %d $" % Juego.dinero_negro)
 	lineas.append("Vida")
 	_label_estado.text = "\n".join(lineas)
 	_barra_vida.value = Juego.vida

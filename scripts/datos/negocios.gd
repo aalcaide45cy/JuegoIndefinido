@@ -91,6 +91,8 @@ const LICENCIAS: Dictionary = {
 	"aerodromo": {"nombre": "Aeródromo", "precio": 40000, "nivel": 6, "cats": ["aire"],
 			"ops": ["comprar", "vender", "alquilar"], "capacidad": 3,
 			"desc": "Helicópteros y aviones: compra, venta y alquiler."},
+	"tienda": {"nombre": "Tienda de barrio", "precio": 3000, "nivel": 2, "cats": [], "ops": [], "capacidad": 0,
+			"desc": "Un negocio de cara al público. Sirve de pantalla para pasar dinero negro (pestaña Lavado), con poco límite y mucha comisión."},
 	"oficina": {"nombre": "Oficina grande", "precio": 8000, "nivel": 3, "cats": [], "ops": [], "capacidad": 8,
 			"desc": "Más sitio en tu cartera: 8 propiedades o vehículos más."},
 }

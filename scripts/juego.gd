@@ -18,6 +18,7 @@ extends Node
 const DatosPropiedades = preload("res://scripts/datos/propiedades.gd")
 const DatosMetas = preload("res://scripts/datos/metas.gd")
 const Economia = preload("res://scripts/datos/economia.gd")
+const DatosBlanqueo = preload("res://scripts/datos/blanqueo.gd")
 const DatosPolicia = preload("res://scripts/datos/policia.gd")
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
@@ -37,7 +38,9 @@ const VIDA_MAX: float = 100.0
 # Cuánto dura un día entero del juego, en minutos reales (se cambia en F1).
 const DURACION_DIA_POR_DEFECTO: float = 60.0
 
-var dinero: int = 0
+var dinero: int = 0                  # Dinero LIMPIO (vale en todas partes, también en el banco).
+var dinero_negro: int = 0            # Lo que ganas con el trato ilegal. Hay que blanquearlo (scripts/blanqueo.gd).
+var vigilancia_fiscal: float = 0.0   # 0-100: sube al blanquear; si llega a 80 puede haber inspección.
 var vida: float = VIDA_MAX
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
@@ -112,6 +115,8 @@ func _ready() -> void:
 
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
+	dinero_negro = 0
+	vigilancia_fiscal = 0.0
 	vida = VIDA_MAX
 	hora = 20.0
 	dia = 1
@@ -177,6 +182,7 @@ func _process(delta: float) -> void:
 				delta_s += 0.6
 		if delito_visto > 0.0:
 			delta_s += 3.0
+		delta_s += DatosBlanqueo.sospecha_por_segundo(dinero_negro) * (0.7 if habilidades.has("sigilo") else 1.0)
 		delta_s -= 1.5 * mod("calma")   # Efecto "Calma": la sospecha baja más rápido.
 		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
@@ -264,6 +270,8 @@ func detener() -> String:
 	var n: int = maxi(1, estrellas)
 	var multa: int = mini(dinero, maxi(int(DatosPolicia.MULTA_DETENCION[n]), int(dinero * DatosPolicia.MULTA_DETENCION_PORCENTAJE * n)))
 	dinero -= multa
+	var negro_quitado: int = int(dinero_negro * DatosBlanqueo.fraccion_detencion(n))
+	dinero_negro -= negro_quitado
 	var confiscado: int = 0
 	for i in inventario.size():
 		var casilla = inventario[i]
@@ -280,7 +288,8 @@ func detener() -> String:
 	sospecha = maxf(0.0, sospecha - 40.0)
 	vida = maxf(vida, VIDA_MAX * 0.5)
 	cambio.emit()
-	return "Detenido. Multa de %d $, %d objetos ilegales confiscados y %d horas en el calabozo." % [multa, confiscado, int(horas)]
+	var extra: String = " Y te quitan %d $ de dinero negro." % negro_quitado if negro_quitado > 0 else ""
+	return "Detenido. Multa de %d $, %d objetos ilegales confiscados y %d horas en el calabozo.%s" % [multa, confiscado, int(horas), extra]
 
 
 func siguiente_vehiculo() -> int:
@@ -398,6 +407,29 @@ func gastar(cantidad: int) -> bool:
 func cobrar(cantidad: int) -> void:
 	dinero += cantidad
 	cambio.emit()
+
+
+# Ganancia del trato ilegal: va como dinero negro (hay que blanquearlo).
+func cobrar_negro(cantidad: int) -> void:
+	dinero_negro += cantidad
+	cambio.emit()
+
+
+# Para compras de calle (tienda, taxi, gasolina, taberna): se paga primero con dinero
+# negro y el resto con limpio. Las compras "serias" (casas, coches, licencias, sueldos,
+# banco) usan gastar(), que solo acepta dinero limpio.
+func gastar_con_negro(cantidad: int) -> bool:
+	if dinero + dinero_negro < cantidad:
+		return false
+	var de_negro: int = mini(dinero_negro, cantidad)
+	dinero_negro -= de_negro
+	dinero -= cantidad - de_negro
+	cambio.emit()
+	return true
+
+
+func dinero_total() -> int:
+	return dinero + dinero_negro
 
 
 func cambiar_vida(cantidad: float) -> void:
@@ -809,11 +841,11 @@ func comprar(id: String) -> String:
 	var motivo: String = motivo_no_compra(id)
 	if motivo != "":
 		return motivo + " para comprar %s." % datos["nombre"]
-	if dinero < datos["precio"]:
+	if dinero + dinero_negro < datos["precio"]:
 		return "No te llega: %s cuesta %d $." % [datos["nombre"], datos["precio"]]
 	if not cabe(id):
 		return "No te cabe nada más en el inventario."
-	gastar(datos["precio"])
+	gastar_con_negro(datos["precio"])
 	anadir(id)
 	return "Has comprado %s por %d $." % [datos["nombre"], datos["precio"]]
 
