@@ -135,10 +135,14 @@ nombre = "Mi servidor"
 contrasena = ""            ; vacío = abierto
 puerto = 24565
 semilla = 12345            ; 0 = aleatoria al crear el mundo
-max_jugadores = 8
-pvp = false
+max_jugadores = 8          ; 1 a 64
+modo = "propio"            ; "propio" = cada jugador su dinero y negocios | "cooperativo" = dinero y negocios compartidos
+pvp = false                ; true = los jugadores pueden hacerse daño
+robos = false              ; true = se puede robar a otros jugadores
 guardado_minutos = 2
-admins = ["ID_DEL_ADMIN"]
+transporte = ["enet"]      ; "enet" (UDP), "websocket" (TCP), "steam"
+lista_steam = false        ; true = aparece en la lista de servidores de Steam
+admins = ["ID_DEL_ADMIN"]  ; quién administra (por ID o SteamID)
 ```
 
 Todo se puede sobrescribir con variables de entorno (`JI_PUERTO`, `JI_CONTRASENA`…), que es lo que usan los servicios de nube.
@@ -269,10 +273,11 @@ Esfuerzo orientativo en **sesiones de trabajo** (una sesión ≈ un hilo grande)
 | **5. Varios jugadores** | Inventario/dinero por jugador, tienda, casas, encargos, policía por jugador, ver a otros con su aspecto, chat | 4-6 | 2-8 jugadores jugando |
 | **6. Vehículos y tráfico en red** | Conductor con autoridad, remolques, IA solo cerca de jugadores | 4-5 | Coches compartidos |
 | **7. Invitar y alojar fácil** | Código de sala (Worker) y UPnP; lista de servidores; WebSocket, guías de nube, consola y copias (ver 3.8) | 4-6 | "Dime el código" |
-| **8. Steam** | GodotSteam, lista de amigos, relé, logros de Steam | 3-4 | Unirse desde Steam |
+| **8. Steam** | GodotSteam, lista de amigos, relé, logros de Steam; **servidor dedicado en Steam** (AppID de servidor, SteamCMD, lista de servidores) = opción C | 4-5 | Unirse desde Steam y servidores en la lista |
+| **8b. Plantilla Pterodactyl** | *Egg* para paneles de hosts de juegos, apoyado en C (opción D) | 1 | Hosts de juegos con un clic |
 | **9. Blindaje** | Anti-trampas, admin autorizado, reconexión, pruebas de carga | 3-4 | Servidor robusto |
 
-Total aproximado: **32-45 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
+Total aproximado: **34-48 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
 
 ### Primer hito mínimo viable (fases 0 a 4)
 
@@ -288,10 +293,26 @@ Esto demuestra la idea completa (mundo que sigue vivo + invitar) con muy poco ri
 
 > En este PR solo va el documento. La fase 1 toca casi todos los archivos y el código actual no se ha probado en Godot, así que cambiarlo ahora sin poder ejecutarlo sería arriesgado.
 
-## 7. Decisiones que tendrá que tomar Alfonso
+## 7. Todas las opciones, sin decidir: se configuran
 
-1. ¿**Máximo de jugadores**? (propuesta: 2-8 al inicio.)
-2. ¿**Cooperativo** (todos en el mismo negocio) o cada jugador con su propio dinero y negocios? (propuesta: **cada uno lo suyo**, con la ciudad compartida.)
-3. ¿Puede haber **PvP** (hacerse daño entre jugadores) y robarse? (propuesta: desactivable por servidor.)
-4. ¿El servidor dedicado lo quieres para **casa** (tu PC) o alquilado (VPS)? Afecta a Steam y a la documentación.
-5. ¿Quién es **administrador** del servidor?
+Alfonso quiere **tener todas las opciones**. El diseño no excluye ninguna: cada decisión es un ajuste de `servidor.cfg` (o de la pantalla "Crear partida"), y el código lee el ajuste en vez de dar nada por hecho.
+
+| Decisión | Cómo queda configurable | Qué implica en el diseño |
+|---|---|---|
+| Número de jugadores | `max_jugadores` (1-64) | El servidor carga datos solo por jugador y zona de interés (3.4), así que escala sin cambios |
+| Cooperativo o cada uno lo suyo | `modo = "propio"` o `"cooperativo"` | `EstadoJugador` guarda lo personal; en cooperativo, dinero, negocios y propiedades apuntan a un `EstadoEquipo` compartido en vez de al jugador. Hay que **diseñar los datos así desde la fase 1** |
+| PvP y robos | `pvp`, `robos` | Cada daño y robo pasa por el servidor, que mira el ajuste antes de aplicarlo |
+| Dónde alojar | A (descargable), B (Docker), C (servidor en Steam), D (Pterodactyl), anfitrión o un jugador | Un solo servidor, **cuatro envoltorios**: no hay código distinto para cada uno |
+| Administración | `admins` y consola/comandos (3.8) | Rangos posibles: administrador, moderador, jugador |
+| Transporte de red | `transporte` (`enet`, `websocket`, `steam`) | Todo va por `GestorRed`, así que se pueden activar varios a la vez |
+
+Las cuatro opciones de alojamiento tienen su fase:
+
+| Opción | Fase del plan |
+|---|---|
+| **A. Descargable** Windows/Linux | Fase 3 |
+| **B. Imagen Docker** | Fase 3 (con guía VPS) y fase 7 (nubes) |
+| **C. Servidor dedicado en Steam** | Fase 8 |
+| **D. Plantilla Pterodactyl** | Fase 8b (después de C) |
+
+Lo que sí hay que decidir (pero más adelante, no ahora): los **valores por defecto** de cada ajuste. Propuesta: 8 jugadores, `modo = "propio"`, PvP y robos desactivados, `transporte = ["enet"]`.
