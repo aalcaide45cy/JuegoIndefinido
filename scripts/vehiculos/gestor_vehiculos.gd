@@ -34,7 +34,7 @@ func sincronizar() -> void:
 	for id_v in Juego.vehiculos:
 		_crear(str(id_v), Juego.vehiculos[id_v])
 	for p in PLAZAS:
-		if not Juego.vehiculos.has(p[0]):
+		if not Juego.vehiculos.has(p[0]) and not Juego.plazas_tomadas.has(p[0]):
 			_crear(p[0], {"tipo": p[1], "pos": [p[2], 0.05, p[3]], "giro": p[4], "gas": 60.0, "salud": 100.0})
 
 

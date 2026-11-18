@@ -231,6 +231,10 @@ func _robar() -> void:
 	Juego.avisar("¡Robas un vehículo! La policía empieza a sospechar.")
 	if id == "":
 		id = "robado_%d" % Juego.siguiente_vehiculo()
+	elif id.begins_with("amb_"):
+		# Si luego lo vendes o lo aportas al negocio, su plaza no se repone sola: antes el
+		# coche reaparecía, se robaba otra vez y se volvía a vender (dinero infinito).
+		Juego.plazas_tomadas[id] = true
 	guardar_estado()
 
 

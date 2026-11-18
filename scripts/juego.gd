@@ -81,6 +81,7 @@ var dia_pago: int = 1                # Último día en que se pagó al personal.
 var negocio: Dictionary = {}         # Licencias, cartera, mercado y clientes de tus negocios (ver scripts/negocios.gd).
 var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: vehículos tuyos (ver vehiculo.gd).
 var _contador_vehiculos: int = 0
+var plazas_tomadas: Dictionary = {}  # Coches aparcados ("amb_N") que ya robaste: no vuelven a aparecer aunque los vendas.
 var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 var recetario: Dictionary = {}       # Recetas generadas que ya has descubierto: id -> veces preparada.
@@ -127,6 +128,7 @@ func reiniciar() -> void:
 	habilidades.clear()
 	aspecto = DatosAspecto.POR_DEFECTO.duplicate()
 	vehiculos.clear()
+	plazas_tomadas.clear()
 	personal.clear()
 	almacen.clear()
 	almacen_ultima_semilla.clear()
