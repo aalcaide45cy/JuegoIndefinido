@@ -93,6 +93,7 @@ static func iniciar(sem: int, rect_nucleo: Rect2) -> void:
 	_r_color = _ruido(sem + 6, 1.0 / 35.0, 1)
 	conectores = []
 	_calcular_asentamientos()
+	_calcular_caminos()
 	listo = true
 	_calcular_conectores()
 
@@ -134,9 +135,11 @@ static func dist_rect(x: float, z: float, r: Rect2) -> float:
 
 # Altura "natural" (sin aplanar pueblos ni ciudad).
 static func altura_base(x: float, z: float) -> float:
-	var m: float = smoothstep(0.1, 0.5, _r_mont.get_noise_2d(x, z))
+	var ruido_m: float = _r_mont.get_noise_2d(x, z)
+	var m: float = smoothstep(0.1, 0.5, ruido_m)
+	var pico: float = smoothstep(0.3, 0.8, ruido_m)   # Las cumbres de verdad: hasta ~550 m.
 	return 9.0 * _r_cont.get_noise_2d(x, z) + 3.0 * _r_med.get_noise_2d(x, z) \
-			+ 1.0 * _r_det.get_noise_2d(x, z) + m * 150.0
+			+ 1.0 * _r_det.get_noise_2d(x, z) + m * 150.0 + pico * pico * 400.0
 
 
 # Altura final teniendo en cuenta los asentamientos de la lista y la ciudad original.
@@ -144,30 +147,63 @@ static func altura_lista(x: float, z: float, lista: Array) -> float:
 	var h: float = altura_base(x, z)
 	h = lerpf(-0.3, h, smoothstep(0.0, 400.0, dist_rect(x, z, nucleo)))
 	for s in lista:
+		if s.has("camino"):
+			continue
 		var p: Vector2 = s["pos"]
 		var d: float = maxf(absf(x - p.x), absf(z - p.y))
 		var plano: float = s["plano"]
 		if d < plano + 100.0:
 			h = lerpf(s["base"], h, smoothstep(plano, plano + 100.0, d))
+	# Carreteras de montaña: el terreno se aplana a la altura de la carretera (terraplén y desmonte).
+	for c in lista:
+		if c.has("camino"):
+			h = _tallar_camino(x, z, h, c)
 	return h
 
 
 static func altura(x: float, z: float) -> float:
-	var lista: Array = asentamientos_cerca(Rect2(x - 1.0, z - 1.0, 2.0, 2.0))
+	var r: Rect2 = Rect2(x - 1.0, z - 1.0, 2.0, 2.0)
+	var lista: Array = asentamientos_cerca(r)
+	lista.append_array(caminos_cerca(r.grow(30.0)))
 	return altura_lista(x, z, lista)
 
 
+# Altura del terreno en (x, z) tras aplanarlo para una carretera de montaña "c".
+static func _tallar_camino(x: float, z: float, h: float, c: Dictionary) -> float:
+	var r: Rect2 = c["rect"]
+	if not r.has_point(Vector2(x, z)):
+		return h
+	var pts: PackedVector2Array = c["pts"]
+	var hs: PackedFloat32Array = c["hs"]
+	var mejor_d: float = INF
+	var mejor_h: float = h
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		if x < minf(a.x, b.x) - 26.0 or x > maxf(a.x, b.x) + 26.0 or z < minf(a.y, b.y) - 26.0 or z > maxf(a.y, b.y) + 26.0:
+			continue
+		var ab: Vector2 = b - a
+		var t: float = clampf(((x - a.x) * ab.x + (z - a.y) * ab.y) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+		var d: float = Vector2(x, z).distance_to(a + ab * t)
+		if d < mejor_d:
+			mejor_d = d
+			mejor_h = lerpf(hs[i], hs[i + 1], t)
+	if mejor_d >= 24.0:
+		return h
+	return lerpf(mejor_h, h, smoothstep(5.0, 24.0, mejor_d))
+
+
 static func densidad_bosque(x: float, z: float, h: float) -> float:
-	return smoothstep(-0.1, 0.4, _r_bosque.get_noise_2d(x, z)) * (1.0 - smoothstep(80.0, 140.0, h))
+	return smoothstep(-0.1, 0.4, _r_bosque.get_noise_2d(x, z)) * (1.0 - smoothstep(150.0, 280.0, h))
 
 
 static func _color_suelo(x: float, z: float, h: float, ny: float) -> Color:
 	var g: float = _r_color.get_noise_2d(x, z) * 0.5 + 0.5
 	var col: Color = Color(0.23 + 0.07 * g, 0.35 + 0.08 * g, 0.16)
 	col = col.lerp(Color(0.12, 0.24, 0.1), densidad_bosque(x, z, h) * 0.6)
-	var roca: float = maxf(smoothstep(75.0, 115.0, h), 1.0 - smoothstep(0.7, 0.85, ny))
+	var roca: float = maxf(smoothstep(110.0, 190.0, h), 1.0 - smoothstep(0.7, 0.85, ny))
 	col = col.lerp(Color(0.4, 0.38, 0.36), roca)
-	col = col.lerp(Color(0.92, 0.94, 0.97), smoothstep(135.0, 160.0, h))
+	col = col.lerp(Color(0.92, 0.94, 0.97), smoothstep(300.0, 360.0, h))
 	return col
 
 
@@ -197,19 +233,29 @@ static func _candidato(ci: int, cj: int) -> Dictionary:
 	if nucleo.grow(900.0).has_point(centro):
 		return {}
 	var base: float = altura_base(cx, cz)
+	var montana: bool = false
 	if base > 30.0:
-		return {}   # Nada de ciudades en lo alto de una montaña.
+		# Nada de ciudades en lo alto de una montaña... salvo algún pueblo de montaña, al que
+		# se llega por una carretera de montaña (ver _calcular_caminos).
+		if base > 320.0 or base < 55.0 or _f(ci, cj, 50) > 0.5:
+			return {}
+		montana = true
 	var r: float = _f(ci, cj, 4)
 	var tipo: int = 0
 	var n: int = 1
-	if r < 0.07:
+	if montana:
+		if r < 0.45:
+			tipo = 1
+			n = 2
+	elif r < 0.07:
 		tipo = 2
 		n = 4
 	elif r < 0.35:
 		tipo = 1
 		n = 2
 	return {"ci": ci, "cj": cj, "pos": centro, "tipo": tipo, "n": n, "mitad": n * BLOQUE,
-			"plano": n * BLOQUE + 150.0, "base": base, "nombre": _nombre(ci, cj)}
+			"plano": n * BLOQUE + 150.0, "base": base,
+			"nombre": ("Alto " if montana else "") + _nombre(ci, cj), "montana": montana}
 
 
 # Segunda pasada: si dos zonas se pisan, se queda la más grande (y a igualdad, la de celda menor).
@@ -305,6 +351,8 @@ static func _puerta(s: Dictionary, hacia: Vector2, extra: float) -> Vector2:
 # Carretera entre dos asentamientos: de puerta a puerta, y un ramal de cada
 # puerta a la calle exterior del pueblo.
 static func _conexion(s: Dictionary, t: Dictionary) -> Array:
+	if bool(s.get("montana", false)) or bool(t.get("montana", false)):
+		return []   # Los pueblos de montaña tienen su propia carretera (_caminos).
 	var ps: Vector2 = s["pos"]
 	var pt: Vector2 = t["pos"]
 	var a: Vector2 = _puerta(s, pt, 110.0)
@@ -320,6 +368,8 @@ static func _calcular_conectores() -> void:
 		var mejor: Dictionary = {}
 		var d_mejor: float = INF
 		for s in todos:
+			if bool(s.get("montana", false)):
+				continue
 			var d: float = (s["pos"] as Vector2).distance_to(inicio)
 			if d < d_mejor:
 				d_mejor = d
@@ -353,6 +403,8 @@ static func segmentos_para(rect: Rect2) -> Array:
 					out.append_array(_conexion(s, t))
 	for c in conectores:
 		out.append_array(c["segs"])
+	for cam in caminos_cerca(rect):
+		out.append_array(cam["segs"])
 	return out
 
 
@@ -370,7 +422,135 @@ static func todas_las_carreteras() -> Array:
 					out.append_array(_conexion(s, t))
 	for c in conectores:
 		out.append_array(c["segs"])
+	for cam in _caminos:
+		out.append_array(cam["segs"])
 	return out
+
+
+# ------------------------- carreteras de montaña -------------------------
+# Cada pueblo de montaña se une al pueblo de abajo más cercano por una carretera con curvas:
+# una sinusoide lateral cuyo número de curvas sale de la pendiente máxima (8 %). Guarda los
+# puntos y la altura de la carretera en cada uno; el terreno se talla a esa altura
+# (_tallar_camino) y se ponen quitamiedos en el lado del precipicio (_quitamiedos).
+static var _caminos: Array = []
+
+
+static func caminos_cerca(rect: Rect2) -> Array:
+	var out: Array = []
+	for c in _caminos:
+		if (c["rect"] as Rect2).intersects(rect):
+			out.append(c)
+	return out
+
+
+static func _calcular_caminos() -> void:
+	_caminos = []
+	var bajos: Array = []
+	for clave in _asentamientos:
+		var s: Dictionary = _asentamientos[clave]
+		if not bool(s.get("montana", false)):
+			bajos.append(s)
+	for clave in _asentamientos:
+		var m: Dictionary = _asentamientos[clave]
+		if not bool(m.get("montana", false)):
+			continue
+		var mejor: Dictionary = {}
+		var d_mejor: float = INF
+		for b in bajos:
+			var d: float = (b["pos"] as Vector2).distance_to(m["pos"])
+			if d < d_mejor:
+				d_mejor = d
+				mejor = b
+		if not mejor.is_empty() and d_mejor < 4200.0:
+			_caminos.append(_trazar_camino(m, mejor))
+
+
+static func _longitud_curva(largo: float, amp: float, k: int) -> float:
+	var total: float = 0.0
+	var prev: Vector2 = Vector2.ZERO
+	for i in range(1, 81):
+		var t: float = float(i) / 80.0
+		var q: Vector2 = Vector2(largo * t, amp * sin(PI * float(k) * t))
+		total += prev.distance_to(q) if i > 1 else q.length()
+		prev = q
+	return total
+
+
+static func _trazar_camino(m: Dictionary, b: Dictionary) -> Dictionary:
+	var puerta_m: Vector2 = _puerta(m, b["pos"], 110.0)
+	var puerta_b: Vector2 = _puerta(b, m["pos"], 110.0)
+	var h_m: float = m["base"]
+	var h_b: float = b["base"]
+	var largo: float = puerta_m.distance_to(puerta_b)
+	var dir: Vector2 = (puerta_b - puerta_m) / maxf(largo, 1.0)
+	var nor: Vector2 = Vector2(-dir.y, dir.x)
+	var sid: int = int(m["ci"]) * 1009 + int(m["cj"])
+	var amp: float = 70.0 + 70.0 * _f(sid, 51, 1)
+	var necesario: float = absf(h_m - h_b) / 0.08
+	var k: int = 1
+	while k < 40 and _longitud_curva(largo, amp, k) < necesario:
+		k += 1
+	var arco: float = _longitud_curva(largo, amp, k)
+	var n: int = maxi(12, int(arco / 10.0))
+	var pts: PackedVector2Array = PackedVector2Array()
+	var hs: PackedFloat32Array = PackedFloat32Array()
+	pts.append(_puerta(m, b["pos"], 0.0))
+	hs.append(h_m)
+	var recorrido: Array = []
+	var acumulado: float = 0.0
+	var anterior: Vector2 = Vector2.ZERO
+	for i in range(n + 1):
+		var t: float = float(i) / float(n)
+		var q: Vector2 = puerta_m + dir * (largo * t) + nor * (amp * sin(PI * float(k) * t))
+		if i > 0:
+			acumulado += q.distance_to(anterior)
+		anterior = q
+		recorrido.append([q, acumulado])
+	for r in recorrido:
+		var f: float = float(r[1]) / maxf(acumulado, 1.0)
+		pts.append(r[0])
+		hs.append(lerpf(h_m, h_b, f))
+	pts.append(_puerta(b, m["pos"], 0.0))
+	hs.append(h_b)
+	var segs: Array = []
+	var rect: Rect2 = Rect2(pts[0], Vector2.ZERO)
+	for i in pts.size():
+		rect = rect.expand(pts[i])
+		if i > 0:
+			segs.append([pts[i - 1], pts[i], CALLE_ANCHO, 2])
+	return {"camino": true, "pts": pts, "hs": hs, "rect": rect.grow(30.0), "segs": segs, "base": hs[0]}
+
+
+# Quitamiedos: poste cada punto (~10 m) y una barra entre postes, solo en el lado donde el terreno
+# cae más de 1,5 m a 9 m de la carretera. Los puntos de un tramo los pone el trozo que los contiene.
+static func _quitamiedos(mb: ConstructorMalla, rect: Rect2, lista: Array) -> void:
+	var metal: Color = Color(0.7, 0.72, 0.74)
+	var poste: Color = Color(0.35, 0.36, 0.38)
+	for c in lista:
+		if not c.has("camino"):
+			continue
+		var pts: PackedVector2Array = c["pts"]
+		for i in range(1, pts.size() - 2):
+			var a: Vector2 = pts[i]
+			if not rect.has_point(a):
+				continue
+			var b: Vector2 = pts[i + 1]
+			var dir: Vector2 = (b - a).normalized()
+			var nor: Vector2 = Vector2(-dir.y, dir.x)
+			var dentro: float = CALLE_ANCHO / 2.0 + 0.4
+			for lado in [-1.0, 1.0]:
+				var ya: float = altura_lista(a.x, a.y, lista)
+				var fuera: Vector2 = a + nor * lado * 9.0
+				if altura_lista(fuera.x, fuera.y, lista) > ya - 1.5:
+					continue
+				var pa: Vector2 = a + nor * lado * dentro
+				var pb: Vector2 = b + nor * lado * dentro
+				var yb: float = altura_lista(b.x, b.y, lista)
+				mb.caja(Vector3(pa.x, ya + 0.45, pa.y), Vector3(0.14, 0.9, 0.14), poste)
+				mb.cuadro(Vector3(pa.x, ya + 0.5, pa.y), Vector3(pb.x, yb + 0.5, pb.y),
+						Vector3(pb.x, yb + 0.85, pb.y), Vector3(pa.x, ya + 0.85, pa.y), metal)
+				mb.cuadro(Vector3(pa.x, ya + 0.85, pa.y), Vector3(pb.x, yb + 0.85, pb.y),
+						Vector3(pb.x, yb + 0.5, pb.y), Vector3(pa.x, ya + 0.5, pa.y), metal)
 
 
 # Parte del segmento a-b que cae dentro del rectángulo, como (t0, t1) entre 0 y 1.
@@ -424,6 +604,8 @@ static func _dibujar_carreteras(mb: ConstructorMalla, segs: Array, rect: Rect2, 
 		var dir: Vector2 = (b - a).normalized()
 		var lado: Vector2 = Vector2(-dir.y, dir.x) * ancho * 0.5
 		var col: Color = Color(0.17, 0.17, 0.19) if int(sg[3]) == 0 else Color(0.26, 0.24, 0.21)
+		if int(sg[3]) == 2:
+			col = Color(0.2, 0.2, 0.23)   # Carretera de montaña asfaltada.
 		var prev_i: Vector3 = Vector3.ZERO
 		var prev_d: Vector3 = Vector3.ZERO
 		for j in range(pasos + 1):
@@ -1002,15 +1184,17 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 	if nucleo.encloses(rect):
 		return {"vacio": true}
 	var lista: Array = asentamientos_cerca(rect.grow(10.0))
+	var lista_t: Array = lista.duplicate()   # Lo mismo + las carreteras de montaña (para tallar el terreno).
+	lista_t.append_array(caminos_cerca(rect.grow(40.0)))
 	var segs: Array = segmentos_para(rect.grow(20.0))
 	var paso: float = TROZO / CELDAS
-	var g: PackedFloat32Array = _cuadricula(x0, z0, CELDAS, paso, lista)
+	var g: PackedFloat32Array = _cuadricula(x0, z0, CELDAS, paso, lista_t)
 	var ter: Dictionary = _terreno(x0, z0, CELDAS, paso, g)
 	var superficies: Array = [ter["arrays"]]
 	var caras: PackedVector3Array = ter["caras"]
 
 	var vias: ConstructorMalla = ConstructorMalla.new()
-	_dibujar_carreteras(vias, segs, rect.grow(2.0), 4.0, lista, 0.15, 0.0)
+	_dibujar_carreteras(vias, segs, rect.grow(2.0), 4.0, lista_t, 0.15, 0.0)
 	if not vias.esta_vacio():
 		superficies.append(vias.superficie())
 
@@ -1036,6 +1220,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 			props.append({"id": h["id"], "tipo": "huerto", "pos": Vector3(gate.x, h["y"], gate.y),
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
+	_quitamiedos(objetos, rect, lista_t)
 	for est in _gasolineras_de_carretera(rect, segs):
 		_edificio(objetos, est, true)
 		var base_y: float = est["y"]
@@ -1046,8 +1231,8 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 		superficies.append(objetos.superficie())
 		caras.append_array(objetos.vertices)
 
-	return {"superficies": superficies, "caras": caras, "arboles": _arboles(x0, z0, rect, lista, segs),
-			"veg": _vegetacion(x0, z0, rect, lista, segs), "props": props}
+	return {"superficies": superficies, "caras": caras, "arboles": _arboles(x0, z0, rect, lista_t, segs),
+			"veg": _vegetacion(x0, z0, rect, lista_t, segs), "props": props}
 
 
 # Parques (bloques sin casas) y farolas en los cruces de pueblos y ciudades.
@@ -1155,6 +1340,8 @@ static func _vegetacion(x0: float, z0: float, rect: Rect2, lista: Array, segs: A
 				continue
 			var dentro: bool = false
 			for s in lista:
+				if s.has("camino"):
+					continue
 				var pp: Vector2 = s["pos"]
 				if maxf(absf(x - pp.x), absf(z - pp.y)) < float(s["plano"]) + 5.0:
 					dentro = true
@@ -1208,6 +1395,8 @@ static func _arboles(x0: float, z0: float, rect: Rect2, lista: Array, segs: Arra
 				continue
 			var dentro: bool = false
 			for s in lista:
+				if s.has("camino"):
+					continue
 				var p: Vector2 = s["pos"]
 				if maxf(absf(x - p.x), absf(z - p.y)) < float(s["plano"]) + 5.0:
 					dentro = true
@@ -1232,13 +1421,15 @@ static func generar_lejano(c: Vector2i) -> Dictionary:
 	if nucleo.encloses(rect):
 		return {"vacio": true}
 	var lista: Array = asentamientos_cerca(rect.grow(10.0))
+	var lista_t: Array = lista.duplicate()
+	lista_t.append_array(caminos_cerca(rect.grow(40.0)))
 	var segs: Array = segmentos_para(rect.grow(40.0))
 	var paso: float = TROZO_LEJOS / CELDAS_LEJOS
-	var g: PackedFloat32Array = _cuadricula(x0, z0, CELDAS_LEJOS, paso, lista)
+	var g: PackedFloat32Array = _cuadricula(x0, z0, CELDAS_LEJOS, paso, lista_t)
 	var ter: Dictionary = _terreno(x0, z0, CELDAS_LEJOS, paso, g)
 	var superficies: Array = [ter["arrays"]]
 	var vias: ConstructorMalla = ConstructorMalla.new()
-	_dibujar_carreteras(vias, segs, rect.grow(4.0), 16.0, lista, 0.9, 4.0)
+	_dibujar_carreteras(vias, segs, rect.grow(4.0), 16.0, lista_t, 0.9, 4.0)
 	if not vias.esta_vacio():
 		superficies.append(vias.superficie())
 	var objetos: ConstructorMalla = ConstructorMalla.new()

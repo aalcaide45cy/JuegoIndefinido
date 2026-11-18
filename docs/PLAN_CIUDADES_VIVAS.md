@@ -38,6 +38,14 @@ Todo está escrito en la nube y **sin probar en Godot**.
 6. **Gasolineras de carretera**: una cada ~600 m en los tramos largos este-oeste, con marquesina, surtidores y
    losa de hormigón; funcionan como las de los pueblos (E para usarlas).
 
+7. **Montañas y carreteras de montaña**: cumbres de hasta ~550 m (antes 160), nieve desde 300 m y roca desde
+   110 m; pinos hasta ~280 m. Pueblos de montaña (algunos de los sitios entre 55 y 320 m, "Alto ...") que se unen
+   al pueblo de abajo más cercano por una carretera asfaltada con curvas (sinusoide cuya amplitud/curvas salen de
+   una pendiente máxima del 8 %, curva mínima ~75 m de radio). El terreno se talla a la altura de la carretera
+   (desmonte y terraplén) y se ponen **quitamiedos** (postes + barra metálica) en el lado del precipicio.
+   Todavía sin hacer: túneles, puentes en barrancos, señales de curva, coches más lentos en curvas, nieve que
+   cae, refugios y minas.
+
 ## 2c. Tamaño real del mapa
 10 km x 10 km = **100 km²** (100 millones de m²): como París dentro del periférico (105 km²), 1,7 veces Manhattan
 (59 km²) y 1/6 de Madrid ciudad (604 km²); parecido al mapa de GTA V. La ciudad original mide 440 x 240 m
@@ -74,6 +82,13 @@ Todo está escrito en la nube y **sin probar en Godot**.
     pescado); los precios varían por región y se ganan con viajes (coche, camión, tren, avioneta).
 15. Los encargos usan estas regiones; las misiones llevan a pueblos de montaña lejanos.
 16. Línea de historia: la "Hoja de Bruma" nace en la montaña; policía y bandas se organizan por regiones.
+
+## 3b. Qué falta tras este PR (en orden)
+- Probar todo en el PC (`gdparse` solo comprueba la sintaxis): FPS con peatones/coches, forma de las carreteras
+  de montaña, quitamiedos, huecos en el terreno junto a pueblos de montaña, tiempo de carga de trozos.
+- Peatones en aldeas con rutinas (ir a tiendas, casas), semáforos con peatones, coches aparcados en pueblos.
+- Túneles, puentes, señales, estaciones de servicio con tienda, más edificios únicos (iglesia, molino, faro).
+- Economía/encargos por región (P4).
 
 ## 4. Riesgos
 - El relieve y las carreteras nuevos son un cambio grande en `generador_mundo.gd`: conviene probarlo en el PC
