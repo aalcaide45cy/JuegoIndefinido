@@ -39,6 +39,7 @@ var _mutex: Mutex = Mutex.new()
 var _cola: Array = []
 var _material: StandardMaterial3D
 var _malla_arbol: ArrayMesh
+var _mallas_veg: Array = []   # Roble, arbusto, roca y flores (ver GeneradorMundo._vegetacion).
 var _forma_tronco: CylinderShape3D = _crear_forma_tronco()
 var _t_busca: float = 0.0
 var _t_suelo: float = 0.0
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_material.cull_mode = BaseMaterial3D.CULL_DISABLED   # (Seguro: si algún día se prueba el orden de caras, se puede cambiar.)
 	_material.roughness = 1.0
 	_malla_arbol = _crear_malla_arbol()
+	_mallas_veg = _crear_mallas_vegetacion()
 	_muros_del_borde()
 	print("Mundo grande listo: semilla %d, %d asentamientos." % [SEMILLA, GeneradorMundo.todos_asentamientos().size()])
 
@@ -72,6 +74,43 @@ func _crear_malla_arbol() -> ArrayMesh:
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mb.superficie())
 	m.surface_set_material(0, _material)
 	return m
+
+
+func _malla_de(mb: ConstructorMalla) -> ArrayMesh:
+	var m: ArrayMesh = ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mb.superficie())
+	m.surface_set_material(0, _material)
+	return m
+
+
+func _crear_mallas_vegetacion() -> Array:
+	var out: Array = []
+	# Roble: tronco grueso y copa redonda hecha de conos aplastados.
+	var mb: ConstructorMalla = ConstructorMalla.new()
+	mb.caja(Vector3(0, 1.3, 0), Vector3(0.7, 2.6, 0.7), Color(0.34, 0.24, 0.15))
+	mb.cono(Vector3(0, 2.2, 0), 3.0, 1.8, 8, Color(0.26, 0.46, 0.16), 2.2)
+	mb.cono(Vector3(0, 4.0, 0), 2.2, 1.8, 8, Color(0.3, 0.5, 0.18), 0.4)
+	out.append(_malla_de(mb))
+	# Arbusto: dos montículos verdes.
+	mb = ConstructorMalla.new()
+	mb.cono(Vector3(0, 0, 0), 0.9, 0.8, 7, Color(0.2, 0.4, 0.15), 0.3)
+	mb.cono(Vector3(0.5, 0, 0.3), 0.6, 0.6, 6, Color(0.25, 0.45, 0.17), 0.2)
+	out.append(_malla_de(mb))
+	# Roca: piedra irregular.
+	mb = ConstructorMalla.new()
+	mb.cono(Vector3(0, 0, 0), 1.1, 0.9, 6, Color(0.45, 0.44, 0.42), 0.5)
+	mb.cono(Vector3(0.6, 0, -0.3), 0.6, 0.5, 5, Color(0.38, 0.37, 0.36), 0.25)
+	out.append(_malla_de(mb))
+	# Flores: tallos con cabezas de colores.
+	mb = ConstructorMalla.new()
+	mb.caja(Vector3(0, 0.15, 0), Vector3(0.05, 0.3, 0.05), Color(0.2, 0.4, 0.15))
+	mb.caja(Vector3(0, 0.33, 0), Vector3(0.22, 0.1, 0.22), Color(0.9, 0.8, 0.2))
+	mb.caja(Vector3(0.3, 0.12, 0.2), Vector3(0.05, 0.24, 0.05), Color(0.2, 0.4, 0.15))
+	mb.caja(Vector3(0.3, 0.27, 0.2), Vector3(0.2, 0.09, 0.2), Color(0.85, 0.35, 0.55))
+	mb.caja(Vector3(-0.25, 0.1, 0.25), Vector3(0.05, 0.2, 0.05), Color(0.2, 0.4, 0.15))
+	mb.caja(Vector3(-0.25, 0.23, 0.25), Vector3(0.2, 0.09, 0.2), Color(0.95, 0.95, 0.95))
+	out.append(_malla_de(mb))
+	return out
 
 
 # Cuatro muros invisibles y altos en el borde del mundo.
@@ -270,6 +309,28 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			cs_t.position = Vector3(buf[i * 12 + 3], buf[i * 12 + 7] + 1.2, buf[i * 12 + 11])
 			troncos.add_child(cs_t)
 		raiz.add_child(troncos)
+	var veg: Array = d.get("veg", [])
+	for t in veg.size():
+		var b2: PackedFloat32Array = veg[t]
+		if b2.size() < 12:
+			continue
+		var mm2: MultiMesh = MultiMesh.new()
+		mm2.transform_format = MultiMesh.TRANSFORM_3D
+		mm2.mesh = _mallas_veg[t]
+		mm2.instance_count = b2.size() / 12
+		mm2.buffer = b2
+		var mmi2: MultiMeshInstance3D = MultiMeshInstance3D.new()
+		mmi2.multimesh = mm2
+		mmi2.visibility_range_end = DIST_ARBOLES if t == 0 else (260.0 if t == 2 else 150.0)
+		raiz.add_child(mmi2)
+		if t == 0:   # Los robles tienen tronco con choque (como los pinos).
+			var troncos2: StaticBody3D = StaticBody3D.new()
+			for i in b2.size() / 12:
+				var cs2: CollisionShape3D = CollisionShape3D.new()
+				cs2.shape = _forma_tronco
+				cs2.position = Vector3(b2[i * 12 + 3], b2[i * 12 + 7] + 1.2, b2[i * 12 + 11])
+				troncos2.add_child(cs2)
+			raiz.add_child(troncos2)
 	for pr in d["props"]:
 		if pr["tipo"] == "servicio":
 			var serv: ServicioMundo = ServicioMundo.new()

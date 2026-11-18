@@ -173,6 +173,30 @@ func _probar() -> void:
 		if d.has("tipo"):
 			comprobar(L.cuenta(d["tipo"]) is int, "tipo %s válido" % d["tipo"])
 
+	# Partida de antes de las ciudades vivas (ids de casas y huertos de la distribución antigua).
+	J.reiniciar()
+	var antigua: Dictionary = {"version": 1, "dinero": 500, "viviendas": ["w_c_-3_1_0_0_1", "plaza"],
+			"huertos": ["w_h_2_-2_3", "w_h_-4_0_12"], "en_propiedad": ["w_h_-4_0_12"],
+			"parcelas": {"w_h_2_-2_3": {"semilla": "semilla_trigo", "t": 5.0, "total": 100.0}},
+			"impagos": {"w_c_-3_1_0_0_1": 1}, "jugador": [0, 1, 0]}
+	var fa: FileAccess = FileAccess.open(Guardado.ruta(4), FileAccess.WRITE)
+	fa.store_string(JSON.stringify(antigua))
+	fa.close()
+	comprobar(Guardado.cargar(get_tree(), jugador, 4), "carga una partida antigua con casas del mundo")
+	var casa_n: String = ""
+	for id in J.viviendas:
+		if str(id).begins_with("w_"):
+			casa_n = str(id)
+	comprobar(casa_n != "" and not GeneradorMundo.propiedad(casa_n).is_empty(), "la casa alquilada sigue existiendo (%s)" % casa_n)
+	comprobar(J.viviendas.has("plaza"), "la vivienda fija sigue")
+	comprobar(J.huertos.size() == 2, "los dos huertos siguen (%d)" % J.huertos.size())
+	for id in J.huertos:
+		comprobar(not GeneradorMundo.propiedad(str(id)).is_empty(), "el huerto %s existe en el mundo actual" % id)
+	comprobar(J.en_propiedad.size() == 1 and J.huertos.has(J.en_propiedad.keys()[0]), "el huerto comprado sigue siendo tuyo")
+	comprobar(J.parcelas.size() == 1 and J.huertos.has(J.parcelas.keys()[0]), "el cultivo viaja con su huerto")
+	comprobar(J.impagos.has(casa_n), "el impago viaja con su casa")
+	Guardado.borrar(4)
+
 	# Limpiar para no dejar basura.
 	for n in range(1, Guardado.NUM_RANURAS + 1):
 		Guardado.borrar(n)

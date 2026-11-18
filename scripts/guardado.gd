@@ -117,6 +117,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	var pos: Vector3 = jugador.global_position
 	var datos: Dictionary = {
 		"version": VERSION,
+		"mundo": GeneradorMundo.VERSION_MUNDO,
 		"meta": {"fecha": Time.get_datetime_string_from_system(false, true)},
 		"dinero": Juego.dinero,
 		"vida": Juego.vida,
@@ -174,6 +175,44 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	return true
 
 
+# Las partidas de antes de las ciudades vivas (sin "mundo") guardan ids de casas y huertos de la
+# distribución antigua de pueblos. Se traducen a casas y huertos equivalentes del mundo actual
+# (en todo lo que lleve el id: viviendas, huertos, compras, cultivos, impagos, granja, personal).
+static func _migrar_mundo(datos: Dictionary) -> void:
+	if int(datos.get("mundo", 1)) >= GeneradorMundo.VERSION_MUNDO or not GeneradorMundo.listo:
+		return
+	var mapa: Dictionary = {}
+	var usados: Dictionary = {}
+	for clave in ["viviendas", "huertos", "en_propiedad"]:
+		for id in datos.get(clave, []):
+			var sid: String = str(id)
+			if sid.begins_with("w_") and not mapa.has(sid):
+				var nuevo: String = GeneradorMundo.migrar_id(sid, usados)
+				if nuevo != "":
+					usados[nuevo] = true
+					mapa[sid] = nuevo
+	if not mapa.is_empty():
+		for clave in ["viviendas", "huertos", "en_propiedad"]:
+			var nueva: Array = []
+			for id in datos.get(clave, []):
+				nueva.append(mapa.get(str(id), str(id)))
+			datos[clave] = nueva
+		for clave in ["parcelas", "impagos", "granja", "almacen_ultima_semilla"]:
+			var d = datos.get(clave, {})
+			if d is Dictionary:
+				var nd: Dictionary = {}
+				for id in d:
+					nd[mapa.get(str(id), str(id))] = d[id]
+				datos[clave] = nd
+		for e in datos.get("personal", []):
+			if e is Dictionary and mapa.has(str(e.get("destino", ""))):
+				e["destino"] = mapa[str(e["destino"])]
+		var avisos: Array = datos.get("avisos", [])
+		avisos.append("Los pueblos cambiaron de sitio: tus %d casas y huertos se han trasladado a pueblos cercanos." % mapa.size())
+		datos["avisos"] = avisos
+	datos["mundo"] = GeneradorMundo.VERSION_MUNDO
+
+
 # Carga la partida. Devuelve true si salió bien.
 static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	n = _ranura(n)
@@ -187,6 +226,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	if not datos is Dictionary:
 		return false
 
+	_migrar_mundo(datos)
 	Juego.reiniciar()
 	ranura = n
 	_recordar_ultima(n)

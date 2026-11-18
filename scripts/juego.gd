@@ -51,6 +51,12 @@ var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
 var ha_ganado: bool = false
 var alerta: float = 0.0              # 0-100: cuánto te buscan los guardias (100 = te están viendo).
 var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pantalla).
+# Modo volar (panel admin F1). La rueda del ratón cambia la velocidad de vuelo.
+const VELOCIDAD_VUELO_NORMAL: float = 25.0   # m/s
+const VELOCIDAD_VUELO_MIN: float = 2.0
+const VELOCIDAD_VUELO_MAX: float = 3000.0
+var modo_volar: bool = false
+var velocidad_vuelo: float = VELOCIDAD_VUELO_NORMAL
 var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
 var sospecha: float = 0.0           # 0-100: sube si llevas ilegal, corres con ello o vendes; baja con el tiempo. Sube la prob. de cacheo y registro.
 var _t_sospecha: float = 0.0
@@ -114,6 +120,8 @@ func reiniciar() -> void:
 	metas_cobradas.clear()
 	duracion_dia_min = DURACION_DIA_POR_DEFECTO
 	velocidad_tiempo = 1.0
+	modo_volar = false
+	velocidad_vuelo = VELOCIDAD_VUELO_NORMAL
 	ha_ganado = false
 	viviendas.clear()
 	huertos.clear()
