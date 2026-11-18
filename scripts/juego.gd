@@ -762,6 +762,7 @@ func _avanzar_efectos(delta: float) -> void:
 
 # Apunta una receta nueva en el recetario. Devuelve true si es la primera vez.
 func descubrir_receta(id_pocion: String) -> bool:
+	Logros.desbloquear("primera_receta")   # Vale también para las pociones clásicas.
 	if GameData.POCIONES.has(id_pocion):
 		return false
 	var primera: bool = not recetario.has(id_pocion)

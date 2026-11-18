@@ -117,6 +117,29 @@ func _probar() -> void:
 	L.desbloqueado.connect(func(id): avisados.append(id))
 	L.comprobar()
 	comprobar(not L.tiene("dinero_1k"), "sin dinero no hay logro")
+	# Granjero: un corral vacío no cuenta, con animales sí.
+	J.granja["corral_x"] = {"n": 0, "prod": 0, "t": 0.0, "nivel": 1}
+	L.comprobar()
+	comprobar(not L.tiene("granjero"), "corral vacío no da Granjero")
+	J.granja["corral_x"]["n"] = 2
+	L.comprobar()
+	comprobar(L.tiene("granjero"), "corral con animales da Granjero")
+	J.granja.clear()
+	# Terrateniente: un huerto comprado está en huertos y en en_propiedad, pero cuenta una vez.
+	for i in 2:
+		J.huertos["h%d" % i] = true
+		J.en_propiedad["h%d" % i] = true
+	L.comprobar()
+	comprobar(not L.tiene("terrateniente"), "2 huertos comprados no dan Terrateniente")
+	J.huertos["h2"] = true
+	L.comprobar()
+	comprobar(L.tiene("terrateniente"), "3 huertos dan Terrateniente")
+	# Primera receta con una poción clásica.
+	comprobar(not L.tiene("primera_receta"), "sin receta aún")
+	J.descubrir_receta(GameData.POCIONES.keys()[0])
+	comprobar(L.tiene("primera_receta"), "poción clásica da Primera receta")
+	L.reiniciar()
+	J.reiniciar()
 	J.dinero = 1500
 	J.nivel = 3
 	L.comprobar()
