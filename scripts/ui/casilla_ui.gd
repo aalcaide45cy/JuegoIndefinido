@@ -67,7 +67,7 @@ func _draw() -> void:
 	var casilla = lista[indice]
 	if casilla == null:
 		return
-	dibujar_icono(self, r.grow(-size.x * 0.16), casilla["id"])
+	Iconos.dibujar(self, r.grow(-3.0), casilla["id"])
 	# Cantidad abajo a la derecha (si es un montón) o el agua de la jarra.
 	var texto: String = ""
 	if casilla["cantidad"] > 1:

@@ -148,6 +148,8 @@ func actualizar() -> void:
 	_ambiente.ambient_light_energy = lerpf(0.35, 0.6, dia)
 	_ambiente.fog_light_color = NIEBLA_NOCHE.lerp(NIEBLA_DIA, dia)
 	_ambiente.fog_density = lerpf(0.03, 0.0018, dia)   # De día casi sin niebla: lo lejano no se ve lavado.
+	# Clima: cielo gris, menos luz y niebla según el tiempo (ver clima.gd).
+	Clima.aplicar(_ambiente, _material_cielo, _sol, _luna, dia)
 	# Efecto "Ojos de gato" (visión nocturna): de noche se ve casi como de día.
 	var vision: float = clampf(Juego.mod("vision"), 0.0, 1.0) * (1.0 - dia)
 	if vision > 0.0:

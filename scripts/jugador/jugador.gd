@@ -138,6 +138,7 @@ func radio_deteccion() -> float:
 	if en_sombra:
 		radio *= 0.6
 	radio *= clampf(1.0 - Juego.mod("sigilo"), 0.3, 1.8)   # Efectos de sigilo / paranoia.
+	radio *= Clima.sigilo()   # Con niebla y lluvia te ven menos.
 	return maxf(radio, 3.0)
 
 
@@ -211,6 +212,7 @@ func _physics_process(delta: float) -> void:
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
 	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.
+	velocidad *= Clima.velocidad()   # La tormenta frena un poco.
 	var deseada: Vector3 = direccion * velocidad
 	# "lerp" suaviza: no frenas ni arrancas de golpe.
 	velocity.x = lerpf(velocity.x, deseada.x, minf(1.0, delta * 12.0))

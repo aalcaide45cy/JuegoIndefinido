@@ -31,3 +31,6 @@ Otros recursos:
 | Fuente de letra | La que trae Godot por defecto | MIT / OFL (incluida en el motor) | |
 
 Motor: Godot Engine (licencia MIT), https://godotengine.org
+
+Música, sonidos ambientales (lluvia, truenos, pájaros, grillos...) e iconos de objetos: generados por código
+en `scripts/musica.gd`, `scripts/sonido.gd` y `scripts/ui/iconos.gd`; no usan archivos de terceros.

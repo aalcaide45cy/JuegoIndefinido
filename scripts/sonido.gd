@@ -48,6 +48,8 @@ static func _generar(nombre: String) -> AudioStream:
 		"golpe": [0.12, 140.0, 20.0], "compra": [0.25, 880.0, 9.0],
 		"alerta": [0.5, 520.0, 3.0],
 	}
+	if nombre == "trueno":
+		return _trueno()
 	if not tabla.has(nombre):
 		return null
 	var d: Array = tabla[nombre]
@@ -63,6 +65,32 @@ static func _generar(nombre: String) -> AudioStream:
 		var v: float = rng.randf_range(-1.0, 1.0) if float(d[1]) == 0.0 else sin(TAU * float(d[1]) * t)
 		var m: int = int(clampf(v * env, -1.0, 1.0) * 32000.0)
 		datos.encode_s16(i * 2, m)
+	var w: AudioStreamWAV = AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = tasa
+	w.stereo = false
+	w.data = datos
+	return w
+
+
+# Un trueno: ruido grave que crece de golpe, retumba y se apaga despacio (3 s).
+static func _trueno() -> AudioStream:
+	var tasa: int = 11025
+	var n: int = tasa * 3
+	var datos: PackedByteArray = PackedByteArray()
+	datos.resize(n * 2)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 23
+	var grave: float = 0.0
+	var mas_grave: float = 0.0
+	for i in n:
+		var t: float = float(i) / tasa
+		grave = lerpf(grave, rng.randf_range(-1.0, 1.0), 0.12)
+		mas_grave = lerpf(mas_grave, grave, 0.1)
+		# Ataque rápido, caída lenta y un par de "rebotes" del retumbo.
+		var env: float = minf(t * 25.0, 1.0) * exp(-1.3 * t) * (0.75 + 0.25 * sin(TAU * 3.0 * t))
+		var v: float = (grave * 1.2 + mas_grave * 5.0) * env
+		datos.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 30000.0))
 	var w: AudioStreamWAV = AudioStreamWAV.new()
 	w.format = AudioStreamWAV.FORMAT_16_BITS
 	w.mix_rate = tasa

@@ -34,7 +34,7 @@ func _process(_delta: float) -> void:
 	var pasado: float = maxf(0.0, Juego.reloj - float(e.get("u", Juego.reloj)))
 	e["u"] = Juego.reloj
 	if not Juego.huertos.is_empty() and int(e["prod"]) < MAXIMO:
-		e["t"] = float(e["t"]) + pasado
+		e["t"] = float(e["t"]) + pasado * Clima.crecimiento()   # La lluvia riega el árbol.
 		while float(e["t"]) >= TIEMPO and int(e["prod"]) < MAXIMO:
 			e["t"] = float(e["t"]) - TIEMPO
 			e["prod"] = mini(MAXIMO, int(e["prod"]) + FRUTOS)

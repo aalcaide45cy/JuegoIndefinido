@@ -19,6 +19,8 @@ const MARGEN_CIUDAD: float = 6.0
 
 func _ready() -> void:
 	add_child(CicloDia.new())
+	add_child(Clima.new())     # Lluvia, niebla y tormenta (clima.gd).
+	add_child(Musica.new())    # Música y sonido ambiente por zona y hora (musica.gd).
 
 	_anadir_barrio(BarrioPlaza.new(), Vector3.ZERO)
 	# Tres calles salen de la plaza: norte, este y sur.
