@@ -58,6 +58,11 @@ func _draw() -> void:
 	draw_string_outline(fuente, Vector2(46, 69), "%d $" % Juego.dinero, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 5, Color.BLACK)
 	draw_string(fuente, Vector2(46, 69), "%d $" % Juego.dinero, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(1.0, 0.86, 0.35))
 
+	# --- Clima: nombre del tiempo, a la derecha de la fila del dinero ---
+	var texto_clima: String = Clima.nombre()
+	draw_string(fuente, Vector2(ANCHO - 12 - fuente.get_string_size(texto_clima, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x, 67),
+			texto_clima, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.7, 0.82, 0.95))
+
 	# --- Nivel: escudo, número y barra de experiencia ---
 	_escudo(Vector2(24, 96))
 	draw_string(fuente, Vector2(46, 92), "Nivel %d" % Juego.nivel, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.8, 0.9, 1.0))

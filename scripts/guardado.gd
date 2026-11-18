@@ -59,6 +59,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"banco": Juego.banco,
 		"huertos": Juego.huertos.keys(),
 		"en_propiedad": Juego.en_propiedad.keys(),
+		"clima": Clima.exportar(),
 		"parcelas": Juego.parcelas,
 		"granja": Juego.granja,
 		"reloj": Juego.reloj,
@@ -103,6 +104,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	Juego.banco = maxi(0, int(datos.get("banco", 0)))
 	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
 	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
+	Clima.importar(datos.get("clima"))
 	Juego.dia = maxi(1, int(datos.get("dia", 1)))
 	Juego.duracion_dia_min = clampf(float(datos.get("duracion_dia_min", Juego.DURACION_DIA_POR_DEFECTO)), 1.0, 1000.0)
 	Juego.nivel = maxi(1, int(datos.get("nivel", 1)))

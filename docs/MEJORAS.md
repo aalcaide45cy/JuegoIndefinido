@@ -68,9 +68,9 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 
 - [ ] **Equilibrio de armas y combate**: tabla de daño, vida de guardias, precio de munición. Hoy el daño
   más alto (lanzagranadas 100) no tiene enemigos que lo justifiquen.
-- [ ] **Sonido y música** por zona y por hora. `sonido.gd` ya genera efectos básicos.
-- [ ] **Iconos de interfaz** CC0 (Game Icons) y tema de interfaz unificado.
-- [ ] **Estaciones y clima** (lluvia que riega, niebla que aumenta el sigilo).
+- [x] **Sonido y música** por zona y por hora. `sonido.gd` ya genera efectos básicos.
+- [x] **Iconos de objetos (insignias por tipo, hechos por código)**; falta tema de interfaz unificado: CC0 (Game Icons) y tema de interfaz unificado.
+- [x] **Clima (hecho: lluvia, niebla, tormenta)**; faltan estaciones: (lluvia que riega, niebla que aumenta el sigilo).
 - [ ] **Varias partidas guardadas** y versión del guardado (`VERSION` ya existe, falta migrar).
 - [ ] **Logros de Steam** a partir de las metas.
 - [ ] **Cambiar el icono** (hoy usa el de Godot, CC BY) antes de publicar en Steam. Anotado en `CREDITS.md`.

@@ -101,7 +101,7 @@ func _process(delta: float) -> void:
 	# Los cultivos crecen aunque el huerto esté lejos y su trozo descargado.
 	for id in Juego.parcelas:
 		var e: Dictionary = Juego.parcelas[id]
-		e["t"] = maxf(0.0, float(e["t"]) - delta)
+		e["t"] = maxf(0.0, float(e["t"]) - delta * Clima.crecimiento())   # La lluvia acelera los cultivos.
 	if _jugador == null or not is_instance_valid(_jugador):
 		_jugador = get_tree().get_first_node_in_group("jugador") as Node3D
 		if _jugador == null:

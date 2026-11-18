@@ -313,8 +313,8 @@ class IconoObjeto extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.09, 0.09))
+		Iconos.dibujar(self, Rect2(Vector2.ZERO, size).grow(-2), id)
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.4, 0.32), false, 1.5)
-		CasillaUI.dibujar_icono(self, Rect2(Vector2.ZERO, size).grow(-8), id)
 
 
 # ==============================================================================
@@ -679,7 +679,7 @@ class Admin extends Ventana:
 	var _texto_duracion: Label
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(640, 740))
+		var caja: VBoxContainer = panel_centrado(Vector2(640, 880))
 		cabecera(caja, "Panel de administrador (F1)")
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 		caja.add_child(_estado)
@@ -701,6 +701,33 @@ class Admin extends Ventana:
 			velocidades.add_child(Hud.crear_boton(par[0], func() -> void:
 				Juego.hora = par[1]
 				_hora.set_value_no_signal(par[1])))
+
+		# Clima y volumen del sonido.
+		subtitulo(caja, "Clima")
+		var tiempo: HBoxContainer = HBoxContainer.new()
+		caja.add_child(tiempo)
+		for id in Clima.TIPOS:
+			tiempo.add_child(Hud.crear_boton(String(Clima.TIPOS[id]["nombre"]), func() -> void:
+				Clima.poner(id, 6.0)))
+		subtitulo(caja, "Volumen de la música y del ambiente")
+		var vol_musica: HSlider = HSlider.new()
+		vol_musica.min_value = 0.0
+		vol_musica.max_value = 1.0
+		vol_musica.step = 0.05
+		vol_musica.value = Musica.volumen_musica
+		vol_musica.value_changed.connect(func(v: float) -> void:
+			Musica.volumen_musica = v
+			Musica.guardar_opciones())
+		caja.add_child(vol_musica)
+		var vol_ambiente: HSlider = HSlider.new()
+		vol_ambiente.min_value = 0.0
+		vol_ambiente.max_value = 1.0
+		vol_ambiente.step = 0.05
+		vol_ambiente.value = Musica.volumen_ambiente
+		vol_ambiente.value_changed.connect(func(v: float) -> void:
+			Musica.volumen_ambiente = v
+			Musica.guardar_opciones())
+		caja.add_child(vol_ambiente)
 
 		# Duración de un día entero, en minutos reales.
 		_texto_duracion = subtitulo(caja, "")
