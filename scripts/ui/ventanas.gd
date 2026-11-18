@@ -54,16 +54,15 @@ class Pausa extends Ventana:
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(380, 380))
+		var caja: VBoxContainer = panel_centrado(Vector2(380, 420))
 		var titulo: Label = Hud.crear_label(32, Color(0.6, 0.9, 0.6))
 		titulo.text = "Pausa"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caja.add_child(titulo)
 		caja.add_child(Ventanas.boton_grande("Reanudar", cerrar))
-		caja.add_child(Ventanas.boton_grande("Guardar partida", _guardar))
-		var cargar: Button = Ventanas.boton_grande("Cargar partida", _cargar)
-		cargar.disabled = not Guardado.existe()
-		caja.add_child(cargar)
+		caja.add_child(Ventanas.boton_grande("Guardar (ranura %d)" % Guardado.ranura, _guardar))
+		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
+		caja.add_child(Ventanas.boton_grande("Logros", _logros))
 		caja.add_child(Ventanas.boton_grande("Salir del juego", _salir))
 		_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
 		_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -75,16 +74,19 @@ class Pausa extends Ventana:
 
 	func _guardar() -> void:
 		if Guardado.guardar(get_tree(), jugador):
-			_aviso.text = "Partida guardada."
+			_aviso.text = "Partida guardada en la ranura %d." % Guardado.ranura
 		else:
 			_aviso.text = "No se pudo guardar."
 
-	func _cargar() -> void:
-		if Guardado.cargar(get_tree(), jugador):
-			Juego.avisar("Partida cargada.")
-			cerrar()
-		else:
-			_aviso.text = "No se pudo cargar."
+	func _partidas() -> void:
+		var v: VentanaPartidas = VentanaPartidas.new()
+		v.modo = VentanaPartidas.Modo.PAUSA
+		v.jugador = jugador
+		v.al_elegir = cerrar
+		add_child(v)
+
+	func _logros() -> void:
+		add_child(VentanaLogros.new())
 
 	func _salir() -> void:
 		get_tree().paused = false
@@ -92,14 +94,14 @@ class Pausa extends Ventana:
 
 
 # ==============================================================================
-# Menú al arrancar: Continuar (si hay partida guardada) o Nueva partida.
+# Menú al arrancar: Continuar (última ranura), Nueva partida, elegir ranura o ver logros.
 class Inicio extends Ventana:
 	var jugador: Node3D = null
 
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(420, 360))
+		var caja: VBoxContainer = panel_centrado(Vector2(420, 440))
 		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
 		titulo.text = "Elixir Clandestino"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -108,10 +110,13 @@ class Inicio extends Ventana:
 		lema.text = "La magia está prohibida. Tú, no."
 		lema.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caja.add_child(lema)
-		var continuar: Button = Ventanas.boton_grande("Continuar", _continuar)
-		continuar.disabled = not Guardado.existe()
+		var ultima: int = Guardado.ultima_ranura()
+		var continuar: Button = Ventanas.boton_grande("Continuar (ranura %d)" % ultima if ultima > 0 else "Continuar", _continuar)
+		continuar.disabled = ultima == 0
 		caja.add_child(continuar)
 		caja.add_child(Ventanas.boton_grande("Nueva partida", _nueva))
+		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
+		caja.add_child(Ventanas.boton_grande("Logros", func(): add_child(VentanaLogros.new())))
 		caja.add_child(Ventanas.boton_grande("Salir", _salir))
 
 	func cerrar() -> void:
@@ -119,13 +124,26 @@ class Inicio extends Ventana:
 		super()
 
 	func _continuar() -> void:
-		if Guardado.cargar(get_tree(), jugador):
+		if Guardado.cargar(get_tree(), jugador, Guardado.ultima_ranura()):
 			Juego.avisar("Partida cargada.")
 			cerrar()
 
+	# Empieza en la primera ranura vacía; si están todas llenas, deja elegir cuál reemplazar.
 	func _nueva() -> void:
+		var libre: int = Guardado.ranura_libre()
+		if libre == 0:
+			_partidas()
+			return
 		Juego.reiniciar()
+		Guardado.ranura = libre
 		cerrar()
+
+	func _partidas() -> void:
+		var v: VentanaPartidas = VentanaPartidas.new()
+		v.modo = VentanaPartidas.Modo.INICIO
+		v.jugador = jugador
+		v.al_elegir = cerrar
+		add_child(v)
 
 	func _salir() -> void:
 		get_tree().paused = false

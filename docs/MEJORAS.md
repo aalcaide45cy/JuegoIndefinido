@@ -71,8 +71,8 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 - [ ] **Sonido y música** por zona y por hora. `sonido.gd` ya genera efectos básicos.
 - [ ] **Iconos de interfaz** CC0 (Game Icons) y tema de interfaz unificado.
 - [ ] **Estaciones y clima** (lluvia que riega, niebla que aumenta el sigilo).
-- [ ] **Varias partidas guardadas** y versión del guardado (`VERSION` ya existe, falta migrar).
-- [ ] **Logros de Steam** a partir de las metas.
+- [x] **Varias partidas guardadas**: 5 ranuras, menú para elegir/borrar, la partida antigua pasa a la ranura 1. Falta migrar entre versiones del guardado (`VERSION` ya existe).
+- [x] **Logros**: 23 logros (`datos/logros.gd`), aviso en pantalla, lista con L. Preparado para Steam (singleton `Steam` / GodotSteam); falta crear los logros en Steamworks con los nombres `ACH_*`.
 - [ ] **Cambiar el icono** (hoy usa el de Godot, CC BY) antes de publicar en Steam. Anotado en `CREDITS.md`.
 - [ ] **Revisión de nombres**: "Elixir Clandestino" es provisional.
 
