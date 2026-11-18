@@ -38,7 +38,7 @@ func _pintar() -> void:
 		var t: Label = Hud.crear_label(20, Color(0.6, 0.9, 0.6))
 		t.text = "CASAS" if tipo == "casa" else "HUERTOS (para cultivos legales)"
 		_lista.add_child(t)
-		for p in Propiedades.LISTA:
+		for p in Propiedades.LISTA + Propiedades.del_mundo_propias():
 			if p["tipo"] != tipo:
 				continue
 			var fila: HBoxContainer = HBoxContainer.new()

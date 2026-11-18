@@ -49,7 +49,7 @@ func _process(_delta: float) -> void:
 		_cultivo.visible = false
 		return
 	var prog: float = clampf(1.0 - float(e["t"]) / float(e["total"]), 0.0, 1.0)
-	e["t"] = maxf(0.0, float(e["t"]) - get_process_delta_time())
+	# (El tiempo lo descuenta GestorTrozos para TODOS los huertos, estén cerca o lejos.)
 	_cultivo.visible = true
 	var altura: float = lerpf(0.1, 0.9, prog)
 	_cultivo.scale.y = altura
@@ -59,6 +59,11 @@ func _process(_delta: float) -> void:
 
 
 func texto_accion() -> String:
+	if not Juego.huertos.has(id_huerto) and Propiedades.es_del_mundo(id_huerto):
+		var ficha: Dictionary = Propiedades.de_id(id_huerto)
+		if not ficha.is_empty():
+			return "%s: alquilar %d $  ·  Mayús+E comprar %d $" % [ficha["nombre"], ficha["alquiler"],
+					Propiedades.precio_compra(ficha)]
 	if not Juego.huertos.has(id_huerto):
 		return "Huerto de %d m² (alquílalo en la inmobiliaria de la plaza)" % m2
 	var e: Dictionary = _estado()
@@ -73,6 +78,7 @@ func texto_accion() -> String:
 
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
+const Propiedades = preload("res://scripts/datos/propiedades.gd")
 
 
 func _semillas_necesarias() -> int:
@@ -84,6 +90,11 @@ func _unidades() -> int:
 
 
 func usar(_jugador: Node) -> void:
+	if not Juego.huertos.has(id_huerto) and Propiedades.es_del_mundo(id_huerto):
+		var ficha: Dictionary = Propiedades.de_id(id_huerto)
+		if not ficha.is_empty():
+			Propiedades.contratar(ficha, Input.is_action_pressed("correr"))
+			return
 	if not Juego.huertos.has(id_huerto):
 		Juego.avisar("Este huerto no es tuyo. Alquílalo o cómpralo en la inmobiliaria de la plaza.")
 		return

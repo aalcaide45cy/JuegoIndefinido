@@ -13,7 +13,7 @@ extends Node3D
 
 # Dónde empieza el jugador: en la plaza, mirando a la herboristería (norte).
 const INICIO_JUGADOR: Vector3 = Vector3(0, 0, 8)
-# Metros que se añaden alrededor de los barrios antes de poner el muro.
+# Metros que se añaden alrededor de los barrios para el suelo de seguridad.
 const MARGEN_CIUDAD: float = 6.0
 
 
@@ -28,11 +28,16 @@ func _ready() -> void:
 	_anadir_barrio(BarrioCampo.new(), Vector3(200, 0, -16))
 
 	_guardias_nocturnos()
-	_cerrar_ciudad()
+	var nucleo: Rect2 = _cerrar_ciudad()
 	# Junta las miles de piezas que no se mueven en pocas mallas grandes (ver
 	# Construir.fusionar_estaticos): muchas menos llamadas de dibujo por fotograma.
 	var fusionadas: int = Construir.fusionar_estaticos(self)
 	print("Mallas fusionadas: %d" % fusionadas)
+
+	# El mundo grande (10 km x 10 km) se carga por trozos alrededor del jugador.
+	var gestor: GestorTrozos = GestorTrozos.new()
+	gestor.nucleo = nucleo
+	add_child(gestor)
 
 	var hud: Hud = Hud.new()
 	add_child(hud)
@@ -87,12 +92,12 @@ func _guardias_nocturnos() -> void:
 		g._nodo_destino = inicio
 
 
-# Cierra la ciudad: calcula el rectángulo que ocupan todos los barrios y pone
-#   - un suelo oscuro debajo de todo (así los huecos entre barrios son solares
-#     y no un vacío por el que caer),
-#   - un muro alto y sólido por todo el perímetro (nadie sale del mapa).
-# Si añades barrios nuevos, se adapta solo al nuevo tamaño.
-func _cerrar_ciudad() -> void:
+# Calcula el rectángulo que ocupan todos los barrios y pone debajo un suelo
+# oscuro (así los huecos entre barrios son solares y no un vacío por el que
+# caer). Antes también ponía un muro alto alrededor; ya no: la ciudad se
+# abre al mundo grande (gestor_trozos.gd), que pone su propio muro en el borde
+# de los 10 km. Devuelve ese rectángulo (es el "núcleo" del mundo generado).
+func _cerrar_ciudad() -> Rect2:
 	var limites: Rect2 = Rect2()
 	var primero: bool = true
 	for malla in find_children("*", "MeshInstance3D", true, false):
@@ -112,18 +117,7 @@ func _cerrar_ciudad() -> void:
 	# por debajo de los suelos de los barrios para no parpadear con ellos).
 	Construir.caja(self, Vector3(centro.x, -0.65, centro.y), Vector3(limites.size.x, 1.2, limites.size.y),
 			Color(0.1, 0.09, 0.09))
-	# Cuatro muros de piedra oscura alrededor.
-	var alto: float = 9.0
-	var grosor: float = 2.0
-	var piedra: Color = Color(0.2, 0.19, 0.2)
-	Construir.caja(self, Vector3(centro.x, alto / 2.0, limites.position.y - grosor / 2.0),
-			Vector3(limites.size.x + 2.0 * grosor, alto, grosor), piedra)
-	Construir.caja(self, Vector3(centro.x, alto / 2.0, limites.end.y + grosor / 2.0),
-			Vector3(limites.size.x + 2.0 * grosor, alto, grosor), piedra)
-	Construir.caja(self, Vector3(limites.position.x - grosor / 2.0, alto / 2.0, centro.y),
-			Vector3(grosor, alto, limites.size.y), piedra)
-	Construir.caja(self, Vector3(limites.end.x + grosor / 2.0, alto / 2.0, centro.y),
-			Vector3(grosor, alto, limites.size.y), piedra)
+	return limites
 
 
 func _anadir_barrio(barrio: Barrio, pos: Vector3) -> void:

@@ -16,6 +16,9 @@ var _marcas: Control
 var _centro: Vector3 = Vector3.ZERO
 var _lado_m: float = 300.0
 var _px: float = 700.0   # Lado del mapa en pantalla.
+var _vista: TextureRect
+var _modo_mundo: bool = false   # Z: cambia entre la ciudad y el mundo entero (10 km).
+var _tex_mundo: ImageTexture
 
 
 func construir() -> void:
@@ -67,13 +70,14 @@ func construir() -> void:
 	add_child(marco)
 	var caja: VBoxContainer = VBoxContainer.new()
 	marco.add_child(caja)
-	cabecera(caja, "Mapa de la ciudad  (N o Esc para cerrar)")
+	cabecera(caja, "Mapa  (Z: ciudad / mundo entero · N o Esc: cerrar)")
 	var vista: TextureRect = TextureRect.new()
 	vista.texture = _vp.get_texture()
 	vista.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vista.stretch_mode = TextureRect.STRETCH_SCALE
 	vista.custom_minimum_size = Vector2(_px, _px)
 	caja.add_child(vista)
+	_vista = vista
 	_marcas = Control.new()
 	_marcas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_marcas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -87,16 +91,55 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(evento: InputEvent) -> void:
+	if evento is InputEventKey and evento.pressed and not evento.echo and evento.physical_keycode == KEY_Z:
+		_cambiar_modo()
+		get_viewport().set_input_as_handled()
+		return
 	if evento.is_action_pressed("mapa_grande") or evento.is_action_pressed("mapa"):
 		cerrar()
 		get_viewport().set_input_as_handled()
 
 
+# Cambia entre la vista de la ciudad (cámara cenital) y el dibujo del mundo entero.
+func _cambiar_modo() -> void:
+	_modo_mundo = not _modo_mundo
+	if _modo_mundo:
+		if _tex_mundo == null:
+			_tex_mundo = ImageTexture.create_from_image(GeneradorMundo.imagen_mapa(256))
+		_vista.texture = _tex_mundo
+	else:
+		_vista.texture = _vp.get_texture()
+
+
 func _a_pantalla(p: Vector3) -> Vector2:
+	if _modo_mundo:
+		var lado_w: float = GeneradorMundo.MITAD * 2.0
+		return Vector2((p.x + GeneradorMundo.MITAD) / lado_w, (p.z + GeneradorMundo.MITAD) / lado_w) * _px
 	return Vector2((p.x - _centro.x) / _lado_m + 0.5, (p.z - _centro.z) / _lado_m + 0.5) * _px
 
 
+func _dibujar_mundo() -> void:
+	var fuente: Font = ThemeDB.fallback_font
+	for a in GeneradorMundo.todos_asentamientos():
+		var c: Vector2 = _a_pantalla(Vector3(a["pos"].x, 0.0, a["pos"].y))
+		var nombre: String = "%s %s" % [GeneradorMundo.nombre_tipo(int(a["tipo"])), a["nombre"]]
+		if int(a["tipo"]) > 0:
+			_marcas.draw_string_outline(fuente, c + Vector2(8, 4), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.9))
+			_marcas.draw_string(fuente, c + Vector2(8, 4), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1))
+	var ciudad: Vector2 = _a_pantalla(Vector3(100.0, 0.0, 0.0))
+	_marcas.draw_string_outline(fuente, ciudad + Vector2(-70, -12), "Ciudad original", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.9))
+	_marcas.draw_string(fuente, ciudad + Vector2(-70, -12), "Ciudad original", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.85, 0.4))
+	if jugador != null and is_instance_valid(jugador):
+		var c2: Vector2 = _a_pantalla(jugador.global_position)
+		_marcas.draw_circle(c2, 7.0, Color(0, 0, 0, 0.9))
+		_marcas.draw_circle(c2, 5.0, Color(0.3, 0.8, 1.0))
+	_marcas.draw_string(fuente, Vector2(_px / 2.0 - 6.0, 18.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.45, 0.4))
+
+
 func _dibujar(vista: Control) -> void:
+	if _modo_mundo:
+		_dibujar_mundo()
+		return
 	var fuente: Font = ThemeDB.fallback_font
 	for nodo in get_tree().get_nodes_in_group("poi"):
 		var poi: Node3D = nodo as Node3D
