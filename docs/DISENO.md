@@ -1,4 +1,4 @@
-# Elixir Clandestino: documento de diseño
+# Indefinido: documento de diseño (antes "Elixir Clandestino")
 
 Última revisión: 2026-11-18, sobre la rama `claude/project-thread-bxnc21` (la del PR #2,
 con vehículos, granja, inmobiliaria y aspecto del jugador). Es un documento de lectura:

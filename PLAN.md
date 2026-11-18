@@ -1,4 +1,4 @@
-# Plan de Elixir Clandestino
+# Plan de Indefinido (antes "Elixir Clandestino")
 
 Este es el plan para ir de la plaza actual a una ciudad jugable. Cada fase se
 puede probar por separado y se sube a GitHub al terminar. Primero va lo que

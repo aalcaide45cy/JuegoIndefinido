@@ -1,4 +1,6 @@
-# Elixir Clandestino (nombre provisional)
+# Indefinido
+
+(Antes llamado "Elixir Clandestino". Un juego de vida en 3D low poly; la magia prohibida es una de las vidas posibles.)
 
 Juego 3D de tono oscuro hecho con **Godot 4.7** (GDScript). En una ciudad donde
 la magia está prohibida, de día llevas una herboristería normal; de noche, en
