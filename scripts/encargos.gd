@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 	_lateral.position = Vector2(ancho_ui - 346.0, 270.0)
 	_siguiente -= delta
 	if _siguiente <= 0.0:
-		_siguiente = randf_range(50.0, 90.0)
+		_siguiente = randf_range(50.0, 90.0) * float(Regiones.actual()["cadencia"])
 		_crear_oferta()
 	var cambio: bool = false
 	for e in Juego.encargos.duplicate():
@@ -143,10 +143,11 @@ func _crear_oferta() -> void:
 	if ofertas >= 3 or Juego.encargos.size() >= 6:
 		return
 	var ids: Array = GameData.pedibles()
-	var pocion: String = ids[randi() % ids.size()]
-	var cantidad: int = randi_range(1, 3) + (1 if Juego.nivel >= 3 else 0)
+	var region: Dictionary = Regiones.actual()   # Cada región pide y paga distinto.
+	var pocion: String = Regiones.elegir_pocion(ids, str(region["gusto"]))
+	var cantidad: int = randi_range(1, 3) + (1 if Juego.nivel >= 3 else 0) + int(region["cantidad"])
 	var precio: int = int(GameData.pocion(pocion)["precio"])
-	var factor: float = randf_range(1.15, 1.6) * (1.0 + clampf(Juego.reputacion, 0, 100) / 250.0)
+	var factor: float = randf_range(1.15, 1.6) * (1.0 + clampf(Juego.reputacion, 0, 100) / 250.0) * float(region["encargo"])
 	var lugar: Array = LUGARES[randi() % LUGARES.size()]
 	var pos: Vector3 = lugar[0]
 	# El número nunca repite uno que ya exista (por ejemplo, tras cargar una partida).
@@ -155,11 +156,11 @@ func _crear_oferta() -> void:
 	var e: Dictionary = {
 		"id": _siguiente_id, "cliente": NOMBRES[randi() % NOMBRES.size()], "pocion": pocion,
 		"cantidad": cantidad, "pago": int(precio * cantidad * factor), "estado": "oferta",
-		"t": VALIDEZ_OFERTA, "lugar": lugar[1], "pos": [pos.x, pos.y, pos.z],
+		"t": VALIDEZ_OFERTA, "lugar": lugar[1], "region": str(region["nombre"]), "pos": [pos.x, pos.y, pos.z],
 	}
 	_siguiente_id += 1
 	Juego.encargos.append(e)
-	_notificar("Mensaje de %s: quiere %d x %s. Mira el móvil (P)." % [e["cliente"], cantidad, GameData.pocion(pocion)["nombre"]])
+	_notificar("Mensaje de %s (%s): quiere %d x %s. Mira el móvil (P)." % [e["cliente"], region["nombre"], cantidad, GameData.pocion(pocion)["nombre"]])
 	Sonido.tocar(self, "alerta", -10.0)
 	Juego.cambio.emit()
 
