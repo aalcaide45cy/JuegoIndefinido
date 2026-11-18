@@ -98,8 +98,11 @@ const LICENCIAS: Dictionary = {
 # Cuota diaria de cada licencia, como fracción de su precio.
 const CUOTA_LICENCIA: float = 0.004
 # Gastos de compraventa: impuesto al comprar y comisión al vender (fracción del precio).
-const IMPUESTO_COMPRA: float = 0.03
-const COMISION_VENTA: float = 0.04
+const IMPUESTO_COMPRA: float = 0.05
+const COMISION_VENTA: float = 0.05
+# Margen de compraventa: comprar y revender al momento siempre pierde (0,90 x 1,05 = 0,945 contra 0,92 x 0,95 = 0,874).
+const COMPRA_MIN_VALOR: float = 0.90   # Se paga al menos el 90 % del valor.
+const VENTA_MAX_VALOR: float = 0.92    # Se cobra como mucho el 92 % del valor.
 
 const NOMBRES_PERSONAS: Array = ["Marta", "Ismael", "Rosario", "Dani", "Lola", "Chema", "Vera", "Nico", "Paco", "Inés",
 		"Ramiro", "Elena", "Guille", "Sofía", "Tomás", "Aurora", "Bruno", "Clara", "Hugo", "Pilar"]

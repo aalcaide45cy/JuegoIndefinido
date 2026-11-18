@@ -297,6 +297,9 @@ static func comprar_oferta(id: int, precio: int) -> String:
 	var motivo: String = motivo_no_compra(str(o["tipo"]))
 	if motivo != "":
 		return motivo
+	# Margen de compraventa: nunca se compra por debajo del 90 % del valor (si no, comprar y
+	# revender al momento daba ganancia segura).
+	precio = maxi(precio, int(ceil(float(valor(str(o["tipo"]), float(o["estado"]))) * DatosNegocios.COMPRA_MIN_VALOR)))
 	var total: int = precio_con_impuesto(precio)
 	if not Juego.gastar(total):
 		return "No te llega: son %d $ con impuestos." % total
@@ -511,6 +514,9 @@ static func liquidar(uid: int) -> String:
 
 static func _vender_activo(a: Dictionary, precio: int, verbo: String) -> String:
 	var e: Dictionary = estado()
+	if verbo != "Liquidas":
+		# Tampoco se vende por encima del 92 % del valor.
+		precio = mini(precio, int(floor(float(valor_activo(a)) * DatosNegocios.VENTA_MAX_VALOR)))
 	var neto: int = precio_neto(precio) if verbo != "Liquidas" else precio
 	var beneficio: int = neto - int(a["compra"])
 	e["activos"].erase(a)

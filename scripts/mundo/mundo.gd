@@ -115,7 +115,9 @@ func _cerrar_ciudad() -> Rect2:
 		limites = rect if primero else limites.merge(rect)
 		primero = false
 	limites = limites.grow(MARGEN_CIUDAD)
-	Juego.limites_mundo = limites
+	# Con el mundo grande, los vehículos y el jugador pueden moverse por todo el mapa (no solo la ciudad vieja).
+	var m: float = GeneradorMundo.MITAD
+	Juego.limites_mundo = Rect2(-m, -m, m * 2.0, m * 2.0)
 
 	var centro: Vector2 = limites.get_center()
 	# Suelo de seguridad bajo todo el rectángulo (su cara de arriba queda un pelín

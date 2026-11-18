@@ -44,6 +44,7 @@ var dia: int = 1
 var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
 var metas_cobradas: Dictionary = {}   # id de meta -> true (ver datos/metas.gd).
 var _t_metas: float = 0.0
+var _t_aviso_regen: float = 0.0
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
@@ -65,7 +66,7 @@ var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado)
 var en_propiedad: Dictionary = {}     # id -> true: casas y huertos COMPRADOS (se pueden vender).
 var granja: Dictionary = {}           # corrales y árboles: id -> estado (animales, producción, nivel).
 var parcelas: Dictionary = {}         # id_huerto -> {semilla, t, total}: cultivo en curso.
-var limites_mundo: Rect2 = Rect2(-47, -111, 354, 222)   # Lo fija mundo.gd al cerrar la ciudad.
+var limites_mundo: Rect2 = Rect2(-5000, -5000, 10000, 10000)   # Todo el mapa (lo fija mundo.gd).
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
@@ -747,12 +748,19 @@ func _avanzar_efectos(delta: float) -> void:
 		regen += float(DatosEfectos.LISTA[id].get("regen", 0.0)) * float(e["f"])
 		if float(e["t"]) <= 0.0:
 			caducados.append(id)
+	# La vida cambia cada fotograma, pero se avisa a la interfaz solo unas 4 veces por segundo.
+	_t_aviso_regen += delta
+	var avisar_ui: bool = _t_aviso_regen >= 0.25
+	if avisar_ui:
+		_t_aviso_regen = 0.0
 	if regen > 0.0 and vida < VIDA_MAX:
 		vida = minf(VIDA_MAX, vida + regen * delta)
-		cambio.emit()
+		if avisar_ui:
+			cambio.emit()
 	elif regen < 0.0 and vida > 1.0:
 		vida = maxf(1.0, vida + regen * delta)   # El veneno baja la vida pero nunca mata.
-		cambio.emit()
+		if avisar_ui:
+			cambio.emit()
 	for id in caducados:
 		efectos_activos.erase(id)
 		avisar("Se acaba el efecto: %s." % DatosEfectos.nombre(id))
