@@ -39,6 +39,7 @@ var _mutex: Mutex = Mutex.new()
 var _cola: Array = []
 var _material: StandardMaterial3D
 var _malla_arbol: ArrayMesh
+var _forma_tronco: CylinderShape3D = _crear_forma_tronco()
 var _t_busca: float = 0.0
 var _t_suelo: float = 0.0
 
@@ -52,6 +53,13 @@ func _ready() -> void:
 	_malla_arbol = _crear_malla_arbol()
 	_muros_del_borde()
 	print("Mundo grande listo: semilla %d, %d asentamientos." % [SEMILLA, GeneradorMundo.todos_asentamientos().size()])
+
+
+func _crear_forma_tronco() -> CylinderShape3D:
+	var f: CylinderShape3D = CylinderShape3D.new()
+	f.radius = 0.45
+	f.height = 2.4
+	return f
 
 
 func _crear_malla_arbol() -> ArrayMesh:
@@ -254,6 +262,14 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 		mmi.multimesh = mm
 		mmi.visibility_range_end = DIST_ARBOLES
 		raiz.add_child(mmi)
+		# Choque de los troncos: un solo cuerpo por trozo con un cilindro por árbol (se comparte la forma).
+		var troncos: StaticBody3D = StaticBody3D.new()
+		for i in buf.size() / 12:
+			var cs_t: CollisionShape3D = CollisionShape3D.new()
+			cs_t.shape = _forma_tronco
+			cs_t.position = Vector3(buf[i * 12 + 3], buf[i * 12 + 7] + 1.2, buf[i * 12 + 11])
+			troncos.add_child(cs_t)
+		raiz.add_child(troncos)
 	for pr in d["props"]:
 		if pr["tipo"] == "casa":
 			var puerta: PropiedadMundo = PropiedadMundo.new()

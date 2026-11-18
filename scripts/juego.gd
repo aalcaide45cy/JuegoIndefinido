@@ -49,6 +49,8 @@ var motivo_alerta: String = ""       # Por qué te persiguen (se muestra en pant
 var policia_activa: bool = true     # Se cambia desde el panel admin (F1).
 var sospecha: float = 0.0           # 0-100: sube si llevas ilegal, corres con ello o vendes; baja con el tiempo. Sube la prob. de cacheo y registro.
 var _t_sospecha: float = 0.0
+var atropello_visto: float = 0.0    # Segundos que quedan de "has atropellado a alguien a la vista".
+var multa_trafico_enfriamiento: float = 0.0   # Evita multar una y otra vez por lo mismo.
 var delito_visto: float = 0.0       # Segundos que quedan de "te vieron vender ilegal en la calle".
 var enfriamiento_cacheo: float = 0.0  # Segundos hasta que te puedan cachear otra vez.
 var huertos: Dictionary = {}          # id_huerto -> true (alquilado o comprado).
@@ -151,6 +153,8 @@ func _process(delta: float) -> void:
 		delta_s -= 1.5 * mod("calma")   # Efecto "Calma": la sospecha baja más rápido.
 		sospecha = clampf(sospecha + delta_s * dt, 0.0, 100.0)
 	delito_visto = maxf(0.0, delito_visto - delta)
+	atropello_visto = maxf(0.0, atropello_visto - delta)
+	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	if alerta > 0.0:
 		var bajada: float = 30.0 if interiores > 0 else 6.0
@@ -242,6 +246,11 @@ func texto_hora() -> String:
 # ¿Tienes alquilada esa vivienda? (Cada casa de la ciudad tiene su identificador.)
 func alquilada(id_casa: String) -> bool:
 	return viviendas.has(id_casa)
+
+
+# ¿Tienes el carnet de conducir? (Se aprende con un instructor: habilidad "conduccion".)
+func tiene_carnet() -> bool:
+	return habilidades.has("conduccion")
 
 
 func tiene_vivienda() -> bool:

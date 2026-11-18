@@ -49,6 +49,7 @@ var _primera_antes: bool = true
 var _ropa: Node3D = null       # El aspecto puesto (se rehace al cambiarlo en la ventana de aspecto).
 var _modelo_anim: Node3D = null   # Si el cuerpo es un modelo con animaciones, aquí está.
 var _pivote: Node3D
+var _t_camara: float = 0.0
 var _brazo: SpringArm3D
 var _camara: Camera3D
 var _mano: Node3D = null       # El objeto que llevas en la mano (lo dibuja ModeloMano).
@@ -190,7 +191,14 @@ func _physics_process(delta: float) -> void:
 	if _t_sombra <= 0.0:   # Solo 4 veces por segundo: recorrer todas las luces cada frame es caro.
 		_t_sombra = 0.25
 		en_sombra = Juego.es_de_noche() and not _hay_luz_cerca()
-	_pivote.position.y = lerpf(_pivote.position.y, 1.05 if agachado else 1.6, minf(1.0, delta * 10.0))
+	var altura_ojos: float = 1.05 if agachado else 1.6
+	if vehiculo != null:
+		altura_ojos = 2.6   # Conduciendo la cámara va más alta: no se tapa con el techo ni con otros coches.
+		_t_camara -= delta
+		if _t_camara <= 0.0:
+			_t_camara = 0.4
+			_excluir_en_camara()
+	_pivote.position.y = lerpf(_pivote.position.y, altura_ojos, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
 	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
 	if agachado:
@@ -551,11 +559,26 @@ func subir_a(v: Interactuable) -> void:
 		_brazo.add_excluded_object(chasis.get_rid())
 
 
+# Mientras conduces, la cámara atraviesa los demás vehículos y los guardias (si no, se queda pegada
+# a un coche aparcado o a una persona y tapa la pantalla).
+func _excluir_en_camara() -> void:
+	_brazo.clear_excluded_objects()
+	_brazo.add_excluded_object(get_rid())
+	for n in get_tree().get_nodes_in_group("vehiculos") + get_tree().get_nodes_in_group("guardias"):
+		var c = n.get("chasis")
+		if c != null:
+			_brazo.add_excluded_object(c.get_rid())
+		elif n is CollisionObject3D:
+			_brazo.add_excluded_object((n as CollisionObject3D).get_rid())
+
+
 func bajar_de(v: Interactuable, destino: Vector3) -> void:
 	var chasis = v.get("chasis")
 	if chasis != null:
 		_brazo.remove_excluded_object(chasis.get_rid())
 	vehiculo = null
+	_brazo.clear_excluded_objects()
+	_brazo.add_excluded_object(get_rid())
 	global_position = destino
 	velocity = Vector3.ZERO
 	_choque.set_deferred("disabled", false)

@@ -8,6 +8,8 @@
 class_name Guardia
 extends CharacterBody3D
 
+const Economia = preload("res://scripts/datos/economia.gd")
+
 const VELOCIDAD_PATRULLA: float = 1.8
 const VELOCIDAD_PERSECUCION: float = 4.5
 const DISTANCIA_MINIMA: float = 3.0   # Si estás así de cerca, te notan aunque estés agachado.
@@ -100,6 +102,8 @@ func _physics_process(delta: float) -> void:
 
 	var jugador: Node3D = _buscar_jugador()
 	var ve: bool = jugador != null and _ve_ilegal(jugador, de_noche)
+	if jugador != null and not ve:
+		ve = _vigilar_trafico(jugador)
 	if ve:
 		_persiguiendo = true
 		_ultima_pos = jugador.global_position
@@ -221,7 +225,46 @@ func _ve_ilegal(jugador: Node3D, de_noche: bool = true) -> bool:
 	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, hasta)
 	consulta.exclude = [get_rid()]
 	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
-	return choque.is_empty() or choque["collider"] == jugador
+	return _le_ve_el_choque(choque, jugador)
+
+
+# El rayo llega hasta el jugador o hasta el vehículo que conduce.
+func _le_ve_el_choque(choque: Dictionary, jugador: Node3D) -> bool:
+	if choque.is_empty() or choque["collider"] == jugador:
+		return true
+	var v = jugador.get("vehiculo")
+	return v != null and choque["collider"] == v.get("chasis")
+
+
+# Delitos de tráfico: atropellar a alguien a la vista o conducir sin carnet. Devuelve true si
+# este guardia lo ha visto (entonces te persigue); la primera vez que te alcanza te multa.
+func _vigilar_trafico(jugador: Node3D) -> bool:
+	var v = jugador.get("vehiculo")
+	var motivo: String = ""
+	if Juego.atropello_visto > 0.0:
+		motivo = "Has atropellado a alguien"
+	elif v != null and not Juego.tiene_carnet() and absf(float(v.get("_v"))) > 1.0:
+		motivo = "Conduces sin carnet"
+	if motivo == "":
+		return false
+	if global_position.distance_to(jugador.global_position) > 28.0:
+		return false
+	var desde: Vector3 = global_position + Vector3(0, 1.5, 0)
+	var hasta: Vector3 = jugador.global_position + Vector3(0, 1.2, 0)
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, hasta)
+	consulta.exclude = [get_rid()]
+	if not _le_ve_el_choque(get_world_3d().direct_space_state.intersect_ray(consulta), jugador):
+		return false
+	Juego.motivo_alerta = "Un guardia te ha visto: " + motivo.to_lower()
+	if global_position.distance_to(jugador.global_position) < 5.0 and Juego.multa_trafico_enfriamiento <= 0.0:
+		var multa: int = mini(Juego.dinero, Economia.MULTA_ATROPELLO if Juego.atropello_visto > 0.0 else Economia.MULTA_SIN_CARNET)
+		Juego.dinero -= multa
+		Juego.multa_trafico_enfriamiento = 60.0
+		Juego.atropello_visto = 0.0
+		Juego.cambio.emit()
+		Juego.avisar("¡Alto! %s. Multa de %d $. Hazte el carnet con un instructor." % [motivo, multa] if not Juego.tiene_carnet() \
+				else "¡Alto! %s. Multa de %d $." % [motivo, multa])
+	return true
 
 
 # Si pasa cerca de una casa tuya con la puerta abierta, puede entrar a registrarla.
