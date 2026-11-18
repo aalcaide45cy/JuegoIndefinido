@@ -17,6 +17,7 @@ extends Node
 # que el editor haya registrado los nombres de clase).
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
+const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -54,6 +55,13 @@ var reputacion: int = 0              # -50..100: sube al entregar encargos, baja
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
 var avisos: Array = []               # Últimos avisos del móvil (más nuevo primero).
+var personal: Array = []             # Empleados contratados (ver scripts/datos/personal.gd).
+var almacen: Dictionary = {}         # Lo que produce el personal: id_objeto -> cantidad.
+var almacen_ultima_semilla: Dictionary = {}   # id_huerto -> última semilla (para volver a sembrar).
+var dia_pago: int = 1                # Último día en que se pagó al personal.
+var vehiculos: Dictionary = {}       # id -> {tipo, pos, giro, gas, salud}: vehículos tuyos (ver vehiculo.gd).
+var _contador_vehiculos: int = 0
+var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
 var inventario: Array = []
@@ -89,6 +97,13 @@ func reiniciar() -> void:
 	nivel = 1
 	xp = 0
 	habilidades.clear()
+	aspecto = DatosAspecto.POR_DEFECTO.duplicate()
+	vehiculos.clear()
+	personal.clear()
+	almacen.clear()
+	almacen_ultima_semilla.clear()
+	dia_pago = 1
+	_contador_vehiculos = 0
 	reputacion = 0
 	sospecha = 0.0
 	encargos.clear()
@@ -124,6 +139,11 @@ func _process(delta: float) -> void:
 	if hora >= 24.0:
 		hora -= 24.0
 		dia += 1
+
+
+func siguiente_vehiculo() -> int:
+	_contador_vehiculos += 1
+	return _contador_vehiculos
 
 
 # Lista de lo ilegal que llevas, para decírtelo en pantalla.
@@ -548,6 +568,8 @@ func _crear_controles() -> void:
 	_accion("inventario", [KEY_TAB])
 	_accion("admin", [KEY_F1])
 	_accion("recargar", [KEY_R])
+	_accion("enganchar", [KEY_H])   # Enganchar o soltar un remolque.
+	_accion("aspecto", [KEY_O])   # Cambiar de ropa y peinado.
 	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
 	_accion("liberar_raton", [KEY_ESCAPE])

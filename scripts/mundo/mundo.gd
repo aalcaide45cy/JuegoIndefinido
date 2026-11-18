@@ -27,6 +27,8 @@ func _ready() -> void:
 	_anadir_barrio(BarrioIndustrial.new(), Vector3(-16, 0, 64))
 	_anadir_barrio(BarrioCampo.new(), Vector3(200, 0, -16))
 
+	add_child(GestorVehiculos.new())
+	add_child(GestorPersonal.new())
 	_guardias_nocturnos()
 	_cerrar_ciudad()
 	# Junta las miles de piezas que no se mueven en pocas mallas grandes (ver

@@ -166,7 +166,7 @@ func _ready() -> void:
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · G montar objeto · TAB inventario · F1 admin · V cámara · Esc pausa"
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · G montar objeto · O aspecto · TAB inventario · F1 admin · V cámara · Esc pausa"
 	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
@@ -214,6 +214,12 @@ func _input(evento: InputEvent) -> void:
 			mapa.jugador = jugador
 			_abrir_menu(mapa)
 		get_viewport().set_input_as_handled()
+	elif evento.is_action_pressed("aspecto"):
+		if _menu is VentanaAspecto:
+			_menu.cerrar()
+		elif _menu == null:
+			_abrir_menu(VentanaAspecto.new())
+		get_viewport().set_input_as_handled()
 	elif evento.is_action_pressed("admin"):
 		if _menu is Ventanas.Admin:
 			_menu.cerrar()
@@ -232,7 +238,9 @@ func _input(evento: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	# Texto de la acción: se pregunta cada fotograma porque cambia (p. ej. el % de crecimiento).
-	if _menu == null and jugador != null and jugador.objetivo != null:
+	if _menu == null and jugador != null and jugador.vehiculo != null:
+		_label_accion.text = jugador.vehiculo.texto_conduccion()
+	elif _menu == null and jugador != null and jugador.objetivo != null:
 		_label_accion.text = "[E] " + jugador.objetivo.texto_accion()
 	else:
 		_label_accion.text = ""
@@ -322,6 +330,11 @@ func abrir_caldero() -> void:
 
 func abrir_estanteria() -> void:
 	_abrir_menu(Ventanas.Estanteria.new())
+
+
+# Abre cualquier ventana ya creada (concesionario, bolsa de trabajo...).
+func abrir_ventana(v: Control) -> void:
+	_abrir_menu(v)
 
 
 func abrir_inmobiliaria() -> void:
