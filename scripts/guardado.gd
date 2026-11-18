@@ -177,10 +177,11 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 	Juego._contador_vehiculos = maxi(0, int(datos.get("contador_vehiculos", Juego.vehiculos.size())))
 	for id_pl in datos.get("plazas_tomadas", []):
 		Juego.plazas_tomadas[str(id_pl)] = true
-	# (Partidas anteriores: un coche aparcado que ya es tuyo cuenta como tomado.)
-	for id_v in Juego.vehiculos:
-		if str(id_v).begins_with("amb_"):
-			Juego.plazas_tomadas[str(id_v)] = true
+	# Partidas guardadas con el fallo antiguo traen los 7 coches aparcados como si fueran tuyos:
+	# solo valen los que están en plazas_tomadas (robados de verdad).
+	for id_v in Juego.vehiculos.keys():
+		if str(id_v).begins_with("amb_") and not Juego.plazas_tomadas.has(str(id_v)):
+			Juego.vehiculos.erase(id_v)
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
 			Juego.habilidades[str(id_hab)] = true

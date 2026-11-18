@@ -193,6 +193,11 @@ func texto_accion() -> String:
 
 
 func _es_mio() -> bool:
+	# Un coche aparcado ("amb_N") solo es tuyo si lo robaste (plazas_tomadas). Antes bastaba que
+	# estuviera en Juego.vehiculos, y guardar la partida metía ahí TODOS los coches aparcados:
+	# tras guardar, los 7 eran tuyos (sin robo ni sospecha) y se podían vender.
+	if id.begins_with("amb_"):
+		return Juego.plazas_tomadas.has(id)
 	return id.begins_with("mio_") or (id != "" and Juego.vehiculos.has(id))
 
 
@@ -298,8 +303,8 @@ static func valor_venta(tipo_v: String, salud_v: float) -> int:
 
 # Guarda posición y estado en Juego.vehiculos (solo si es tuyo).
 func guardar_estado() -> void:
-	if id == "":
-		return
+	if id == "" or (id.begins_with("amb_") and not Juego.plazas_tomadas.has(id)):
+		return   # Un coche aparcado sin robar no es de nadie: no se guarda.
 	var p: Vector3 = chasis.global_position
 	Juego.vehiculos[id] = {"tipo": tipo, "pos": [p.x, p.y, p.z], "giro": chasis.rotation.y,
 			"gas": gasolina, "salud": salud}
