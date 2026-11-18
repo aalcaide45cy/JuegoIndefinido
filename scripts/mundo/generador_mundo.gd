@@ -22,9 +22,10 @@ class_name GeneradorMundo
 extends RefCounted
 
 const MITAD: float = 5000.0            # El mundo mide 2 * MITAD metros de lado.
-const CELDA: float = 1200.0            # Una celda de asentamientos (puede tener uno).
-const CELDA_MIN: int = -4
-const CELDA_MAX: int = 3
+const CELDA: float = 700.0             # Una celda de asentamientos (puede tener uno). Antes 1200: ahora hay ~3 veces más.
+const CELDA_MIN: int = -7
+const CELDA_MAX: int = 6
+const SEPARACION_MIN: float = 260.0    # Hueco libre mínimo entre las zonas de dos asentamientos.
 const BLOQUE: float = 44.0             # Distancia entre calles de un pueblo.
 const CALLE_ANCHO: float = 8.0
 const TROZO: float = 128.0             # Trozo de cerca (con choques y detalle).
@@ -61,6 +62,7 @@ static func iniciar(sem: int, rect_nucleo: Rect2) -> void:
 	_r_bosque = _ruido(sem + 5, 1.0 / 260.0, 2)
 	_r_color = _ruido(sem + 6, 1.0 / 35.0, 1)
 	conectores = []
+	_calcular_asentamientos()
 	listo = true
 	_calcular_conectores()
 
@@ -141,14 +143,24 @@ static func _color_suelo(x: float, z: float, h: float, ny: float) -> Color:
 
 # ------------------------------- asentamientos --------------------------------
 
+# Los asentamientos se calculan UNA vez en iniciar() y después solo se leen (así es seguro
+# pedirlos desde los hilos que generan los trozos).
+static var _asentamientos: Dictionary = {}
+
+
 # El asentamiento de la celda (ci, cj), o {} si no hay.
 static func asentamiento(ci: int, cj: int) -> Dictionary:
+	return _asentamientos.get(Vector2i(ci, cj), {})
+
+
+# Primera pasada: dónde cabría un asentamiento en cada celda (sin mirar a los vecinos).
+static func _candidato(ci: int, cj: int) -> Dictionary:
 	if ci < CELDA_MIN or ci > CELDA_MAX or cj < CELDA_MIN or cj > CELDA_MAX:
 		return {}
-	if _f(ci, cj, 1) > 0.8:
+	if _f(ci, cj, 1) > 0.9:
 		return {}
-	var cx: float = (ci + 0.5) * CELDA + (_f(ci, cj, 2) - 0.5) * 500.0
-	var cz: float = (cj + 0.5) * CELDA + (_f(ci, cj, 3) - 0.5) * 500.0
+	var cx: float = (ci + 0.5) * CELDA + (_f(ci, cj, 2) - 0.5) * 420.0
+	var cz: float = (cj + 0.5) * CELDA + (_f(ci, cj, 3) - 0.5) * 420.0
 	if absf(cx) > MITAD - 450.0 or absf(cz) > MITAD - 450.0:
 		return {}
 	var centro: Vector2 = Vector2(cx, cz)
@@ -160,14 +172,44 @@ static func asentamiento(ci: int, cj: int) -> Dictionary:
 	var r: float = _f(ci, cj, 4)
 	var tipo: int = 0
 	var n: int = 1
-	if r < 0.1:
+	if r < 0.07:
 		tipo = 2
 		n = 4
-	elif r < 0.4:
+	elif r < 0.35:
 		tipo = 1
 		n = 2
 	return {"ci": ci, "cj": cj, "pos": centro, "tipo": tipo, "n": n, "mitad": n * BLOQUE,
 			"plano": n * BLOQUE + 150.0, "base": base, "nombre": _nombre(ci, cj)}
+
+
+# Segunda pasada: si dos zonas se pisan, se queda la más grande (y a igualdad, la de celda menor).
+static func _calcular_asentamientos() -> void:
+	_asentamientos = {}
+	var candidatos: Dictionary = {}
+	for ci in range(CELDA_MIN, CELDA_MAX + 1):
+		for cj in range(CELDA_MIN, CELDA_MAX + 1):
+			var c: Dictionary = _candidato(ci, cj)
+			if not c.is_empty():
+				candidatos[Vector2i(ci, cj)] = c
+	for clave in candidatos:
+		var c: Dictionary = candidatos[clave]
+		var gana: bool = true
+		for dx in range(-1, 2):
+			for dz in range(-1, 2):
+				if dx == 0 and dz == 0:
+					continue
+				var o: Dictionary = candidatos.get(Vector2i(clave.x + dx, clave.y + dz), {})
+				if o.is_empty():
+					continue
+				var hueco: float = float(c["mitad"]) + float(o["mitad"]) + SEPARACION_MIN
+				if (c["pos"] as Vector2).distance_to(o["pos"]) >= hueco:
+					continue
+				var o_mayor: bool = int(o["tipo"]) > int(c["tipo"]) or (int(o["tipo"]) == int(c["tipo"]) \
+						and (o["ci"] < c["ci"] or (o["ci"] == c["ci"] and o["cj"] < c["cj"])))
+				if o_mayor:
+					gana = false
+		if gana:
+			_asentamientos[clave] = c
 
 
 static func nombre_tipo(tipo: int) -> String:

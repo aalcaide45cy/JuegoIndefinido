@@ -770,6 +770,30 @@ class Admin extends Ventana:
 				Juego.dinero = maxi(0, Juego.dinero + cantidad)
 				Juego.cambio.emit()))
 
+		# Modo volar: W/A/S/D hacia donde miras, Espacio sube, C baja, Shift x3.
+		# La rueda del ratón cambia la velocidad mientras vuelas.
+		subtitulo(caja, "Modo volar (rueda del ratón = velocidad)")
+		var fila_vuelo: HBoxContainer = HBoxContainer.new()
+		caja.add_child(fila_vuelo)
+		var volar: CheckButton = CheckButton.new()
+		volar.text = "Volar"
+		volar.button_pressed = Juego.modo_volar
+		volar.focus_mode = Control.FOCUS_NONE
+		var texto_vuelo: Label = Hud.crear_label(16, Color(0.8, 0.9, 1.0))
+		var refrescar_vuelo: Callable = func() -> void:
+			texto_vuelo.text = "Vuelo: %d m/s (%d km/h)" % [int(Juego.velocidad_vuelo), int(Juego.velocidad_vuelo * 3.6)]
+		volar.toggled.connect(func(v: bool) -> void:
+			Juego.modo_volar = v
+			Juego.avisar("Modo volar activado. Rueda del ratón = velocidad." if v else "Modo volar desactivado.")
+			refrescar_vuelo.call())
+		fila_vuelo.add_child(volar)
+		fila_vuelo.add_child(Hud.crear_boton("Velocidad normal", func() -> void:
+			Juego.velocidad_vuelo = Juego.VELOCIDAD_VUELO_NORMAL
+			refrescar_vuelo.call()
+			Juego.avisar("Velocidad de vuelo normal: %d m/s" % int(Juego.VELOCIDAD_VUELO_NORMAL))))
+		fila_vuelo.add_child(texto_vuelo)
+		refrescar_vuelo.call()
+
 		# Policía.
 		var policia: CheckButton = CheckButton.new()
 		policia.text = "Policía activa"

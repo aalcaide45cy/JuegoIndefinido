@@ -90,6 +90,14 @@ func _unhandled_input(evento: InputEvent) -> void:
 		_giro -= movimiento.relative.x * SENSIBILIDAD_RATON
 		_inclinacion -= movimiento.relative.y * SENSIBILIDAD_RATON
 		_inclinacion = clampf(_inclinacion, -1.3, 1.0)
+	elif Juego.modo_volar and evento is InputEventMouseButton and evento.pressed and raton_capturado \
+			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		# Volando, la rueda cambia la velocidad (hasta 3000 m/s); un 15 % por muesca.
+		var factor: float = 1.15 if evento.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.15
+		Juego.velocidad_vuelo = clampf(Juego.velocidad_vuelo * factor,
+				Juego.VELOCIDAD_VUELO_MIN, Juego.VELOCIDAD_VUELO_MAX)
+		Juego.avisar("Velocidad de vuelo: %d m/s (%d km/h)" % [int(Juego.velocidad_vuelo), int(Juego.velocidad_vuelo * 3.6)])
+		get_viewport().set_input_as_handled()
 	elif evento is InputEventMouseButton and evento.pressed and raton_capturado \
 			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):
 		var paso: int = -1 if evento.button_index == MOUSE_BUTTON_WHEEL_UP else 1
@@ -178,6 +186,11 @@ func _physics_process(delta: float) -> void:
 		objetivo = null
 		return
 
+	_actualizar_modo_volar()
+	if Juego.modo_volar:
+		_volar(delta)
+		return
+
 	if _suelo_pendiente:
 		_esperar_suelo(delta)
 		return
@@ -230,6 +243,51 @@ func _physics_process(delta: float) -> void:
 		var plano: float = Vector2(velocity.x, velocity.z).length()
 		Assets.poner_animacion(_modelo_anim, "Idle" if plano < 0.3 else ("Run" if plano > 5.0 else "Walk"))
 	_buscar_objetivo()
+
+
+# Modo volar (se activa en el panel de administrador, F1): sin gravedad ni choques.
+var _volando_antes: bool = false
+var _mascara_antes: int = 1
+var _capa_antes: int = 1
+
+
+func _actualizar_modo_volar() -> void:
+	if Juego.modo_volar == _volando_antes:
+		return
+	_volando_antes = Juego.modo_volar
+	if Juego.modo_volar:
+		_mascara_antes = collision_mask
+		_capa_antes = collision_layer
+		collision_mask = 0   # Atraviesa edificios y suelo: a gran velocidad no se queda atascado.
+		collision_layer = 0
+		_suelo_pendiente = false
+	else:
+		collision_mask = _mascara_antes
+		collision_layer = _capa_antes
+		velocity = Vector3.ZERO
+
+
+func _volar(delta: float) -> void:
+	var mando: Vector3 = Vector3.ZERO
+	if not _bloqueado and not Juego.menu_abierto:
+		var teclas: Vector2 = Input.get_vector("izquierda", "derecha", "adelante", "atras")
+		# Hacia donde mira la cámara (incluida la inclinación): W vuela hacia lo que ves.
+		var mira: Basis = _camara.global_basis
+		mando = mira.x * teclas.x + (-mira.z) * (-teclas.y)
+		if Input.is_action_pressed("saltar"):
+			mando += Vector3.UP
+		if Input.is_action_pressed("agacharse"):
+			mando += Vector3.DOWN
+	var rapidez: float = Juego.velocidad_vuelo
+	if Input.is_action_pressed("correr"):
+		rapidez *= 3.0   # Shift: triple.
+	var deseada: Vector3 = mando.limit_length(1.0) * rapidez
+	velocity = velocity.lerp(deseada, minf(1.0, delta * 8.0))
+	global_position += velocity * delta
+	if primera_persona:
+		_cuerpo.rotation.y = _giro
+	objetivo = null
+	agachado = false
 
 
 func _aplicar_camara() -> void:
