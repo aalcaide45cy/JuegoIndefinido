@@ -17,6 +17,7 @@ extends Node
 # que el editor haya registrado los nombres de clase).
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
+const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -54,6 +55,7 @@ var reputacion: int = 0              # -50..100: sube al entregar encargos, baja
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
 var avisos: Array = []               # Últimos avisos del móvil (más nuevo primero).
+var aspecto: Dictionary = {}         # Cómo se ve el jugador (ver scripts/jugador/aspecto.gd).
 var habilidades: Dictionary = {}     # id_habilidad -> true (ver scripts/datos/habilidades.gd)
 
 var inventario: Array = []
@@ -89,6 +91,7 @@ func reiniciar() -> void:
 	nivel = 1
 	xp = 0
 	habilidades.clear()
+	aspecto = DatosAspecto.POR_DEFECTO.duplicate()
 	reputacion = 0
 	sospecha = 0.0
 	encargos.clear()
@@ -548,6 +551,7 @@ func _crear_controles() -> void:
 	_accion("inventario", [KEY_TAB])
 	_accion("admin", [KEY_F1])
 	_accion("recargar", [KEY_R])
+	_accion("aspecto", [KEY_O])   # Cambiar de ropa y peinado.
 	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
 	_accion("liberar_raton", [KEY_ESCAPE])

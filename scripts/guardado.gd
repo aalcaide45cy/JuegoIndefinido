@@ -44,6 +44,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"nivel": Juego.nivel,
 		"xp": Juego.xp,
 		"habilidades": Juego.habilidades.keys(),
+		"aspecto": Juego.aspecto,
 		"viviendas": Juego.viviendas.keys(),
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
@@ -129,6 +130,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 					"t": maxf(1.0, float(pm.get("t", 10.0)))})
 	for a in datos.get("avisos", []):
 		Juego.avisos.append(str(a))
+	Juego.aspecto = Juego.DatosAspecto.valido(datos.get("aspecto", {}))
 	for id_hab in datos.get("habilidades", []):
 		if DatosHabilidades.LISTA.has(str(id_hab)):
 			Juego.habilidades[str(id_hab)] = true
@@ -158,6 +160,9 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 		jugador.global_position = Vector3(p[0], p[1], p[2])
 		if jugador is CharacterBody3D:
 			(jugador as CharacterBody3D).velocity = Vector3.ZERO
+	var jug: Jugador = jugador as Jugador
+	if jug != null:
+		jug.vestir()
 	Juego.cambio.emit()
 	return true
 

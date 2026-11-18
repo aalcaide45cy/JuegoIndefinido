@@ -19,6 +19,8 @@
 class_name Jugador
 extends CharacterBody3D
 
+const Aspecto = preload("res://scripts/jugador/aspecto.gd")
+
 # Si el jugador baja de esta altura (metros), reaparece en la plaza.
 const ALTURA_MINIMA: float = -12.0
 const VELOCIDAD_ANDAR: float = 3.5
@@ -40,6 +42,8 @@ var _inclinacion: float = -0.2  # Arriba/abajo de la cámara.
 var _bloqueado: bool = false   # Para quietos momentáneos (por ejemplo, escenas).
 
 var _cuerpo: Node3D
+var _ropa: Node3D = null       # El aspecto puesto (se rehace al cambiarlo en la ventana de aspecto).
+var _modelo_anim: Node3D = null   # Si el cuerpo es un modelo con animaciones, aquí está.
 var _pivote: Node3D
 var _brazo: SpringArm3D
 var _camara: Camera3D
@@ -190,6 +194,9 @@ func _physics_process(delta: float) -> void:
 		var angulo: float = atan2(-direccion.x, -direccion.z)
 		_cuerpo.rotation.y = lerp_angle(_cuerpo.rotation.y, angulo, minf(1.0, delta * 10.0))
 
+	if _modelo_anim != null:
+		var plano: float = Vector2(velocity.x, velocity.z).length()
+		Assets.poner_animacion(_modelo_anim, "Idle" if plano < 0.3 else ("Run" if plano > 5.0 else "Walk"))
 	_buscar_objetivo()
 
 
@@ -468,16 +475,19 @@ func _crear_cuerpo() -> void:
 	choque.position.y = 0.85
 	add_child(choque)
 
-	# El muñeco: abrigo largo, cabeza, sombrero de ala ancha y una bufanda verde.
+	# El muñeco (o traje con modelo): ver aspecto.gd. Se cambia con la tecla O.
 	_cuerpo = Node3D.new()
 	add_child(_cuerpo)
-	Construir.cilindro(_cuerpo, Vector3(0, 0.6, 0), 0.34, 1.2, Color(0.16, 0.12, 0.2), false, 0.0, 0.26)
-	Construir.esfera(_cuerpo, Vector3(0, 1.42, 0), 0.2, Color(0.75, 0.62, 0.52))
-	Construir.cilindro(_cuerpo, Vector3(0, 1.2, 0), 0.24, 0.12, Color(0.25, 0.5, 0.3))
-	Construir.cilindro(_cuerpo, Vector3(0, 1.58, 0), 0.38, 0.04, Color(0.08, 0.07, 0.09))
-	Construir.cilindro(_cuerpo, Vector3(0, 1.72, 0), 0.18, 0.26, Color(0.08, 0.07, 0.09), false, 0.0, 0.14)
-	# Nariz: para saber hacia dónde mira (en Godot "delante" es -Z).
-	Construir.caja(_cuerpo, Vector3(0, 1.42, -0.2), Vector3(0.06, 0.06, 0.1), Color(0.7, 0.55, 0.45), false)
+	vestir()
+
+
+# Rehace el aspecto del jugador según Juego.aspecto.
+func vestir() -> void:
+	if _ropa != null:
+		_ropa.queue_free()
+	_ropa = Node3D.new()
+	_cuerpo.add_child(_ropa)
+	_modelo_anim = Aspecto.vestir(_ropa, Juego.aspecto)
 
 
 func _crear_camara() -> void:
