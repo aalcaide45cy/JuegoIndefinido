@@ -15,7 +15,7 @@ func construir() -> void:
 	var caja: VBoxContainer = panel_centrado(Vector2(520, 380))
 	cabecera(caja, "Negociar con %s" % mostrador.nombre)
 	subtitulo(caja, "Quiere: %s. Precio normal: %d $. Reputación: %d" % [
-			GameData.POCIONES[mostrador.pedido]["nombre"], mostrador.precio_base(), Juego.reputacion])
+			GameData.pocion(mostrador.pedido)["nombre"], mostrador.precio_base(), Juego.reputacion])
 	caja.add_child(Ventanas.boton_grande("Vender al precio normal (%d $)" % mostrador.precio_base(), _tratar.bind(0)))
 	for pct in [15, 30]:
 		var p: int = int(mostrador.precio_base() * (1.0 + pct / 100.0))

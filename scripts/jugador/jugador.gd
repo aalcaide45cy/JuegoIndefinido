@@ -121,6 +121,7 @@ func radio_deteccion() -> float:
 		radio *= 1.3
 	if en_sombra:
 		radio *= 0.6
+	radio *= clampf(1.0 - Juego.mod("sigilo"), 0.3, 1.8)   # Efectos de sigilo / paranoia.
 	return maxf(radio, 3.0)
 
 
@@ -164,7 +165,7 @@ func _physics_process(delta: float) -> void:
 	if not _bloqueado and not Juego.menu_abierto:
 		teclas = Input.get_vector("izquierda", "derecha", "adelante", "atras")
 		if Input.is_action_just_pressed("saltar") and is_on_floor():
-			velocity.y = FUERZA_SALTO
+			velocity.y = FUERZA_SALTO * (1.0 + Juego.mod("salto"))
 	var direccion: Vector3 = Basis(Vector3.UP, _giro) * Vector3(teclas.x, 0.0, teclas.y)
 
 	agachado = Input.is_action_pressed("agacharse") and not Juego.menu_abierto
@@ -177,6 +178,7 @@ func _physics_process(delta: float) -> void:
 	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
+	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.
 	var deseada: Vector3 = direccion * velocidad
 	# "lerp" suaviza: no frenas ni arrancas de golpe.
 	velocity.x = lerpf(velocity.x, deseada.x, minf(1.0, delta * 12.0))
@@ -279,6 +281,11 @@ func _fogonazo() -> void:
 	get_tree().create_timer(0.06).timeout.connect(luz.queue_free)
 
 
+# Cuánto daño haces según tus efectos (Fuerza, Temblor...).
+func _mult_dano() -> float:
+	return clampf(1.0 + Juego.mod("dano_hecho"), 0.2, 3.0)
+
+
 func _golpear(datos: Dictionary) -> void:
 	_enfriamiento = 0.45
 	_animar_mano(-0.25)
@@ -287,7 +294,7 @@ func _golpear(datos: Dictionary) -> void:
 		return
 	var cosa = choque["collider"]
 	if cosa != null and cosa.has_method("recibir_dano"):
-		cosa.recibir_dano(float(datos["dano"]))
+		cosa.recibir_dano(float(datos["dano"]) * _mult_dano())
 
 
 func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
@@ -318,7 +325,7 @@ func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
 				continue
 			var cosa = choque["collider"]
 			if cosa != null and cosa.has_method("recibir_dano"):
-				cosa.recibir_dano(float(datos["dano"]))
+				cosa.recibir_dano(float(datos["dano"]) * _mult_dano())
 			else:
 				Combate.marca_bala(_escena(), choque["position"], choque["normal"])
 	Juego.cambio.emit()
@@ -392,6 +399,8 @@ func _morir() -> void:
 		var multa: int = Juego.dinero / 5
 		Juego.dinero -= multa
 		Juego.vida = Juego.VIDA_MAX * 0.6
+		Juego.efectos_activos.clear()
+		Juego.efectos_cambiados.emit()
 		global_position = Vector3(0, 0.2, 8)
 		velocity = Vector3.ZERO
 		_muerto = false

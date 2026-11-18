@@ -121,12 +121,14 @@ const LISTA: Dictionary = {
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
 		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+		"cura": 5,
 	},
 	"tomate": {
 		"nombre": "Tomate", "tipo": "cosecha", "pila": 20, "precio": 24,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.85, 0.7, 0.3), "forma": "saco",
 		"descripcion": "Cosecha legal del huerto. Se vende en las tiendas (a la mitad del precio).",
+		"cura": 6,
 	},
 	"gallina": {
 		"nombre": "Gallina", "tipo": "animal", "pila": 1, "precio": 45,
@@ -145,18 +147,21 @@ const LISTA: Dictionary = {
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
 		"descripcion": "Producto legal del gallinero. Se vende en las tiendas.",
+		"cura": 4,
 	},
 	"leche": {
 		"nombre": "Leche", "tipo": "cosecha", "pila": 20, "precio": 16,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
 		"descripcion": "Producto legal del establo. Se vende en las tiendas.",
+		"cura": 12, "quita": ["nauseas"],
 	},
 	"manzana": {
 		"nombre": "Manzana", "tipo": "cosecha", "pila": 20, "precio": 8,
 		"tienda": "", "nivel": 1, "habilidad": "",
 		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
 		"descripcion": "Fruta del manzano de la granja. Se vende en las tiendas.",
+		"cura": 8,
 	},
 	"jarra": {
 		"nombre": "Jarra de agua", "tipo": "herramienta", "pila": 1, "precio": 25,
@@ -171,6 +176,162 @@ const LISTA: Dictionary = {
 		"color": Color(0.75, 0.6, 0.3), "forma": "regadera",
 		"descripcion": "Da para 8 riegos. Para cultivos más grandes.",
 		"agua_max": 8,
+	},
+
+	# ---------------- Hierbas nuevas (ver scripts/datos/mezclas.gd) ----------------
+	"semilla_raiz_ardiente": {
+		"nombre": "Semilla de Raíz Ardiente", "tipo": "semilla", "pila": 20, "precio": 14,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.3, 0.15), "forma": "bolsita",
+		"descripcion": "Da velocidad. Escuece al tocarla.",
+		"hierba": "raiz_ardiente",
+	},
+	"hierba_raiz_ardiente": {
+		"nombre": "Raíz Ardiente", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.3, 0.15), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: da velocidad. Escuece al tocarla.",
+	},
+	"semilla_musgo_dulce": {
+		"nombre": "Esporas de Musgo Dulce", "tipo": "semilla", "pila": 20, "precio": 12,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.85, 0.4), "forma": "bolsita",
+		"descripcion": "Regenera la vida. Sabe a miel.",
+		"hierba": "musgo_dulce",
+	},
+	"hierba_musgo_dulce": {
+		"nombre": "Musgo Dulce", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.85, 0.4), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: regenera la vida. Sabe a miel.",
+	},
+	"semilla_ortiga_negra": {
+		"nombre": "Semilla de Ortiga Negra", "tipo": "semilla", "pila": 20, "precio": 11,
+		"tienda": "herbolario", "nivel": 2, "habilidad": "",
+		"color": Color(0.15, 0.3, 0.2), "forma": "bolsita",
+		"descripcion": "Da fuerza, pero envenena.",
+		"hierba": "ortiga_negra",
+	},
+	"hierba_ortiga_negra": {
+		"nombre": "Ortiga Negra", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.15, 0.3, 0.2), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: da fuerza, pero envenena.",
+	},
+	"semilla_cardo_hierro": {
+		"nombre": "Semilla de Cardo de Hierro", "tipo": "semilla", "pila": 20, "precio": 16,
+		"tienda": "herbolario", "nivel": 3, "habilidad": "",
+		"color": Color(0.5, 0.55, 0.6), "forma": "bolsita",
+		"descripcion": "Da resistencia, a costa de ir más lento.",
+		"hierba": "cardo_hierro",
+	},
+	"hierba_cardo_hierro": {
+		"nombre": "Cardo de Hierro", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.55, 0.6), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: da resistencia, a costa de ir más lento.",
+	},
+	"semilla_hongo_risueno": {
+		"nombre": "Espora de Hongo Risueño", "tipo": "semilla", "pila": 20, "precio": 14,
+		"tienda": "herbolario", "nivel": 3, "habilidad": "",
+		"color": Color(0.95, 0.6, 0.7), "forma": "bolsita",
+		"descripcion": "Da euforia y algo de mareo.",
+		"hierba": "hongo_risueno",
+	},
+	"hierba_hongo_risueno": {
+		"nombre": "Hongo Risueño", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.95, 0.6, 0.7), "forma": "seta",
+		"descripcion": "Cosechada. Échala al caldero: da euforia y algo de mareo.",
+	},
+	"semilla_baya_noche": {
+		"nombre": "Semilla de Baya de Noche", "tipo": "semilla", "pila": 20, "precio": 15,
+		"tienda": "herbolario", "nivel": 5, "habilidad": "",
+		"color": Color(0.3, 0.2, 0.5), "forma": "bolsita",
+		"descripcion": "Sigilo, y una pizca de paranoia.",
+		"hierba": "baya_noche",
+	},
+	"hierba_baya_noche": {
+		"nombre": "Baya de Noche", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.3, 0.2, 0.5), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: sigilo, y una pizca de paranoia.",
+	},
+	"semilla_flor_sol": {
+		"nombre": "Semilla de Flor de Sol", "tipo": "semilla", "pila": 20, "precio": 16,
+		"tienda": "herbolario", "nivel": 6, "habilidad": "",
+		"color": Color(0.95, 0.8, 0.25), "forma": "bolsita",
+		"descripcion": "Fuerza y buen humor.",
+		"hierba": "flor_sol",
+	},
+	"hierba_flor_sol": {
+		"nombre": "Flor de Sol", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.95, 0.8, 0.25), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: fuerza y buen humor.",
+	},
+	"semilla_lirio_lunar": {
+		"nombre": "Semilla de Lirio Lunar", "tipo": "semilla", "pila": 20, "precio": 20,
+		"tienda": "herbolario", "nivel": 7, "habilidad": "",
+		"color": Color(0.55, 0.7, 0.95), "forma": "bolsita",
+		"descripcion": "Visión nocturna. Solo florece de noche.",
+		"hierba": "lirio_lunar",
+	},
+	"hierba_lirio_lunar": {
+		"nombre": "Lirio Lunar", "tipo": "hierba", "pila": 20, "precio": 0,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.55, 0.7, 0.95), "forma": "hoja",
+		"descripcion": "Cosechada. Échala al caldero: visión nocturna. Solo florece de noche.",
+	},
+
+	# -------------- Aditivos del caldero (se compran, no se cultivan) --------------
+	"aditivo_miel": {
+		"nombre": "Miel de colmena", "tipo": "aditivo", "pila": 20, "precio": 8,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.7, 0.2), "forma": "jarra",
+		"descripcion": "Aditivo del caldero: aporta carisma.",
+	},
+	"aditivo_sal": {
+		"nombre": "Sal gorda", "tipo": "aditivo", "pila": 20, "precio": 6,
+		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"color": Color(0.92, 0.92, 0.9), "forma": "saco",
+		"descripcion": "Aditivo del caldero: aporta concentración.",
+	},
+	"aditivo_ceniza": {
+		"nombre": "Ceniza", "tipo": "aditivo", "pila": 20, "precio": 7,
+		"tienda": "herbolario", "nivel": 2, "habilidad": "",
+		"color": Color(0.45, 0.45, 0.47), "forma": "saco",
+		"descripcion": "Aditivo del caldero: aporta sigilo.",
+	},
+	"aditivo_azufre": {
+		"nombre": "Azufre", "tipo": "aditivo", "pila": 20, "precio": 9,
+		"tienda": "botica", "nivel": 2, "habilidad": "",
+		"color": Color(0.9, 0.85, 0.2), "forma": "saco",
+		"descripcion": "Aditivo del caldero: velocidad, pero revuelve el estómago.",
+	},
+	"aditivo_vinagre": {
+		"nombre": "Vinagre", "tipo": "aditivo", "pila": 20, "precio": 7,
+		"tienda": "botica", "nivel": 2, "habilidad": "",
+		"color": Color(0.75, 0.55, 0.5), "forma": "frasco",
+		"descripcion": "Aditivo del caldero: concentración y náuseas.",
+	},
+	"aditivo_esencia": {
+		"nombre": "Esencia de rosa", "tipo": "aditivo", "pila": 20, "precio": 12,
+		"tienda": "botica", "nivel": 4, "habilidad": "",
+		"color": Color(0.95, 0.5, 0.65), "forma": "frasco",
+		"descripcion": "Aditivo del caldero: carisma y euforia.",
+	},
+	"aditivo_muelle": {
+		"nombre": "Muelle oxidado", "tipo": "aditivo", "pila": 20, "precio": 10,
+		"tienda": "ferreteria", "nivel": 3, "habilidad": "",
+		"color": Color(0.55, 0.4, 0.3), "forma": "barra",
+		"descripcion": "Aditivo del caldero: piernas de resorte.",
+	},
+	"aditivo_arsenico": {
+		"nombre": "Polvo de arsénico", "tipo": "aditivo", "pila": 20, "precio": 11,
+		"tienda": "botica", "nivel": 5, "habilidad": "",
+		"color": Color(0.85, 0.85, 0.8), "forma": "saco",
+		"descripcion": "Aditivo del caldero: veneno. Con cuidado.",
 	},
 
 	# ---------------------- Hierbas cosechadas y pociones ---------------------
@@ -305,7 +466,10 @@ const LISTA: Dictionary = {
 	},
 
 	# ------------------------- Comida y medicinas ------------------------------
-	# "cura": vida que recupera al usarlo (clic izquierdo con él en la mano).
+	# Se usan con el clic izquierdo con ellos en la mano. Campos:
+	#   "cura"    vida que recupera al momento.
+	#   "efectos" lista de {"id", "dur", "f"}: efectos temporales (ver efectos.gd).
+	#   "quita"   lista de efectos malos que elimina (veneno, náuseas...).
 	"pan": {
 		"nombre": "Pan duro", "tipo": "consumible", "pila": 20, "precio": 5,
 		"tienda": "panaderia", "nivel": 1, "habilidad": "",
@@ -318,6 +482,34 @@ const LISTA: Dictionary = {
 		"color": Color(0.8, 0.6, 0.3), "forma": "pan", "cura": 25,
 		"descripcion": "No preguntes de qué es la molleja.",
 	},
+	"sopa": {
+		"nombre": "Sopa de huesos", "tipo": "consumible", "pila": 20, "precio": 18,
+		"tienda": "panaderia", "nivel": 1, "habilidad": "",
+		"color": Color(0.85, 0.7, 0.4), "forma": "jarra", "cura": 15,
+		"efectos": [{"id": "regeneracion", "dur": 20.0, "f": 0.8}],
+		"descripcion": "Caliente y espesa: cura un poco y te va sanando después.",
+	},
+	"estofado": {
+		"nombre": "Estofado del Prefecto", "tipo": "consumible", "pila": 20, "precio": 38,
+		"tienda": "panaderia", "nivel": 3, "habilidad": "",
+		"color": Color(0.6, 0.35, 0.2), "forma": "jarra", "cura": 35,
+		"efectos": [{"id": "regeneracion", "dur": 30.0, "f": 1.0}, {"id": "resistencia", "dur": 60.0, "f": 0.6}],
+		"descripcion": "Un plato de los ricos. Cura bastante y aguanta golpes un rato.",
+	},
+	"cafe": {
+		"nombre": "Café negro", "tipo": "consumible", "pila": 20, "precio": 12,
+		"tienda": "panaderia", "nivel": 1, "habilidad": "",
+		"color": Color(0.25, 0.15, 0.1), "forma": "jarra",
+		"efectos": [{"id": "velocidad", "dur": 45.0, "f": 0.7}, {"id": "concentracion", "dur": 60.0, "f": 0.7}],
+		"descripcion": "Amargo como un lunes. Algo de velocidad y concentración.",
+	},
+	"te_calmante": {
+		"nombre": "Té calmante", "tipo": "consumible", "pila": 20, "precio": 14,
+		"tienda": "panaderia", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.7, 0.45), "forma": "jarra", "cura": 5,
+		"efectos": [{"id": "calma", "dur": 90.0, "f": 1.0}],
+		"descripcion": "Baja la sospecha de la policía durante un rato.",
+	},
 	"venda": {
 		"nombre": "Venda limpia", "tipo": "consumible", "pila": 10, "precio": 20,
 		"tienda": "botica", "nivel": 1, "habilidad": "",
@@ -329,6 +521,42 @@ const LISTA: Dictionary = {
 		"tienda": "botica", "nivel": 2, "habilidad": "",
 		"color": Color(0.8, 0.25, 0.3), "forma": "frasco", "cura": 70,
 		"descripcion": "Sabe a hierro y a mala decisión. Cura mucho.",
+	},
+	"analgesico": {
+		"nombre": "Analgésico", "tipo": "consumible", "pila": 10, "precio": 30,
+		"tienda": "botica", "nivel": 1, "habilidad": "",
+		"color": Color(0.95, 0.95, 0.95), "forma": "caja", "cura": 10,
+		"efectos": [{"id": "resistencia", "dur": 90.0, "f": 0.75}],
+		"descripcion": "Apaga el dolor: recibes menos daño durante un rato.",
+	},
+	"antidoto": {
+		"nombre": "Antídoto", "tipo": "consumible", "pila": 10, "precio": 40,
+		"tienda": "botica", "nivel": 2, "habilidad": "",
+		"color": Color(0.4, 0.8, 0.6), "forma": "frasco", "cura": 10,
+		"quita": ["veneno", "nauseas", "mareo"],
+		"descripcion": "Quita el veneno, las náuseas y el mareo.",
+	},
+	"jarabe_regenerador": {
+		"nombre": "Jarabe regenerador", "tipo": "consumible", "pila": 10, "precio": 70,
+		"tienda": "botica", "nivel": 3, "habilidad": "",
+		"color": Color(0.4, 0.9, 0.5), "forma": "frasco",
+		"efectos": [{"id": "regeneracion", "dur": 60.0, "f": 1.5}],
+		"descripcion": "Cura 2 de vida por segundo durante un minuto.",
+	},
+	"botiquin": {
+		"nombre": "Botiquín", "tipo": "consumible", "pila": 5, "precio": 90,
+		"tienda": "botica", "nivel": 2, "habilidad": "",
+		"color": Color(0.85, 0.2, 0.2), "forma": "caja", "cura": 60,
+		"quita": ["veneno", "nauseas"],
+		"descripcion": "Vendas, alcohol y puntos. Cura mucho y quita el veneno.",
+	},
+	"maletin_medico": {
+		"nombre": "Maletín del médico", "tipo": "consumible", "pila": 3, "precio": 220,
+		"tienda": "botica", "nivel": 5, "habilidad": "",
+		"color": Color(0.2, 0.2, 0.25), "forma": "caja", "cura": 100,
+		"quita": ["veneno", "nauseas", "mareo", "somnolencia"],
+		"efectos": [{"id": "regeneracion", "dur": 20.0, "f": 1.0}],
+		"descripcion": "Lo mejor que se vende sin receta: cura toda la vida y limpia los males.",
 	},
 
 	# ------------------------------- Explosivos --------------------------------
@@ -373,16 +601,29 @@ const LISTA: Dictionary = {
 }
 
 
+const Mezclas = preload("res://scripts/datos/mezclas.gd")
+
+
+# ¿Existe el objeto? Incluye las pociones generadas por mezclas (pocion_m_...).
+static func existe(id: String) -> bool:
+	return LISTA.has(id) or not Mezclas.objeto(id).is_empty()
+
+
+# Los datos de un objeto. Las pociones generadas se calculan al pedirlas.
 static func datos(id: String) -> Dictionary:
-	return LISTA[id]
+	if LISTA.has(id):
+		return LISTA[id]
+	var d: Dictionary = Mezclas.objeto(id)
+	assert(not d.is_empty(), "Objeto desconocido: " + id)
+	return d
 
 
 static func nombre(id: String) -> String:
-	return LISTA[id]["nombre"]
+	return datos(id)["nombre"]
 
 
 static func pila(id: String) -> int:
-	return mini(LISTA[id]["pila"], PILA_MAXIMA)
+	return mini(datos(id)["pila"], PILA_MAXIMA)
 
 
 # Los objetos que se venden en una tienda concreta.

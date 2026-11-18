@@ -116,7 +116,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 						"t": maxf(0.0, float(gg.get("t", 0.0))), "nivel": clampi(int(gg.get("nivel", 1)), 1, 3)}
 	Juego.reputacion = clampi(int(datos.get("reputacion", 0)), -50, 100)
 	for e in datos.get("encargos", []):
-		if e is Dictionary and GameData.POCIONES.has(str(e.get("pocion", ""))) and e.get("pos", []) is Array \
+		if e is Dictionary and GameData.existe_pocion(str(e.get("pocion", ""))) and e.get("pos", []) is Array \
 				and e["pos"].size() == 3 and str(e.get("estado", "")) in ["oferta", "aceptado"]:
 			Juego.encargos.append({"id": int(e.get("id", 0)), "cliente": str(e.get("cliente", "Cliente")),
 					"pocion": str(e["pocion"]), "cantidad": clampi(int(e.get("cantidad", 1)), 1, 20),
@@ -124,7 +124,7 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 					"t": maxf(1.0, float(e.get("t", 60.0))), "lugar": str(e.get("lugar", "")),
 					"pos": [float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2])]})
 	for pm in datos.get("pedidos_material", []):
-		if pm is Dictionary and DatosObjetos.LISTA.has(str(pm.get("id", ""))):
+		if pm is Dictionary and DatosObjetos.existe(str(pm.get("id", ""))):
 			Juego.pedidos_material.append({"id": str(pm["id"]), "cantidad": clampi(int(pm.get("cantidad", 1)), 1, 20),
 					"t": maxf(1.0, float(pm.get("t", 10.0)))})
 	for a in datos.get("avisos", []):
@@ -176,7 +176,7 @@ static func _exportar_colocables(arbol: SceneTree) -> Array:
 static func _leer_lista(guardada: Array, destino: Array) -> void:
 	for i in mini(guardada.size(), destino.size()):
 		var c = guardada[i]
-		if not c is Dictionary or not c.has("id") or not DatosObjetos.LISTA.has(str(c["id"])):
+		if not c is Dictionary or not c.has("id") or not DatosObjetos.existe(str(c["id"])):
 			destino[i] = null
 			continue
 		var id: String = str(c["id"])

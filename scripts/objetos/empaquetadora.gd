@@ -45,7 +45,7 @@ func usar(_jugador: Node) -> void:
 		Juego.avisar("Coge una poción con la barra rápida y pulsa E.")
 		return
 	var paquete: String = "paquete_" + id.trim_prefix("pocion_")
-	if not DatosObjetos.LISTA.has(paquete):
+	if not DatosObjetos.existe(paquete):
 		Juego.avisar("Esa poción no se puede empaquetar.")
 		return
 	var n: int = mini(5, Juego.cuenta(id))

@@ -39,14 +39,14 @@ func _process(_delta: float) -> void:
 	if e.is_empty():
 		return
 	set_meta("poi_nombre", "Comprador: " + str(e["cliente"]))
-	_cartel.text = "%s\n%d x %s\n%d s" % [e["cliente"], e["cantidad"], GameData.POCIONES[e["pocion"]]["nombre"], int(e["t"])]
+	_cartel.text = "%s\n%d x %s\n%d s" % [e["cliente"], e["cantidad"], GameData.pocion(e["pocion"])["nombre"], int(e["t"])]
 
 
 func texto_accion() -> String:
 	var e: Dictionary = _datos()
 	if e.is_empty():
 		return "..."
-	return "Entregar %d x %s (%d $)" % [e["cantidad"], GameData.POCIONES[e["pocion"]]["nombre"], e["pago"]]
+	return "Entregar %d x %s (%d $)" % [e["cantidad"], GameData.pocion(e["pocion"])["nombre"], e["pago"]]
 
 
 func usar(_jugador: Node) -> void:
