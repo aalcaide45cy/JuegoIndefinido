@@ -16,3 +16,4 @@ func _ready() -> void:
 
 func _al_cambiar_el_dia() -> void:
 	Negocios.ponerse_al_dia()
+	Blanqueo.nuevo_dia()

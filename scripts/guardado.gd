@@ -140,6 +140,8 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"ha_ganado": Juego.ha_ganado,
 		"reputacion": Juego.reputacion,
 		"banco": Juego.banco,
+		"dinero_negro": Juego.dinero_negro,
+		"vigilancia_fiscal": Juego.vigilancia_fiscal,
 		"huertos": Juego.huertos.keys(),
 		"en_propiedad": Juego.en_propiedad.keys(),
 		"clima": Clima.exportar(),
@@ -234,6 +236,8 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	# dinero negativo, vida a cero o montones más grandes de lo permitido.
 	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))
 	Juego.banco = maxi(0, int(datos.get("banco", 0)))
+	Juego.dinero_negro = maxi(0, int(datos.get("dinero_negro", 0)))   # Partidas antiguas: 0.
+	Juego.vigilancia_fiscal = clampf(float(datos.get("vigilancia_fiscal", 0.0)), 0.0, 100.0)
 	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
 	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
 	Clima.importar(datos.get("clima"))

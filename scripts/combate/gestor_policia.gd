@@ -35,7 +35,7 @@ func _process(delta: float) -> void:
 		return   # Dentro de un edificio no aparecen refuerzos nuevos.
 	# Guardias a pie.
 	var objetivo_guardias: int = int(DatosPolicia.REFUERZOS[n])
-	if n >= 2 and DatosPolicia.riqueza(Juego.dinero) > 0.6:
+	if n >= 2 and DatosPolicia.riqueza(Juego.dinero + Juego.dinero_negro) > 0.6:
 		objetivo_guardias += 1
 	var guardias: Array = []
 	for g in get_tree().get_nodes_in_group("policia_refuerzo"):

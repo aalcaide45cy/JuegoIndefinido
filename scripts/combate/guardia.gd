@@ -330,7 +330,9 @@ func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
 	if Juego.lleva_ilegal():
 		prob *= 1.5
 	prob *= 1.0 + Juego.sospecha / 40.0
-	prob *= 1.0 + DatosPolicia.riqueza(Juego.dinero)   # Cuanto más rico pareces, más te miran.
+	prob *= 1.0 + DatosPolicia.riqueza(Juego.dinero + Juego.dinero_negro)
+	if Juego.dinero_negro >= Juego.DatosBlanqueo.UMBRAL_SOSPECHOSO:
+		prob *= 1.5   # Mucho dinero negro encima: te miran más.   # Cuanto más rico pareces, más te miran.
 	if randf() < prob / 6.0 and "hud" in jugador and jugador.hud != null:
 		Juego.enfriamiento_cacheo = 150.0
 		Juego.avisar("¡Alto! Un guardia quiere registrarte.")
@@ -360,7 +362,7 @@ func _caer() -> void:
 	_muerto = true
 	_poner_activo(false)
 	_material.emission_enabled = false
-	Juego.cobrar(15)
+	Juego.cobrar_negro(15)
 	Juego.subir_estrellas(1, "Has abatido a un guardia")
 	Juego.avisar("Un guardia cae. Llevaba 15 $ encima.")
 	if refuerzo:
