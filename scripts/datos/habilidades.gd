@@ -12,6 +12,7 @@ const LISTA: Dictionary = {
 	"punteria": {"nombre": "Puntería avanzada", "precio": 800, "nivel": 8},
 	"espada": {"nombre": "Esgrima", "precio": 500, "nivel": 5},
 	"explosivos": {"nombre": "Explosivos", "precio": 1000, "nivel": 6},
+	"negociacion": {"nombre": "Negociación", "precio": 400, "nivel": 2},   # Regatear mejor; ver su límite a los clientes.
 }
 
 

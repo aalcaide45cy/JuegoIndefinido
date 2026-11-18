@@ -5,6 +5,7 @@
 #              (dónde espera el comprador y cuánto tiempo le queda).
 #   Pedidos  : comprar materiales y recibirlos en unos segundos.
 #   Avisos   : historial de mensajes (ventas, pedidos que llegan, plantones).
+#   Negocios : inmobiliaria, concesionario, alquileres... (ui/panel_negocios.gd).
 # La lógica está en scripts/encargos.gd. SIN PROBAR en Godot.
 # -----------------------------------------------------------------------------
 class_name Telefono
@@ -74,8 +75,8 @@ func construir() -> void:
 	var apps: HBoxContainer = HBoxContainer.new()
 	apps.add_theme_constant_override("separation", 6)
 	caja.add_child(apps)
-	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"]]
-	for i in 3:
+	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"]]
+	for i in 4:
 		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
 		b.icon = _icono(datos[i][1])
 		b.expand_icon = true
@@ -99,12 +100,9 @@ func _cambiar_pestana(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
-	_titulo.text = ["Encargos", "Pedidos", "Avisos"][_pestana]
+	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
-	var firma: String = "%d|" % _pestana
-	for e in Juego.encargos:
-		firma += "%s%s," % [e["id"], e["estado"]]
-	firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
+	var firma: String = _calcular_firma()
 	if firma != _firma:
 		_reconstruir()
 	for t in _temporizadores:
@@ -123,14 +121,31 @@ func _reconstruir() -> void:
 	for h in _contenido.get_children():
 		h.queue_free()
 	_temporizadores.clear()
-	_firma = "%d|" % _pestana
-	for e in Juego.encargos:
-		_firma += "%s%s," % [e["id"], e["estado"]]
-	_firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
+	_firma = _calcular_firma()
 	match _pestana:
 		0: _pintar_encargos()
 		1: _pintar_pedidos()
 		2: _pintar_avisos()
+		3: _pintar_negocios()
+
+
+# Resume lo que obliga a redibujar la pestaña. La de Negocios se cuida sola (el
+# panel se redibuja cuando hace falta), así que aquí no se reconstruye nunca.
+func _calcular_firma() -> String:
+	var firma: String = "%d|" % _pestana
+	if _pestana == 3:
+		return firma
+	for e in Juego.encargos:
+		firma += "%s%s," % [e["id"], e["estado"]]
+	firma += "|%d|%d|%d" % [Juego.pedidos_material.size(), Juego.avisos.size(), Juego.nivel]
+	return firma
+
+
+func _pintar_negocios() -> void:
+	var panel: PanelNegocios = PanelNegocios.new()
+	panel.ancho = 340.0
+	panel.compacto = true
+	_contenido.add_child(panel)
 
 
 func _tarjeta() -> VBoxContainer:

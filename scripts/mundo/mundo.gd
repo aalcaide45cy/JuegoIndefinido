@@ -28,6 +28,7 @@ func _ready() -> void:
 	_anadir_barrio(BarrioCampo.new(), Vector3(200, 0, -16))
 
 	add_child(GestorVehiculos.new())
+	add_child(GestorNegocios.new())
 	add_child(GestorPersonal.new())
 	_guardias_nocturnos()
 	var nucleo: Rect2 = _cerrar_ciudad()

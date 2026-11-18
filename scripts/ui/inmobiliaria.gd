@@ -17,6 +17,7 @@ func construir() -> void:
 	var caja: VBoxContainer = panel_centrado(Vector2(780, 640))
 	cabecera(caja, "Inmobiliaria")
 	subtitulo(caja, "Alquila (pago único) o compra (25 veces el alquiler; vendes por el 70%).")
+	caja.add_child(Hud.crear_boton("Montar mi propia inmobiliaria (comprar pisos, venderlos y alquilarlos)...", _abrir_negocio))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caja.add_child(scroll)
@@ -25,6 +26,19 @@ func construir() -> void:
 	scroll.add_child(_lista)
 	Juego.cambio.connect(_pintar)
 	_pintar()
+
+
+# Cierra esta ventana y abre la gestión de tu negocio inmobiliario.
+func _abrir_negocio() -> void:
+	var hud: Node = self
+	while hud != null and not hud is Hud:
+		hud = hud.get_parent()
+	cerrar()
+	if hud != null:
+		var v: VentanaNegocios = VentanaNegocios.new()
+		v.titulo = "Mi inmobiliaria"
+		v.cat_inicial = "piso"
+		(hud as Hud).abrir_ventana(v)
 
 
 func _tiene(p: Dictionary) -> bool:
