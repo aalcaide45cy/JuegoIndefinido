@@ -146,6 +146,13 @@ static func altura_base(x: float, z: float) -> float:
 # Altura final teniendo en cuenta los asentamientos de la lista y la ciudad original.
 static func altura_lista(x: float, z: float, lista: Array) -> float:
 	var h: float = altura_base(x, z)
+	# Carreteras de montaña: el terreno se aplana a la altura de la carretera (terraplén y desmonte).
+	# Va ANTES de aplanar ciudad y pueblos: antes iba después y los tramos de una carretera que rozaban
+	# un pueblo (la serpentina se abre hasta 120 m a los lados) subían el terreno DENTRO del pueblo
+	# (calles y casas a 90 m de altura sobre el suelo del pueblo; los coches y la gente quedaban bajo tierra).
+	for c in lista:
+		if c.has("camino"):
+			h = _tallar_camino(x, z, h, c)
 	h = lerpf(-0.3, h, smoothstep(0.0, 400.0, dist_rect(x, z, nucleo)))
 	for s in lista:
 		if s.has("camino"):
@@ -155,10 +162,6 @@ static func altura_lista(x: float, z: float, lista: Array) -> float:
 		var plano: float = s["plano"]
 		if d < plano + 100.0:
 			h = lerpf(s["base"], h, smoothstep(plano, plano + 100.0, d))
-	# Carreteras de montaña: el terreno se aplana a la altura de la carretera (terraplén y desmonte).
-	for c in lista:
-		if c.has("camino"):
-			h = _tallar_camino(x, z, h, c)
 	return h
 
 
@@ -457,13 +460,48 @@ static func _calcular_caminos() -> void:
 			continue
 		var mejor: Dictionary = {}
 		var d_mejor: float = INF
+		var mejor_largo: Dictionary = {}   # Plan B: el que deje más recorrido entre puertas.
+		var largo_mejor: float = -INF
 		for b in bajos:
 			var d: float = (b["pos"] as Vector2).distance_to(m["pos"])
+			# Recorrido útil entre las dos puertas (110 m fuera de cada pueblo) y el que haría falta para
+			# bajar con 8 %. Un pueblo bajo pegado al de montaña daba una rampa de 75 m en 40 m (pared).
+			var recorrido: float = d - float(m["mitad"]) - float(b["mitad"]) - 220.0
+			var hace_falta: float = absf(float(m["base"]) - float(b["base"])) / 0.08
+			if recorrido > largo_mejor:
+				largo_mejor = recorrido
+				mejor_largo = b
+			if recorrido < maxf(120.0, hace_falta * 0.25):
+				continue
+			if not _linea_libre(m, b):
+				continue   # Por el camino recto se atraviesa otro pueblo.
 			if d < d_mejor:
 				d_mejor = d
 				mejor = b
+		if mejor.is_empty():
+			mejor = mejor_largo
+			d_mejor = (mejor["pos"] as Vector2).distance_to(m["pos"]) if not mejor.is_empty() else INF
 		if not mejor.is_empty() and d_mejor < 4200.0:
 			_caminos.append(_trazar_camino(m, mejor))
+
+
+# ¿La línea recta de puerta a puerta entre dos pueblos esquiva a todos los demás?
+static func _linea_libre(m: Dictionary, b: Dictionary) -> bool:
+	var a: Vector2 = _puerta(m, b["pos"], 110.0)
+	var c: Vector2 = _puerta(b, m["pos"], 110.0)
+	var n: int = maxi(2, int(a.distance_to(c) / 20.0))
+	for i in range(1, n):
+		var q: Vector2 = a.lerp(c, float(i) / float(n))
+		for clave in _asentamientos:
+			var s: Dictionary = _asentamientos[clave]
+			if s["ci"] == m["ci"] and s["cj"] == m["cj"]:
+				continue
+			if s["ci"] == b["ci"] and s["cj"] == b["cj"]:
+				continue
+			var p: Vector2 = s["pos"]
+			if maxf(absf(q.x - p.x), absf(q.y - p.y)) < float(s["mitad"]) + 80.0:
+				return false
+	return true
 
 
 static func _longitud_curva(largo: float, amp: float, k: int) -> float:
@@ -477,6 +515,89 @@ static func _longitud_curva(largo: float, amp: float, k: int) -> float:
 	return total
 
 
+const RADIO_CURVA_MIN: float = 18.0   # Radio de las horquillas de las carreteras de montaña (m).
+const SERPENTINA_V_MAX: float = 120.0   # Mitad del largo máximo de un tramo recto de la serpentina (m).
+
+
+# Trazado en ejes locales (x a lo largo de la carretera, y a los lados) de "largo" metros que recorre
+# al menos "necesario" metros: recta, o recta con n horquillas alternas si hace falta alargarla.
+static func _serpentina(largo: float, necesario: float, v_max: float = SERPENTINA_V_MAX) -> PackedVector2Array:
+	var r: float = RADIO_CURVA_MIN
+	var n_max: int = maxi(0, int((largo - 20.0) / (2.0 * r)) - 1)
+	if v_max < r + 3.0:
+		n_max = 0   # No cabe ninguna horquilla: recta (más empinada).
+	var n_t: int = 0
+	var v: float = 0.0
+	if necesario > largo * 1.03 and n_max > 0:
+		# Largo = recta + n horquillas (cada una une dos tramos de 2v) + dos cuartos de vuelta (entrada y salida).
+		n_t = 1
+		while n_t < n_max:
+			v = (necesario - largo - n_t * r * (PI - 2.0) - r * (PI - 4.0)) / (2.0 * n_t)
+			if v <= v_max:
+				break
+			n_t += 1
+		v = clampf((necesario - largo - n_t * r * (PI - 2.0) - r * (PI - 4.0)) / (2.0 * n_t), r + 3.0, v_max)
+		if necesario <= largo * 1.03 + r * 2.0:
+			n_t = 0
+	var pts: PackedVector2Array = PackedVector2Array()
+	var paso: float = 8.0
+	pts.append(Vector2.ZERO)
+	if n_t == 0:
+		var tramos: int = maxi(2, int(largo / 10.0))
+		for i in range(1, tramos + 1):
+			pts.append(Vector2(largo * float(i) / float(tramos), 0.0))
+		return pts
+	var u0: float = (largo - 2.0 * r * float(n_t + 1)) / 2.0
+	var pasos_arco: int = maxi(6, int(PI * r / paso))
+	_recta_local(pts, Vector2(u0, 0.0), paso)
+	var signo: float = 1.0
+	# Entrada: cuarto de vuelta de la recta al primer tramo lateral.
+	var c0: Vector2 = Vector2(u0, signo * r)
+	for j in range(1, pasos_arco / 2 + 1):
+		var phi: float = PI / 2.0 * float(j) / float(pasos_arco / 2)
+		pts.append(c0 + Vector2(sin(phi), -signo * cos(phi)) * r)
+	var u: float = u0 + r
+	_recta_local(pts, Vector2(u, signo * v), paso)
+	for i in n_t:
+		var centro: Vector2 = Vector2(u + r, signo * v)
+		for j in range(1, pasos_arco + 1):
+			var phi2: float = PI * float(j) / float(pasos_arco)
+			pts.append(centro + Vector2(-cos(phi2), signo * sin(phi2)) * r)
+		u += 2.0 * r
+		if i < n_t - 1:
+			_recta_local(pts, Vector2(u, -signo * v), paso)
+		signo = -signo
+	# Tras la última horquilla se avanza hacia el eje y se sale con otro cuarto de vuelta.
+	_recta_local(pts, Vector2(u, -signo * r), paso)
+	var c1: Vector2 = Vector2(u + r, -signo * r)
+	for j in range(1, pasos_arco / 2 + 1):
+		var phi3: float = PI / 2.0 * float(j) / float(pasos_arco / 2)
+		pts.append(c1 + Vector2(-cos(phi3), signo * sin(phi3)) * r)
+	_recta_local(pts, Vector2(largo, 0.0), paso)
+	return pts
+
+
+# ¿La serpentina (en ejes locales) deja en paz a todos los pueblos? (Al abrirse hasta 120 m a los
+# lados podía meterse entre las casas de un pueblo vecino.)
+static func _serpentina_libre(local: PackedVector2Array, origen: Vector2, dir: Vector2, nor: Vector2) -> bool:
+	for i in range(1, local.size() - 1):
+		var q: Vector2 = origen + dir * local[i].x + nor * local[i].y
+		for clave in _asentamientos:
+			var s: Dictionary = _asentamientos[clave]
+			var p: Vector2 = s["pos"]
+			if maxf(absf(q.x - p.x), absf(q.y - p.y)) < float(s["mitad"]) + 60.0:
+				return false
+	return true
+
+
+# Añade puntos desde el último de la lista hasta "fin" en línea recta, cada "paso" metros.
+static func _recta_local(pts: PackedVector2Array, fin: Vector2, paso: float) -> void:
+	var ini: Vector2 = pts[pts.size() - 1]
+	var n: int = maxi(1, int(ini.distance_to(fin) / paso))
+	for i in range(1, n + 1):
+		pts.append(ini.lerp(fin, float(i) / float(n)))
+
+
 static func _trazar_camino(m: Dictionary, b: Dictionary) -> Dictionary:
 	var puerta_m: Vector2 = _puerta(m, b["pos"], 110.0)
 	var puerta_b: Vector2 = _puerta(b, m["pos"], 110.0)
@@ -485,14 +606,24 @@ static func _trazar_camino(m: Dictionary, b: Dictionary) -> Dictionary:
 	var largo: float = puerta_m.distance_to(puerta_b)
 	var dir: Vector2 = (puerta_b - puerta_m) / maxf(largo, 1.0)
 	var nor: Vector2 = Vector2(-dir.y, dir.x)
-	var sid: int = int(m["ci"]) * 1009 + int(m["cj"])
-	var amp: float = 70.0 + 70.0 * _f(sid, 51, 1)
 	var necesario: float = absf(h_m - h_b) / 0.08
-	var k: int = 1
-	while k < 40 and _longitud_curva(largo, amp, k) < necesario:
-		k += 1
-	var arco: float = _longitud_curva(largo, amp, k)
-	var n: int = maxi(12, int(arco / 10.0))
+	# Antes la carretera era una sinusoide con tantas ondas como hicieran falta para subir con 8 %: en
+	# trayectos cortos las curvas salían de 0,5-1 m de radio (imposibles para un coche) y tramos de la
+	# misma carretera quedaban a menos de 16 m unos de otros a distinta altura. Ahora es una serpentina de
+	# verdad: tramos rectos unidos por curvas cerradas (horquillas) de RADIO_CURVA_MIN metros, con el
+	# largo justo para subir con 8 %; si no cabe, algo más empinada (nunca con curvas imposibles).
+	var local: PackedVector2Array = PackedVector2Array()
+	var hecho: bool = false
+	for v_max in [SERPENTINA_V_MAX, 80.0, 50.0, 0.0]:
+		for espejo in [1.0, -1.0]:
+			local = _serpentina(largo, necesario, v_max)
+			for i in local.size():
+				local[i].y *= espejo
+			if _serpentina_libre(local, puerta_m, dir, nor):
+				hecho = true   # No entra en ningún pueblo; si no, se prueba por el otro lado y más estrecha.
+				break
+		if hecho:
+			break
 	var pts: PackedVector2Array = PackedVector2Array()
 	var hs: PackedFloat32Array = PackedFloat32Array()
 	pts.append(_puerta(m, b["pos"], 0.0))
@@ -500,9 +631,8 @@ static func _trazar_camino(m: Dictionary, b: Dictionary) -> Dictionary:
 	var recorrido: Array = []
 	var acumulado: float = 0.0
 	var anterior: Vector2 = Vector2.ZERO
-	for i in range(n + 1):
-		var t: float = float(i) / float(n)
-		var q: Vector2 = puerta_m + dir * (largo * t) + nor * (amp * sin(PI * float(k) * t))
+	for i in local.size():
+		var q: Vector2 = puerta_m + dir * local[i].x + nor * local[i].y
 		if i > 0:
 			acumulado += q.distance_to(anterior)
 		anterior = q

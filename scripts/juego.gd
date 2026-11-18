@@ -585,8 +585,8 @@ func ordenar(lista: Array, desde: int = 0) -> void:
 # Mueve una casilla entera a otra lista (clic con Mayúsculas). Devuelve true si cupo.
 func mover_rapido(origen: Array, i: int, destino: Array, desde: int = 0) -> void:
 	var casilla = origen[i]
-	if casilla == null:
-		return
+	if casilla == null or is_same(origen, destino):
+		return   # Dentro de la misma lista el montón se sumaba a sí mismo y luego se borraba.
 	if casilla.has("agua"):
 		var hueco: int = destino.find(null, desde)
 		if hueco != -1:

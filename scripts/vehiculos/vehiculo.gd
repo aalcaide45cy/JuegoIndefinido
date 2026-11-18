@@ -380,7 +380,9 @@ func _physics_process(delta: float) -> void:
 		var frenando: bool = entrada * _v < 0.0
 		_v += entrada * float(d["acel"]) * (2.2 if frenando else 1.0) * delta
 	else:
-		_v = move_toward(_v, 0.0, (1.5 if aire else 4.0) * delta)
+		# Una avioneta en tierra frena como un coche (antes rodaba casi 40 s a 60 m/s tras aterrizar).
+		var en_tierra: bool = aire and chasis.is_on_floor() and _vy <= 0.5
+		_v = move_toward(_v, 0.0, (1.5 if aire and not en_tierra else (8.0 if en_tierra else 4.0)) * delta)
 	if freno and not aire:
 		_v = move_toward(_v, 0.0, 20.0 * delta)
 	_v = clampf(_v, -vmax * 0.35 if not (aire and d["modo"] == "avion") else 0.0, vmax)
@@ -407,6 +409,12 @@ func _physics_process(delta: float) -> void:
 			objetivo_vy = (10.0 if sube else (-10.0 if baja else 0.0)) if sustenta else -9.0
 			if not sustenta and chasis.is_on_floor():
 				objetivo_vy = 0.0
+		# Aterrizaje suave: cerca del suelo la bajada se frena sola (antes, al bajar con C el
+		# helicóptero tocaba a 8 m/s y la avioneta a 10 m/s: siempre "aterrizaje duro", vehículo
+		# destrozado y daño al jugador).
+		if objetivo_vy < 0.0 and not chasis.is_on_floor():
+			var alt: float = _altura_sobre_el_suelo()
+			objetivo_vy = maxf(objetivo_vy, -(2.0 + alt * 0.4))
 		_vy = move_toward(_vy, objetivo_vy, 7.0 * delta)
 		if chasis.is_on_floor() and _vy < 0.0:
 			_vy = 0.0
@@ -454,6 +462,19 @@ func _physics_process(delta: float) -> void:
 			remolque.guardar_estado()
 
 
+# Metros hasta el suelo (o lo que haya debajo) hasta 30 m; 30 si no se ve nada.
+func _altura_sobre_el_suelo() -> float:
+	var desde: Vector3 = chasis.global_position + Vector3(0, 0.5, 0)
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, desde + Vector3(0, -30.0, 0))
+	consulta.exclude = [chasis.get_rid()]
+	if conductor is CollisionObject3D:
+		consulta.exclude.append((conductor as CollisionObject3D).get_rid())
+	var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
+	if choque.is_empty():
+		return 30.0
+	return maxf(0.0, desde.y - (choque["position"] as Vector3).y)
+
+
 func is_on_ground_safe() -> bool:
 	return chasis.is_on_floor()
 
@@ -465,7 +486,12 @@ const ALTURA_MAXIMA: float = 45.0
 func _contener_en_el_mundo() -> void:
 	var lim: Rect2 = Juego.limites_mundo.grow(-2.0)
 	var p: Vector3 = chasis.global_position
-	var q: Vector3 = Vector3(clampf(p.x, lim.position.x, lim.end.x), minf(p.y, ALTURA_MAXIMA), clampf(p.z, lim.position.y, lim.end.y))
+	# El techo cuenta desde el suelo de allí: las carreteras de montaña llegan a 200-300 m y, con un
+	# techo absoluto de 45 m, el coche se hundía en la montaña (y el helicóptero no podía pasarla).
+	var techo: float = ALTURA_MAXIMA
+	if GeneradorMundo.listo:
+		techo += maxf(0.0, GeneradorMundo.altura(clampf(p.x, lim.position.x, lim.end.x), clampf(p.z, lim.position.y, lim.end.y)))
+	var q: Vector3 = Vector3(clampf(p.x, lim.position.x, lim.end.x), minf(p.y, techo), clampf(p.z, lim.position.y, lim.end.y))
 	if q != p:
 		chasis.global_position = q
 		if q.y < p.y:

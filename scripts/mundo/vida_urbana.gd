@@ -116,8 +116,12 @@ func _altura(red: Dictionary, x: float, z: float) -> float:
 # ------------------------------- Semáforos (lógica) ----------------------------
 
 # 0 verde, 1 ámbar, 2 rojo. "eje": 0 = circulando por X, 1 = circulando por Z.
+# El reloj de los semáforos avanza con la física (no con el reloj de pared): así los ciclos van
+# a la par de los coches también en las pruebas aceleradas.
+static var reloj_semaforos: float = 0.0
+
 static func estado_semaforo(eje: int, nodo: Vector2i) -> int:
-	var t: float = Time.get_ticks_msec() / 1000.0 + float((nodo.x + nodo.y) & 1) * 6.0
+	var t: float = reloj_semaforos + float((nodo.x + nodo.y) & 1) * 6.0
 	if eje == 1:
 		t += CICLO_SEMAFORO * 0.5
 	t = fmod(t, CICLO_SEMAFORO)
@@ -146,6 +150,8 @@ class Agente extends AnimatableBody3D:
 	var vida: float = 30.0
 	var modelo: Node3D = null
 	var fase: float = 0.0
+	var desvio: float = 0.0       # Coches: metros que se aparta de su carril para esquivar un coche aparcado.
+	var t_atasco: float = 0.0     # Coches: segundos seguidos parados por algo que tienen delante.
 
 	func recibir_dano(cantidad: float) -> void:
 		if es_coche:
@@ -167,6 +173,7 @@ class Semaforo extends Node3D:
 
 
 func _physics_process(delta: float) -> void:
+	reloj_semaforos += delta
 	if _jugador == null or not is_instance_valid(_jugador):
 		_jugador = get_tree().get_first_node_in_group("jugador") as Node3D
 		return
@@ -363,7 +370,7 @@ func _colocar(a: Agente) -> void:
 	var pb: Vector2 = a.red["pos"][a.hacia]
 	var dir: Vector2 = (pb - pa).normalized()
 	var derecha: Vector2 = Vector2(-dir.y, dir.x)
-	var punto: Vector2 = pa + dir * a.d + derecha * a.lado
+	var punto: Vector2 = pa + dir * a.d + derecha * (a.lado + a.desvio)
 	if a.alegre:
 		punto += derecha * sin(a.fase) * 0.8
 	var y: float = _altura(a.red, punto.x, punto.y)
@@ -376,6 +383,10 @@ func _colocar(a: Agente) -> void:
 # --------------------------------- Movimiento ----------------------------------
 
 func _siguiente_nodo(a: Agente) -> void:
+	_tomar_tramo(a, _elegir_tramo(a))
+
+
+func _elegir_tramo(a: Agente) -> Vector2i:
 	var llegado: Vector2i = a.hacia
 	var vecinos: Array = (a.red["vec"][llegado] as Array).duplicate()
 	var previo: Vector2i = a.desde
@@ -391,16 +402,25 @@ func _siguiente_nodo(a: Agente) -> void:
 			if dd > mejor:
 				mejor = dd
 				elegido = v
-	a.desde = llegado
+	return elegido
+
+
+func _tomar_tramo(a: Agente, elegido: Vector2i) -> void:
+	a.desde = a.hacia
 	a.hacia = elegido
 	a.d = 0.0
+	a.desvio = 0.0
 	if not a.es_coche and randf() < 0.3:
 		a.pausa = 3.0 + randf() * 6.0   # Se para a charlar o a mirar escaparates.
 
 
-func _distancia_libre(a: Agente, dir: Vector2) -> float:
-	# Metros libres por delante hasta lo primero que estorba (9 m = vía libre).
-	var libre: float = 9.0
+const VISTA_COCHE: float = 16.0     # Hasta dónde mira un coche por delante (m libres entre parachoques).
+
+func _distancia_libre(a: Agente, dir: Vector2, desvio_meta: float = 0.0) -> float:
+	# Metros libres entre el parachoques de este coche y lo primero que estorba por delante
+	# (VISTA_COCHE = vía libre). Se descuenta la mitad del largo del OTRO coche también: antes solo
+	# la del propio, y en las colas los coches quedaban a 1,2 m de centro (uno dentro del otro).
+	var libre: float = VISTA_COCHE
 	var yo: Vector2 = Vector2(a.global_position.x, a.global_position.z)
 	var obstaculos: Array = []
 	obstaculos.append(_jugador)
@@ -417,12 +437,73 @@ func _distancia_libre(a: Agente, dir: Vector2) -> float:
 		var p: Vector3 = (o as Node3D).global_position
 		var rel: Vector2 = Vector2(p.x, p.z) - yo
 		var delante: float = rel.dot(dir)
-		if delante <= 0.0 or delante > libre + a.largo * 0.5:
+		var medio_otro: float = _medio_largo(o)
+		if delante <= 0.0 or delante > libre + a.largo * 0.5 + medio_otro:
 			continue
-		var lateral: float = absf(rel.dot(Vector2(-dir.y, dir.x)))
-		if lateral < 1.9 and delante - a.largo * 0.5 < libre:
-			libre = maxf(0.0, delante - a.largo * 0.5)
+		var lat_firme: float = rel.dot(Vector2(-dir.y, dir.x))
+		var lateral: float = absf(lat_firme)
+		if not (o is Vehiculo):
+			# Mirar también hacia donde me estoy desplazando (si no, un coche que va en mi carril
+			# 'desaparece' mientras me aparto y lo veo cuando ya es tarde).
+			lateral = minf(lateral, absf(lat_firme - (desvio_meta - a.desvio)))
+			lateral = minf(lateral, absf(lat_firme + a.desvio))   # ...y mi carril de siempre, al que volveré.
+		var hueco: float = delante - a.largo * 0.5 - medio_otro
+		if lateral < 1.9 and hueco < libre:
+			libre = maxf(0.0, hueco)
 	return libre
+
+
+# Mitad del largo de lo que sea (coche del tráfico, vehículo del jugador, persona).
+func _medio_largo(o: Object) -> float:
+	if o is Agente and (o as Agente).es_coche:
+		return (o as Agente).largo * 0.5
+	if o is Vehiculo:
+		return float(Vehiculo.TIPOS[(o as Vehiculo).tipo]["largo"]) * 0.5
+	return 0.5
+
+
+# Desvío lateral (m, positivo = hacia la derecha del coche) con el que hay que ir para pasar junto a
+# un vehículo aparcado (sin conductor) metido en el carril por delante: hacia el centro de la calle.
+# Antes los coches del tráfico se paraban detrás de cada coche aparcado y se quedaban ahí para
+# siempre (la cola entera se quedaba parada). Si viene un coche de frente por ese hueco, espera.
+func _meta_desvio(a: Agente, dir: Vector2) -> float:
+	var derecha: Vector2 = Vector2(-dir.y, dir.x)
+	var yo: Vector2 = Vector2(a.global_position.x, a.global_position.z)
+	var signo: float = signf(a.lado) if a.lado != 0.0 else 1.0
+	var hacia_eje: float = 0.0   # Cuánto hay que acercarse al eje de la calle (m).
+	for v in get_tree().get_nodes_in_group("vehiculos"):
+		if not (v is Vehiculo) or (v as Vehiculo).conductor != null:
+			continue
+		var p: Vector3 = (v as Node3D).global_position
+		var rel: Vector2 = Vector2(p.x, p.z) - yo
+		var delante: float = rel.dot(dir)
+		if delante < -(a.largo * 0.5 + _medio_largo(v) + 1.0) or delante > 26.0:
+			continue
+		# Posición lateral del aparcado respecto al centro de MI carril (no de donde voy ahora).
+		var lat: float = rel.dot(derecha) + a.desvio
+		if absf(lat) >= 2.4:
+			continue
+		hacia_eje = maxf(hacia_eje, -(lat - 2.4 * signo) * signo)
+	if hacia_eje <= 0.0:
+		return 0.0
+	hacia_eje = minf(hacia_eje, absf(a.lado) + 0.6)
+	var meta: float = -signo * hacia_eje
+	if absf(a.desvio) < 0.5:
+		# Aún no he empezado a salirme: solo salgo si no viene nadie de frente por ese hueco.
+		for o in _coches:
+			if o == a or not is_instance_valid(o):
+				continue
+			var pa_o: Vector2 = o.red["pos"][o.desde]
+			var pb_o: Vector2 = o.red["pos"][o.hacia]
+			var dir_o: Vector2 = (pb_o - pa_o).normalized()
+			if dir_o.dot(dir) > -0.5:
+				continue
+			var rel_o: Vector2 = Vector2(o.global_position.x, o.global_position.z) - yo
+			var d_o: float = rel_o.dot(dir)
+			if d_o < -10.0 or d_o > 60.0:
+				continue
+			return 0.0   # Viene alguien de frente: espero a que pase antes de invadir su carril.
+	return meta
 
 
 func _mover_coche(a: Agente, delta: float) -> void:
@@ -439,20 +520,58 @@ func _mover_coche(a: Agente, delta: float) -> void:
 		var eje: int = 0 if absf(dir.x) > absf(dir.y) else 1
 		if estado_semaforo(eje, a.hacia) != 0:
 			objetivo = 0.0
-	# Obstáculos por delante.
-	var libre: float = _distancia_libre(a, dir)
-	if libre < 9.0:
-		objetivo = minf(objetivo, maxf(0.0, (libre - 2.5) * 1.2))
+	# Coches aparcados en el carril: el coche se desplaza hacia el centro de la calle para pasar.
+	var meta_desvio: float = _meta_desvio(a, dir)
+	a.desvio = move_toward(a.desvio, meta_desvio, 2.0 * delta)
+	# Obstáculos por delante. Velocidad máxima desde la que aún se puede parar en el hueco libre
+	# frenando con 4 m/s² (los coches frenan hasta 6): ya no se montan unos sobre otros.
+	var libre: float = _distancia_libre(a, dir, meta_desvio)
+	var por_obstaculo: bool = false
+	if libre < VISTA_COCHE:
+		var seguro: float = sqrt(2.0 * 4.0 * maxf(0.0, libre - 1.5))
+		if seguro < objetivo:
+			objetivo = seguro
+			por_obstaculo = true
 	# Frenar un poco antes de llegar a un fondo de saco o cruce con giro: más lento.
 	if restante < 6.0:
 		objetivo = minf(objetivo, 5.0)
 	a.vel = move_toward(a.vel, objetivo, (6.0 if objetivo < a.vel else 3.0) * delta)
+	# Parado mucho tiempo por algo que tiene delante (un coche tuyo mal aparcado, una cola sin fin):
+	# se retira (se borra y aparecerá otro más lejos) en vez de bloquear la calle para siempre.
+	if por_obstaculo and a.vel < 0.1:
+		a.t_atasco += delta
+		if a.t_atasco > 40.0 and a.global_position.distance_to(_jugador.global_position) > 20.0:
+			a.set_meta("muerto", true)
+	else:
+		a.t_atasco = 0.0
 	a.d += a.vel * delta
 	if a.d >= largo_tramo:
-		var sobra: float = a.d - largo_tramo
-		_siguiente_nodo(a)
-		a.d = sobra
+		var elegido: Vector2i = _elegir_tramo(a)
+		if _tramo_ocupado(a, elegido):
+			# Un coche justo donde voy a aparecer (cruce, vuelta en un fondo de saco): espero en la raya.
+			a.d = largo_tramo - 0.05
+			a.vel = 0.0
+		else:
+			var sobra: float = a.d - largo_tramo
+			_tomar_tramo(a, elegido)
+			a.d = sobra
 	_colocar(a)
+
+
+# ¿Hay otro coche en el arranque del tramo al que voy a pasar? (Antes, al girar o dar la vuelta
+# aparecía uno encima de otro.)
+func _tramo_ocupado(a: Agente, elegido: Vector2i) -> bool:
+	var pa: Vector2 = a.red["pos"][a.hacia]
+	var pb: Vector2 = a.red["pos"][elegido]
+	var dir: Vector2 = (pb - pa).normalized()
+	var punto: Vector2 = pa + Vector2(-dir.y, dir.x) * a.lado
+	for o in _coches:
+		if o == a or not is_instance_valid(o):
+			continue
+		var q: Vector2 = Vector2(o.global_position.x, o.global_position.z)
+		if q.distance_to(punto) < (o as Agente).largo * 0.5 + a.largo * 0.5 + 2.0:
+			return true
+	return false
 
 
 func _mover_peaton(a: Agente, delta: float) -> void:

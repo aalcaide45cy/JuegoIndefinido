@@ -284,6 +284,15 @@ func _volar(delta: float) -> void:
 	var deseada: Vector3 = mando.limit_length(1.0) * rapidez
 	velocity = velocity.lerp(deseada, minf(1.0, delta * 8.0))
 	global_position += velocity * delta
+	# Volando no choca con el muro del borde del mundo (la máscara de choque está a 0): sin esto se
+	# podía salir al vacío de más allá de los 10 km y no había nada que ver ni suelo al volver.
+	var lim: Rect2 = Juego.limites_mundo.grow(-2.0)
+	var p: Vector3 = global_position
+	var q: Vector3 = Vector3(clampf(p.x, lim.position.x, lim.end.x), p.y, clampf(p.z, lim.position.y, lim.end.y))
+	if q != p:
+		global_position = q
+		velocity.x = 0.0 if q.x != p.x else velocity.x
+		velocity.z = 0.0 if q.z != p.z else velocity.z
 	if primera_persona:
 		_cuerpo.rotation.y = _giro
 	objetivo = null

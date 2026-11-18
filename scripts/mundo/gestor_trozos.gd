@@ -19,6 +19,8 @@ class_name GestorTrozos
 extends Node3D
 
 const SEMILLA: int = 1847
+# Solo para pruebas: `-- semilla=N` en la línea de comandos cambia el mundo generado (ver tests/aud_recorrido.gd).
+static var semilla_prueba: int = -1
 const RADIO_CERCA: float = 4.5      # En trozos de 128 m.
 const RADIO_LEJOS: float = 4.5      # En trozos de 512 m.
 const MAX_TAREAS: int = 4           # Trozos generándose a la vez.
@@ -46,7 +48,10 @@ var _t_suelo: float = 0.0
 
 
 func _ready() -> void:
-	GeneradorMundo.iniciar(SEMILLA, nucleo)
+	for arg in OS.get_cmdline_user_args():
+		if str(arg).begins_with("semilla="):
+			semilla_prueba = int(str(arg).substr(8))
+	GeneradorMundo.iniciar(SEMILLA if semilla_prueba < 0 else semilla_prueba, nucleo)
 	_material = StandardMaterial3D.new()
 	_material.vertex_color_use_as_albedo = true
 	_material.cull_mode = BaseMaterial3D.CULL_DISABLED   # (Seguro: si algún día se prueba el orden de caras, se puede cambiar.)
@@ -54,7 +59,7 @@ func _ready() -> void:
 	_malla_arbol = _crear_malla_arbol()
 	_mallas_veg = _crear_mallas_vegetacion()
 	_muros_del_borde()
-	print("Mundo grande listo: semilla %d, %d asentamientos." % [SEMILLA, GeneradorMundo.todos_asentamientos().size()])
+	print("Mundo grande listo: semilla %d, %d asentamientos." % [GeneradorMundo.semilla, GeneradorMundo.todos_asentamientos().size()])
 
 
 func _crear_forma_tronco() -> CylinderShape3D:
