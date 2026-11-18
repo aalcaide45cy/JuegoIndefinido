@@ -201,6 +201,54 @@ Recomendación: **A y B primero** (baratos y valen para todo). **C y D cuando el
 
 **Pasos para un host de juegos (cuando exista C/D):** 1) crear el servidor y elegir la plantilla del juego; 2) el host ejecuta SteamCMD y descarga el servidor; 3) el cliente rellena nombre, contraseña, puerto y máx. jugadores (genera `servidor.cfg`); 4) abrir el puerto UDP indicado; 5) arrancar; 6) el servidor aparece en la lista de Steam y los amigos entran por IP o código. Los detalles exactos (nombres de variables, puertos, AppID) se confirman con cada host al escribir `docs/SERVIDOR.md`.
 
+### 3.10 ¿Qué es la "plantilla" (Pterodactyl)?
+
+Muchas empresas que alquilan servidores de juegos usan un **panel web** para sus clientes. El más común y gratuito se llama **Pterodactyl**.
+Ese panel no sabe nada de nuestro juego. Una **plantilla** (en Pterodactyl se llama *egg*, "huevo") es un archivo pequeño que le explica:
+
+- qué imagen Docker o qué descarga usar,
+- con qué comando arrancar el servidor,
+- qué casillas enseñar al cliente (nombre, contraseña, máximo de jugadores…).
+
+Con ella, el cliente pulsa "Crear servidor de Elixir Clandestino", rellena cuatro casillas y listo, sin escribir comandos.
+Para nosotros es solo **un archivo de texto** que se hace al final, una vez que el servidor y Docker funcionan.
+
+### 3.11 Máximo de jugadores: estimación y cómo medirlo
+
+**Aviso honesto:** estas cifras son **estimaciones razonadas, no medidas**. El juego no está probado todavía en Godot y no hay servidor. Sirven para decidir cuánto diseñar, no para prometer nada.
+
+**Qué gasta el servidor por cada jugador:**
+
+1. **Red**: unos 10 mensajes por segundo de posición. Poco: unos 3-10 KB/s por jugador.
+2. **Zona del jugador**: peatones, tráfico, guardias y el trozo de mapa a su alrededor (colisiones). Es **lo más caro**, y se suma por jugador.
+3. **Vehículos**: un jugador conduciendo gasta más que uno andando, y más si va rápido, porque carga trozos nuevos sin parar.
+4. **Mundo común**: reloj, cultivos, economía. Casi gratis y no crece con los jugadores.
+
+Dos jugadores **juntos** comparten zona (se reparten el coste). Jugadores **dispersos** por el mapa de 10 km cuestan el máximo cada uno. Por eso el límite depende más de **cómo se reparten** que de cuántos son.
+
+**Estimación orientativa** (con la simulación por radio de 3.5, sin pantalla, y con peatones y tráfico moderados):
+
+| Servidor | Jugadores cómodos | Jugadores en el límite | Qué falla primero |
+|---|---|---|---|
+| **PC casero** (4-6 núcleos, buena CPU, fibra) | 4-8 | 12-16 | Subida de internet y la CPU de un solo núcleo |
+| **VPS pequeño** (2 núcleos, 4 GB, ~5 €/mes) | 3-6 | 8-10 | CPU compartida |
+| **VPS potente** (4-8 núcleos, 8-16 GB, ~20-40 €/mes) | 10-20 | 24-32 | Una hebra: Godot reparte mal la IA |
+| **Máximo teórico del diseño** (`max_jugadores`) | | 64 | Habría que poner varios servidores o simplificar la IA |
+
+Estas cifras salen de suponer que cada jugador "activo" cuesta algo parecido a **medio núcleo** (mundo local, IA cercana, físicas) y que el servidor acepta bien una carga de 4-6 núcleos con Godot. Puede salir mejor o bastante peor.
+
+**Lo que más sube el límite** (de más a menos efecto): bajar el radio de IA y de tráfico; menos peatones lejos del jugador; vehículos de IA simples; hilos para generar trozos; pasar los cálculos de zona del servidor a datos simples; actualizar la IA a 10 veces por segundo en vez de 60.
+
+**Cómo mediríamos el límite real** (en una fase propia, justo después del hito mínimo):
+
+1. **Clientes simulados** (*bots*): un modo `--bot` del propio juego, sin pantalla, que se conecta, camina por la ciudad, entra a tiendas, conduce y planta. Se ponen 10, 20, 40... en una sola máquina.
+2. **Tres recorridos**: todos agrupados en la plaza, todos dispersos por los 10 km, y la mitad conduciendo rápido (el peor caso).
+3. **Qué se mide**: tiempo por fotograma del servidor (objetivo: menos de 16 ms de media y nunca más de 50 ms), uso de CPU y memoria, ancho de banda por jugador y el **retardo** que ve un cliente.
+4. **Resultado**: una tabla "jugadores cómodos / máximo" por tipo de máquina, que se guarda en `docs/RENDIMIENTO.md`, y un valor recomendado de `max_jugadores` para cada tipo.
+5. **Servidor que se avisa solo**: cuando pasa de 30 ms de media, escribe un aviso en el registro; opcionalmente no deja entrar a más jugadores.
+
+Estimación de esfuerzo: **2-3 sesiones** (bots + pruebas de carga + una pasada de mejoras). Se hace después de la fase 4, y se repite al acabar las fases 5 y 6, porque cada sistema nuevo cambia el límite.
+
 ## 4. Qué hay que refactorizar del código actual
 
 Esta es la parte más grande. Resumen de lo que he visto en el código:
@@ -275,9 +323,10 @@ Esfuerzo orientativo en **sesiones de trabajo** (una sesión ≈ un hilo grande)
 | **7. Invitar y alojar fácil** | Código de sala (Worker) y UPnP; lista de servidores; WebSocket, guías de nube, consola y copias (ver 3.8) | 4-6 | "Dime el código" |
 | **8. Steam** | GodotSteam, lista de amigos, relé, logros de Steam; **servidor dedicado en Steam** (AppID de servidor, SteamCMD, lista de servidores) = opción C | 4-5 | Unirse desde Steam y servidores en la lista |
 | **8b. Plantilla Pterodactyl** | *Egg* para paneles de hosts de juegos, apoyado en C (opción D) | 1 | Hosts de juegos con un clic |
+| **8c. Pruebas de carga** | Bots, tres recorridos de prueba, `docs/RENDIMIENTO.md` y `max_jugadores` recomendado (3.11) | 2-3 | Tabla real de jugadores por máquina |
 | **9. Blindaje** | Anti-trampas, admin autorizado, reconexión, pruebas de carga | 3-4 | Servidor robusto |
 
-Total aproximado: **34-48 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
+Total aproximado: **36-51 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
 
 ### Primer hito mínimo viable (fases 0 a 4)
 
