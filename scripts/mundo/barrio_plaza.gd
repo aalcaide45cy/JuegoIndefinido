@@ -58,7 +58,7 @@ func construir() -> void:
 			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
 	var inmo: InmobiliariaMostrador = InmobiliariaMostrador.new()
-	inmo.position = Vector3(-10, 0, -10)
+	inmo.position = Vector3(-7.5, 0, -9)   # (A (-10,-10) tapaba el camino de patrulla de los guardias por la plaza.)
 	add_child(inmo)
 	registrar_poi(inmo, "Inmobiliaria", Color(0.5, 0.75, 1.0))
 	_decorar_plaza()
