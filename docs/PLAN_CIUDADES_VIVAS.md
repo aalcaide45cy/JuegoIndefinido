@@ -23,6 +23,27 @@ Todo está escrito en la nube y **sin probar en Godot**.
    ~90 aldeas, ~35 pueblos, ~10 ciudades). Si dos zonas se pisan, gana la más grande. Se calculan una
    sola vez al iniciar (seguro para los hilos de los trozos).
 
+## 2b. Hecho después en el mismo PR
+3. **Vida urbana** (`scripts/mundo/vida_urbana.gd`): peatones, coches y semáforos que solo existen a menos de ~110 m
+   del jugador. Peatones por aceras con pausas, de noche pocos y algunos "alegres", menos con lluvia, huyen si
+   tienes estrellas, se les puede herir (sube la sospecha). Coches por el carril derecho, giran en cruces, frenan
+   ante ti/otros coches/peatones y paran en rojo. Semáforos (10 s verde, 2 ámbar, 12 rojo) en todos los cruces de
+   las ciudades y en el centro de los pueblos; en la ciudad original, en las tres entradas de la plaza.
+4. **Variedad** (`generador_mundo.gd`): 6 estilos de pueblo (piedra, ladrillo, encalado, madera, pizarra, ocre) que
+   se eligen por semilla; cada casa varía color, tamaño (6-15 m), posición dentro del solar, altura de tejado,
+   azotea o tejado, chimenea, porche, anexo, torrecilla, color de puerta y ventanas; parques con fuente y árboles
+   que rompen la cuadrícula; farolas en los cruces.
+5. **Naturaleza**: además de pinos, robles, arbustos, rocas y flores (4 nuevos MultiMesh por trozo) según una
+   segunda capa de ruido de fertilidad y la altura.
+6. **Gasolineras de carretera**: una cada ~600 m en los tramos largos este-oeste, con marquesina, surtidores y
+   losa de hormigón; funcionan como las de los pueblos (E para usarlas).
+
+## 2c. Tamaño real del mapa
+10 km x 10 km = **100 km²** (100 millones de m²): como París dentro del periférico (105 km²), 1,7 veces Manhattan
+(59 km²) y 1/6 de Madrid ciudad (604 km²); parecido al mapa de GTA V. La ciudad original mide 440 x 240 m
+(10,5 ha, una milésima parte). A pie (3,5 m/s) cruzar el mapa tarda ~48 min, corriendo ~26 min, en coche
+(22 m/s) ~7,5 min, en avioneta (60 m/s) ~3 min.
+
 ## 3. Plan priorizado
 **P1 – Vida en la ciudad** (más valor, riesgo bajo)
 1. Peatones con rutinas día/noche: aparecen solo cerca del jugador sobre `RedCalles`; de día pasean y

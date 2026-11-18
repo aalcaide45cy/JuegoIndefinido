@@ -50,6 +50,36 @@ const COLORES_PARED: Array = [Color(0.78, 0.7, 0.55), Color(0.7, 0.55, 0.4), Col
 		Color(0.66, 0.42, 0.34), Color(0.82, 0.78, 0.68), Color(0.5, 0.52, 0.56)]
 const COLORES_TECHO: Array = [Color(0.45, 0.2, 0.15), Color(0.3, 0.3, 0.34), Color(0.38, 0.25, 0.18)]
 
+# Estilos de asentamiento: cada pueblo elige uno (por semilla) y además varía por casa, para que
+# no se noten patrones. "pitch" = altura del tejado, "plano" = probabilidad de azotea,
+# "ancho" = multiplicador del tamaño de las casas, "vacio" = probabilidad de solar vacío.
+const ESTILOS: Array = [
+	{"nombre": "piedra clara", "paredes": [Color(0.78, 0.7, 0.55), Color(0.82, 0.78, 0.68), Color(0.7, 0.66, 0.6)],
+			"techos": [Color(0.55, 0.25, 0.18), Color(0.5, 0.22, 0.15)], "pitch": 2.4, "plano": 0.05, "ancho": 1.0, "vacio": 0.12},
+	{"nombre": "ladrillo", "paredes": [Color(0.66, 0.42, 0.34), Color(0.6, 0.36, 0.3), Color(0.7, 0.5, 0.4)],
+			"techos": [Color(0.3, 0.3, 0.34), Color(0.25, 0.26, 0.3)], "pitch": 2.0, "plano": 0.1, "ancho": 1.0, "vacio": 0.1},
+	{"nombre": "encalado", "paredes": [Color(0.9, 0.9, 0.86), Color(0.88, 0.86, 0.8), Color(0.85, 0.9, 0.92)],
+			"techos": [Color(0.2, 0.35, 0.55), Color(0.6, 0.25, 0.2)], "pitch": 1.6, "plano": 0.4, "ancho": 0.9, "vacio": 0.2},
+	{"nombre": "madera", "paredes": [Color(0.45, 0.32, 0.22), Color(0.5, 0.38, 0.26), Color(0.38, 0.28, 0.2)],
+			"techos": [Color(0.25, 0.2, 0.17), Color(0.3, 0.25, 0.2)], "pitch": 3.1, "plano": 0.0, "ancho": 0.85, "vacio": 0.22},
+	{"nombre": "pizarra", "paredes": [Color(0.5, 0.52, 0.56), Color(0.58, 0.6, 0.62), Color(0.45, 0.47, 0.5)],
+			"techos": [Color(0.2, 0.22, 0.26), Color(0.18, 0.2, 0.22)], "pitch": 2.8, "plano": 0.08, "ancho": 1.1, "vacio": 0.14},
+	{"nombre": "ocre", "paredes": [Color(0.86, 0.7, 0.45), Color(0.9, 0.6, 0.4), Color(0.8, 0.55, 0.35)],
+			"techos": [Color(0.7, 0.3, 0.2), Color(0.62, 0.28, 0.18)], "pitch": 1.8, "plano": 0.3, "ancho": 1.0, "vacio": 0.18},
+]
+
+
+static func estilo_de(sid: int) -> Dictionary:
+	return ESTILOS[_h(sid, 31, 500) % ESTILOS.size()]
+
+
+# Cambia un poco el tono, la saturación y el brillo (cada casa, un color propio).
+static func _variar(col: Color, a: int, b: int, c: int) -> Color:
+	var h: float = fposmod(col.h + (_f(a, b, c) - 0.5) * 0.04, 1.0)
+	var sat: float = clampf(col.s * (0.85 + _f(a, b, c + 1) * 0.3), 0.0, 1.0)
+	var v: float = clampf(col.v * (0.86 + _f(a, b, c + 2) * 0.26), 0.0, 1.0)
+	return Color.from_hsv(h, sat, v)
+
 
 # Prepara el generador. "rect_nucleo" es el rectángulo que ocupa la ciudad original.
 static func iniciar(sem: int, rect_nucleo: Rect2) -> void:
@@ -527,15 +557,19 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 		return _servicio_edificio(s, k, l, serv) if sub == 0 else {}
 	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
 	var clave: int = k * 101 + l
-	if _f(sid, clave + 7919, sub * 16) < (0.1 if tipo > 0 else 0.15):
+	var est: Dictionary = estilo_de(sid)
+	if es_parque(s, k, l):
+		return {}
+	var vacio: float = float(est["vacio"]) * (1.0 if tipo == 0 else 0.7)
+	if _f(sid, clave + 7919, sub * 16) < vacio:
 		return {}
 	var p: Vector2 = s["pos"]
 	var a: int = sub % 2
 	var b: int = sub / 2
-	var ancho: float = 9.0 + 5.0 * _f(sid, clave, sub * 16 + 1)
-	var fondo: float = 9.0 + 5.0 * _f(sid, clave, sub * 16 + 2)
-	var cx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0 + a * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 3) - 0.5) * 2.0
-	var cz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0 + b * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 4) - 0.5) * 2.0
+	var r1: float = _f(sid, clave, sub * 16 + 1)
+	var r2: float = _f(sid, clave, sub * 16 + 2)
+	var ancho: float = clampf((7.0 + 8.5 * pow(r1, 1.4)) * float(est["ancho"]), 6.0, 15.5)
+	var fondo: float = clampf(7.0 + 8.0 * pow(r2, 1.2), 6.5, 15.5)
 	var r: float = _f(sid, clave, sub * 16 + 5)
 	var pisos: int = 1 + int(r * 2.0)
 	if tipo == 2:
@@ -543,16 +577,27 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 		pisos = 1 + int(r * 3.0) + (2 if cerca < 2.0 else 0)
 	var distrito: String = distrito_de(s, k, l)
 	if distrito == "rico":
-		ancho += 2.0
-		fondo += 1.0
+		ancho = minf(ancho + 2.0, 15.5)
+		fondo = minf(fondo + 1.0, 15.5)
 		pisos = maxi(2, pisos)
 	elif distrito == "industrial":
 		pisos = 1
-		ancho += 2.0
+		ancho = minf(ancho + 2.0, 15.5)
+	# La casa se mueve dentro de su solar de 18 m (más holgura cuanto más pequeña).
+	var holgura_x: float = maxf(0.0, (18.0 - ancho) / 2.0 - 0.4)
+	var holgura_z: float = maxf(0.0, (18.0 - fondo) / 2.0 - 0.4)
+	var cx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0 + a * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 3) * 2.0 - 1.0) * holgura_x
+	var cz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0 + b * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 4) * 2.0 - 1.0) * holgura_z
+	var v: int = _h(sid, clave, sub * 16 + 9)
+	var paredes: Array = est["paredes"]
+	var techos: Array = est["techos"]
+	var pared: Color = _variar(paredes[_h(sid, clave, sub * 16 + 6) % paredes.size()], sid, clave, sub * 16 + 10)
+	var techo: Color = _variar(techos[_h(sid, clave, sub * 16 + 7) % techos.size()], sid, clave, sub * 16 + 11)
+	var plano: bool = pisos > 3 or _f(sid, clave, sub * 16 + 12) < float(est["plano"])
 	var c: Dictionary = {"x": cx, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
-			"alto": pisos * 3.2, "puerta": -1 if b == 0 else 1, "plano": pisos > 3,
-			"color": COLORES_PARED[_h(sid, clave, sub * 16 + 6) % COLORES_PARED.size()],
-			"techo": COLORES_TECHO[_h(sid, clave, sub * 16 + 7) % COLORES_TECHO.size()], "id": ""}
+			"alto": pisos * (3.0 + _f(sid, clave, sub * 16 + 13) * 0.5), "puerta": -1 if b == 0 else 1, "plano": plano,
+			"color": pared, "techo": techo, "id": "", "pitch": float(est["pitch"]) * (0.8 + _f(sid, clave, sub * 16 + 14) * 0.5),
+			"var": v}
 	if distrito == "industrial":
 		c["color"] = (c["color"] as Color).darkened(0.35)
 	elif distrito == "rico":
@@ -562,6 +607,17 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	if _f(sid, clave + 31, sub * 16 + 8) < prob_alquiler:
 		c["id"] = "w_c_%d_%d_%d_%d_%d" % [s["ci"], s["cj"], k, l, sub]
 	return c
+
+
+# Bloques que son parque o plaza (sin casas): rompen la cuadrícula. No en el centro ni con servicios.
+static func es_parque(s: Dictionary, k: int, l: int) -> bool:
+	var tipo: int = s["tipo"]
+	if tipo == 0 or servicio_de(s, k, l) != "":
+		return false
+	if distrito_de(s, k, l) == "centro":
+		return false
+	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
+	return _f(sid, k * 101 + l, 77) < 0.08
 
 
 static func _casas_en(s: Dictionary, rect: Rect2) -> Array:
@@ -754,14 +810,16 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 	if bool(c["plano"]):
 		mb.caja(Vector3(c["x"], y + alto + 0.2, c["z"]), Vector3(w + 0.4, 0.4, d + 0.4), (c["techo"] as Color).darkened(0.2))
 	else:
-		mb.techo(Vector3(c["x"], y + alto, c["z"]), w + 0.8, d + 0.8, 2.2, c["techo"])
+		mb.techo(Vector3(c["x"], y + alto, c["z"]), w + 0.8, d + 0.8, float(c.get("pitch", 2.2)), c["techo"])
 	if not detalle:
 		return
+	_extras_casa(mb, c)
 	var cara: float = float(c["puerta"])
 	var zf: float = c["z"] + cara * (d / 2.0 + 0.04)
 	if not hueca:
-		mb.caja(Vector3(c["x"], y + 1.05, zf), Vector3(1.1, 2.1, 0.1), Color(0.25, 0.15, 0.1))
-	var vent: Color = Color(0.12, 0.17, 0.26)
+		var puertas: Array = [Color(0.25, 0.15, 0.1), Color(0.15, 0.25, 0.2), Color(0.4, 0.12, 0.1), Color(0.18, 0.2, 0.3)]
+		mb.caja(Vector3(c["x"], y + 1.05, zf), Vector3(1.1, 2.1, 0.1), puertas[(int(c.get("var", 0)) / 7) % 4])
+	var vent: Color = [Color(0.12, 0.17, 0.26), Color(0.16, 0.2, 0.2), Color(0.2, 0.17, 0.12)][int(c.get("var", 0)) % 3]
 	for piso in int(c["pisos"]):
 		for lado in [-1.0, 1.0]:
 			for pared in [1.0, -1.0]:
@@ -774,6 +832,37 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 		mb.caja(Vector3(c["x"], y + 2.9, zf + cara * 0.04), Vector3(1.6, 0.5, 0.08), Color(0.2, 0.65, 0.3))
 	if c.has("servicio"):
 		_decorar_servicio(mb, c)
+
+
+# Detalles que cambian de una casa a otra: chimenea, porche, anexo trasero y torrecilla.
+static func _extras_casa(mb: ConstructorMalla, c: Dictionary) -> void:
+	if c.has("servicio"):
+		return
+	var v: int = int(c.get("var", 0))
+	var y: float = c["y"]
+	var x: float = c["x"]
+	var z: float = c["z"]
+	var w: float = c["w"]
+	var d: float = c["d"]
+	var alto: float = c["alto"]
+	var cara: float = float(c["puerta"])
+	var piedra: Color = (c["color"] as Color).darkened(0.3)
+	if v % 3 == 0 and not bool(c["plano"]):   # Chimenea.
+		mb.caja(Vector3(x + w * 0.22 * (1.0 if (v / 5) % 2 == 0 else -1.0), y + alto + 1.8, z - cara * d * 0.15),
+				Vector3(0.7, 2.2, 0.7), piedra)
+	if (v / 3) % 4 == 0:   # Porche sobre la puerta.
+		var zp: float = z + cara * (d / 2.0 + 1.0)
+		mb.caja(Vector3(x, y + 2.7, zp), Vector3(3.0, 0.18, 2.0), (c["techo"] as Color))
+		for sx in [-1.3, 1.3]:
+			mb.caja(Vector3(x + sx, y + 1.3, zp + cara * 0.8), Vector3(0.15, 2.6, 0.15), Color(0.35, 0.25, 0.18))
+	if (v / 12) % 5 == 0 and d < 12.5:   # Anexo por detrás (cobertizo).
+		var za: float = z - cara * (d / 2.0 + 1.2)
+		mb.caja(Vector3(x + w * 0.1, y + 1.2, za), Vector3(w * 0.55, 2.4, 2.4), (c["color"] as Color).darkened(0.12))
+		mb.caja(Vector3(x + w * 0.1, y + 2.5, za), Vector3(w * 0.55 + 0.4, 0.2, 2.8), (c["techo"] as Color).darkened(0.15))
+	if int(c["pisos"]) >= 2 and ((v / 60) % 9 == 0 or str(c.get("distrito", "")) == "rico"):   # Torrecilla en una esquina.
+		var sx2: float = 1.0 if (v / 11) % 2 == 0 else -1.0
+		mb.caja(Vector3(x + sx2 * (w / 2.0 - 1.4), y + alto + 1.6, z + cara * (d / 2.0 - 1.4)), Vector3(2.4, 3.2, 2.4), c["color"])
+		mb.techo(Vector3(x + sx2 * (w / 2.0 - 1.4), y + alto + 3.2, z + cara * (d / 2.0 - 1.4)), 3.0, 3.0, 2.0, c["techo"])
 
 
 # Franja de color sobre la puerta de un servicio y, en la gasolinera, marquesina con dos surtidores.
@@ -937,6 +1026,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 				var cara: float = casa_d["puerta"]
 				props.append({"id": casa_d["id"], "tipo": "casa",
 						"pos": Vector3(casa_d["x"], casa_d["y"] + 1.0, float(casa_d["z"]) + cara * (float(casa_d["d"]) / 2.0 + 0.3))})
+		_decorar_asentamiento(objetos, s, rect)
 		for h in huertos_de(s):
 			var hc: Vector2 = h["ctr"]
 			if not rect.has_point(hc):
@@ -946,12 +1036,154 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 			props.append({"id": h["id"], "tipo": "huerto", "pos": Vector3(gate.x, h["y"], gate.y),
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
+	for est in _gasolineras_de_carretera(rect, segs):
+		_edificio(objetos, est, true)
+		var base_y: float = est["y"]
+		objetos.caja(Vector3(est["x"], base_y - 0.45, float(est["z"]) + float(est["puerta"]) * 6.0),
+				Vector3(24.0, 1.0, 26.0), Color(0.3, 0.3, 0.32))   # Losa de hormigón (tapa las pendientes).
+		props.append({"tipo": "servicio", "serv": "gasolinera", "pos": _punto_servicio(est)})
 	if not objetos.esta_vacio():
 		superficies.append(objetos.superficie())
 		caras.append_array(objetos.vertices)
 
 	return {"superficies": superficies, "caras": caras, "arboles": _arboles(x0, z0, rect, lista, segs),
-			"props": props}
+			"veg": _vegetacion(x0, z0, rect, lista, segs), "props": props}
+
+
+# Parques (bloques sin casas) y farolas en los cruces de pueblos y ciudades.
+static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+	var tipo: int = s["tipo"]
+	if tipo == 0:
+		return
+	var n: int = s["n"]
+	var p: Vector2 = s["pos"]
+	var y: float = s["base"]
+	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
+	var poste: Color = Color(0.14, 0.14, 0.16)
+	for k in range(-n, n + 1):
+		for l in range(-n, n + 1):
+			var cx: float = p.x + k * BLOQUE
+			var cz: float = p.y + l * BLOQUE
+			if rect.has_point(Vector2(cx, cz)) and _f(sid, k * 101 + l, 90) < 0.75:
+				var sx: float = 1.0 if _f(sid, k * 101 + l, 91) < 0.5 else -1.0
+				var sz: float = 1.0 if _f(sid, k * 101 + l, 92) < 0.5 else -1.0
+				mb.caja(Vector3(cx + sx * 5.0, y + 2.3, cz + sz * 5.0), Vector3(0.18, 4.6, 0.18), poste)
+				mb.caja(Vector3(cx + sx * 4.6, y + 4.6, cz + sz * 5.0), Vector3(0.9, 0.18, 0.35), Color(1.0, 0.9, 0.6))
+			if k < n and l < n and es_parque(s, k, l):
+				var bx: float = cx + CALLE_ANCHO / 2.0 + 18.0
+				var bz: float = cz + CALLE_ANCHO / 2.0 + 18.0
+				if not rect.has_point(Vector2(bx, bz)):
+					continue
+				var cid: int = k * 101 + l
+				mb.caja(Vector3(bx, y + 0.06, bz), Vector3(34.0, 0.14, 34.0), Color(0.22, 0.42, 0.18))
+				if _f(sid, cid, 78) < 0.5:   # Con fuente.
+					mb.cono(Vector3(bx, y, bz), 3.0, 0.9, 12, Color(0.55, 0.55, 0.58), 2.6)
+					mb.caja(Vector3(bx, y + 0.8, bz), Vector3(1.6, 1.2, 1.6), Color(0.5, 0.5, 0.54))
+				for i in 6:
+					var tx: float = bx + (_f(sid, cid, 80 + i) - 0.5) * 28.0
+					var tz: float = bz + (_f(sid, cid, 90 + i) - 0.5) * 28.0
+					if absf(tx - bx) < 4.5 and absf(tz - bz) < 4.5:
+						continue
+					var alt: float = 2.2 + 1.6 * _f(sid, cid, 100 + i)
+					mb.caja(Vector3(tx, y + alt / 2.0, tz), Vector3(0.5, alt, 0.5), Color(0.3, 0.2, 0.12))
+					mb.cono(Vector3(tx, y + alt - 0.4, tz), 2.0 + _f(sid, cid, 110 + i), 3.2, 8,
+							Color(0.18, 0.4, 0.15).lerp(Color(0.4, 0.45, 0.15), _f(sid, cid, 120 + i)))
+				for i in 4:
+					var ang: float = TAU * float(i) / 4.0 + 0.4
+					mb.caja(Vector3(bx + cos(ang) * 7.5, y + 0.5, bz + sin(ang) * 7.5), Vector3(2.0, 0.5, 0.6), Color(0.4, 0.28, 0.18))
+
+
+# Gasolineras sueltas junto a las carreteras largas (cada ~600 m). Devuelve edificios de servicio
+# ya colocados (misma forma que _servicio_edificio) cuyo centro cae en "rect".
+static func _gasolineras_de_carretera(rect: Rect2, segs: Array) -> Array:
+	var out: Array = []
+	for sg in segs:
+		if int(sg[3]) != 1:
+			continue
+		var a: Vector2 = sg[0]
+		var b: Vector2 = sg[1]
+		var largo: float = a.distance_to(b)
+		if largo < 350.0 or absf(b.x - a.x) < absf(b.y - a.y):
+			continue   # Solo tramos largos y más bien de este a oeste (la marquesina mira al norte o al sur).
+		var ha: int = int(a.x) * 7 + int(a.y) * 13 + int(b.x) * 17 + int(b.y) * 19
+		var cuantas: int = maxi(1, int(largo / 600.0))
+		for i in cuantas:
+			var t: float = (float(i) + 0.3 + 0.4 * _f(ha, i, 41)) / float(cuantas)
+			var pt: Vector2 = a.lerp(b, t)
+			var norte: bool = _f(ha, i, 42) < 0.5
+			var dz: float = -22.0 if norte else 22.0
+			var pos: Vector2 = Vector2(pt.x, pt.y + dz)
+			if not rect.has_point(pos):
+				continue
+			var hs: Array = [altura(pos.x - 10.0, pos.y), altura(pos.x + 10.0, pos.y),
+					altura(pos.x, pos.y - 12.0), altura(pos.x, pos.y + 12.0), altura(pos.x, pos.y)]
+			var h_max: float = -INF
+			for hv in hs:
+				h_max = maxf(h_max, hv)
+			var h_min: float = INF
+			for hv in hs:
+				h_min = minf(h_min, hv)
+			if h_max - h_min > 5.0 or h_max > 80.0:
+				continue   # Demasiado empinado (monte).
+			var cara: float = 1.0 if norte else -1.0
+			var est: Dictionary = {"x": pos.x, "z": pos.y, "y": h_max + 0.2, "w": 8.0, "d": 6.0, "pisos": 1, "alto": 4.0,
+					"puerta": cara, "plano": true, "color": COLOR_SERVICIO["gasolinera"],
+					"techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": "gasolinera", "var": 1}
+			out.append(est)
+	return out
+
+
+# Vegetación variada (además de los pinos): robles, arbustos, rocas y flores. Devuelve cuatro
+# buffers de MultiMesh (12 floats por instancia, como los pinos) en este orden.
+static func _vegetacion(x0: float, z0: float, rect: Rect2, lista: Array, segs: Array) -> Array:
+	var roble: PackedFloat32Array = PackedFloat32Array()
+	var arbusto: PackedFloat32Array = PackedFloat32Array()
+	var roca: PackedFloat32Array = PackedFloat32Array()
+	var flor: PackedFloat32Array = PackedFloat32Array()
+	var zona_nucleo: Rect2 = nucleo.grow(30.0)
+	var paso: float = 6.0
+	var gx0: int = floori(x0 / paso)
+	var gz0: int = floori(z0 / paso)
+	var ncel: int = int(TROZO / paso) + 1
+	for i in ncel:
+		for j in ncel:
+			var gx: int = gx0 + i
+			var gz: int = gz0 + j
+			var x: float = (gx + 0.5 + (_f(gx, gz, 31) - 0.5) * 0.9) * paso
+			var z: float = (gz + 0.5 + (_f(gx, gz, 32) - 0.5) * 0.9) * paso
+			if not rect.has_point(Vector2(x, z)) or zona_nucleo.has_point(Vector2(x, z)):
+				continue
+			var dentro: bool = false
+			for s in lista:
+				var pp: Vector2 = s["pos"]
+				if maxf(absf(x - pp.x), absf(z - pp.y)) < float(s["plano"]) + 5.0:
+					dentro = true
+					break
+			if dentro:
+				continue
+			var h: float = altura_lista(x, z, lista)
+			var pinar: float = densidad_bosque(x, z, h)
+			var fertil: float = smoothstep(-0.2, 0.4, _r_bosque.get_noise_2d(x + 5000.0, z - 3000.0))
+			var pos: Vector2 = Vector2(x, z)
+			var azar: float = _f(gx, gz, 33)
+			var giro: float = TAU * _f(gx, gz, 35)
+			var esc: float = 0.7 + 0.8 * _f(gx, gz, 34)
+			var cs: float = cos(giro) * esc
+			var sn: float = sin(giro) * esc
+			var m: PackedFloat32Array = PackedFloat32Array([cs, 0.0, sn, x, 0.0, esc, 0.0, h - 0.1, -sn, 0.0, cs, z])
+			if azar < 0.1 and h < 70.0 and fertil > 0.35 and pinar < 0.5:
+				if not _distancia_a_carreteras(pos, segs, 5.0):
+					roble.append_array(m)
+			elif azar < 0.3 and h < 100.0:
+				if _f(gx, gz, 36) < 0.25 + 0.5 * maxf(fertil, pinar) and not _distancia_a_carreteras(pos, segs, 3.5):
+					arbusto.append_array(m)
+			elif azar < 0.34 and (h > 40.0 or _f(gx, gz, 37) < 0.3):
+				if not _distancia_a_carreteras(pos, segs, 4.5):
+					roca.append_array(m)
+			elif azar < 0.56 and fertil > 0.2 and h < 60.0 and pinar < 0.4:
+				if not _distancia_a_carreteras(pos, segs, 2.5):
+					flor.append_array(m)
+	return [roble, arbusto, roca, flor]
 
 
 # Pinos: una cuadrícula de 8 m con desplazamiento al azar; crecen donde manda el ruido del bosque.
