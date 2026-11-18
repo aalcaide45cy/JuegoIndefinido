@@ -10,6 +10,7 @@ extends Interactuable
 # Dónde aparece lo comprado (coordenadas locales del quiosco) y hacia dónde mira.
 var entrega: Vector3 = Vector3(0, 0.05, -10.0)
 var giro_entrega: float = 0.0
+var categorias: Array = []   # Vacío = vende de todo (ver Vehiculo.TIPOS, campo "cat").
 
 
 func _ready() -> void:
@@ -23,11 +24,12 @@ func _ready() -> void:
 
 
 func texto_accion() -> String:
-	return "Concesionario: comprar coches, furgonetas, camiones y tractores"
+	return "Concesionario: comprar y vender vehículos"
 
 
 func usar(jugador: Node) -> void:
 	var v: VentanaConcesionario = VentanaConcesionario.new()
 	v.punto = to_global(entrega)
 	v.giro = global_rotation.y + giro_entrega
+	v.categorias = categorias
 	jugador.hud.abrir_ventana(v)

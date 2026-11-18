@@ -44,7 +44,7 @@ func _crear(id_v: String, d: Dictionary) -> Vehiculo:
 			return v as Vehiculo   # Ese lo estás conduciendo ahora.
 	var v: Vehiculo = Vehiculo.new()
 	v.tipo = str(d["tipo"])
-	v.id = id_v if not id_v.begins_with("amb_") or Juego.vehiculos.has(id_v) else id_v
+	v.id = id_v
 	v.gasolina = float(d.get("gas", 100.0))
 	v.salud = float(d.get("salud", 100.0))
 	add_child(v)
@@ -60,3 +60,14 @@ func entregar(tipo: String, pos: Vector3, giro: float) -> String:
 	Juego.vehiculos[id_v] = {"tipo": tipo, "pos": [pos.x, pos.y, pos.z], "giro": giro, "gas": 60.0, "salud": 100.0}
 	_crear(id_v, Juego.vehiculos[id_v])
 	return id_v
+
+
+# Quita un vehículo tuyo del juego (venta). Devuelve false si lo estás conduciendo.
+func retirar(id_v: String) -> bool:
+	for v in get_tree().get_nodes_in_group("vehiculos"):
+		if v is Vehiculo and (v as Vehiculo).id == id_v:
+			if (v as Vehiculo).conductor != null:
+				return false
+			(v as Vehiculo).queue_free()
+	Juego.vehiculos.erase(id_v)
+	return true
