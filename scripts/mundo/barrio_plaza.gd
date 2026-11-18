@@ -13,6 +13,8 @@
 class_name BarrioPlaza
 extends Barrio
 
+const Propiedades = preload("res://scripts/datos/propiedades.gd")
+
 const MITAD: float = 20.0   # La plaza va de -20 a 20 en X y en Z.
 const FONDO_CASAS: float = 8.0
 const ANCHO_HERBORISTERIA: float = 10.0
@@ -51,7 +53,7 @@ func construir() -> void:
 	calle(Vector3(-16, 0, MITAD + 4), 8.0, 8.0, false)
 
 	_herboristeria()
-	vivienda("plaza", GameData.PRECIO_ALQUILER, Vector3(MITAD, 0, 0), -PI / 2.0)
+	vivienda("plaza", int(Propiedades.ficha("plaza")["alquiler"]), Vector3(MITAD, 0, 0), -PI / 2.0)
 	tienda_con_interior(Vector3(-MITAD, 0, 0), PI / 2.0, "FERRETERÍA  Clavo y Martillo", "ferreteria",
 			"Ferretería Clavo y Martillo", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4))
 	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",

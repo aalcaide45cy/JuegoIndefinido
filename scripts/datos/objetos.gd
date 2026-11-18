@@ -33,7 +33,7 @@ const LISTA: Dictionary = {
 	},
 	"semilla_sepulcral": {
 		"nombre": "Espora de Hongo Sepulcral", "tipo": "semilla", "pila": 20, "precio": 15,
-		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"tienda": "herbolario", "nivel": 2, "habilidad": "",
 		"color": Color(0.62, 0.58, 0.7), "forma": "bolsita",
 		"descripcion": "Tarda más, pero sus pociones se pagan mejor.",
 		"hierba": "sepulcral",
@@ -144,13 +144,13 @@ const LISTA: Dictionary = {
 	},
 	"gallina": {
 		"nombre": "Gallina", "tipo": "animal", "pila": 1, "precio": 45,
-		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"tienda": "herbolario", "nivel": 4, "habilidad": "",
 		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
 		"descripcion": "Mételas en el gallinero de la granja (E). Cada una pone un huevo por minuto.",
 	},
 	"vaca": {
 		"nombre": "Vaca", "tipo": "animal", "pila": 1, "precio": 260,
-		"tienda": "herbolario", "nivel": 1, "habilidad": "",
+		"tienda": "herbolario", "nivel": 6, "habilidad": "",
 		"color": Color(0.9, 0.85, 0.7), "forma": "saco",
 		"descripcion": "Métela en el establo de la granja (E). Da leche cada 2 minutos.",
 	},

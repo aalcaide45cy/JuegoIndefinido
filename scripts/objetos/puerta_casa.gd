@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------------
 # La puerta de la vivienda en alquiler.
 #   - Mientras no la alquilas, está cerrada con llave y pone "SE ALQUILA".
-#     Pulsa E para pagar el alquiler (GameData.PRECIO_ALQUILER).
+#     Pulsa E para pagar el alquiler (propiedades.gd).
 #   - Cuando ya es tuya, E la abre y la cierra.
 # La puerta gira sobre una bisagra en su borde izquierdo.
 # -----------------------------------------------------------------------------
@@ -13,7 +13,7 @@ const ANCHO: float = 1.2
 const ALTO: float = 2.3
 
 var id_casa: String = "plaza"     # Identificador de la vivienda (para el alquiler y el guardado).
-var precio: int = GameData.PRECIO_ALQUILER
+var precio: int = 100   # (Las viviendas fijas ponen su precio de scripts/datos/propiedades.gd.)
 var abierta: bool = false
 var cartel: Label3D = null   # El cartel "SE ALQUILA" (lo pone quien crea la puerta).
 
