@@ -38,7 +38,7 @@ carga, propiedades en varios barrios, reputación alta con los clientes. Aquí e
 sospecha. La guardia te cachea, te registra la casa o te persigue. Es lo que hace que
 vender de noche por la ventana o llevar cosas encima tenga un coste.
 
-Lo que falta para cerrar el bucle: gastos que se repitan, personal que trabaje por ti,
+Lo que falta para cerrar el bucle: más gastos que se repitan (el personal ya cobra por día),
 progresión de riesgo (más policía cuanto más rico eres) y una meta final.
 
 ---
@@ -64,6 +64,7 @@ progresión de riesgo (más policía cuanto más rico eres) y una meta final.
 | Vehículos | `vehiculos/vehiculo.gd`, `gestor_vehiculos.gd`, `objetos/concesionario.gd` | `Vehiculo.TIPOS` | Hecho (otro hilo sigue en ello) |
 | Policía | `combate/guardia.gd`, `ui/cacheo.gd`, `juego.registrar_casa()` | sospecha 0-100, alerta | Hecho |
 | Combate y armas | `combate/combate.gd`, `proyectil.gd`, `c4_carga.gd`, `diana.gd` | daño en `objetos.gd` | Hecho |
+| Personal (bolsa de trabajo, sueldo diario) | `gestor_personal.gd`, `datos/personal.gd` | 3 oficios, máx. 8 | Hecho (nuevo, sin probar) |
 | Montaje de objetos | `objetos/colocable.gd` | lámpara y foco | Hecho |
 | Aspecto del jugador | `jugador/aspecto.gd`, `ui/ventana_aspecto.gd` | trajes, sombrero | Hecho |
 | Mundo | `mundo/mundo.gd`, `barrio_*.gd`, `red_calles.gd`, `construir.gd`, `ciclo_dia.gd` | calles a mano | ~400 x 220 m, construido de golpe |
@@ -214,8 +215,17 @@ manzanos.
   Cruzar 10 km en sedán son unos 8 minutos: **unos 80 a 100 $ de gasolina**. Es poco frente a los ingresos.
 
 **Diagnóstico**: con unos 5.000 a 8.000 $/h, el deportivo se compra en 2 horas y la avioneta en unas
-20. Pero los gastos son todos **de una sola vez**. Nada cuesta dinero cada día (alquiler, impuestos,
-sueldos, mantenimiento), así que el dinero solo sube. Las multas son ridículas cuando se tiene mucho.
+20. Pero los gastos son casi todos **de una sola vez**. El único recurrente es el sueldo del personal (muy bajo,
+ver 5.5b); alquiler, impuestos y mantenimiento no existen, así que el dinero solo sube. Las multas son ridículas cuando se tiene mucho.
+
+### 5.5b Personal (añadido por otro hilo mientras se escribía esto)
+Agricultor 40 $/día, ganadero 35 $/día, guardaespaldas 60 $/día (suben con el nivel del empleado).
+Un día de juego dura **60 minutos reales**, así que un agricultor cuesta 40 $ por hora. Un huerto
+grande rinde unos 6.000-8.000 $/h: **el sueldo es el 0,5 % de lo que produce**. Es el único gasto
+recurrente y no pesa. Propuesta: sueldo del 25 % al 40 % de lo que rinde el puesto (agricultor
+~1.500 $/día en huerto grande), o duración del día más corta (20 a 24 min). Además el ganador
+claro es el agricultor en huerto G/H; tiene que haber algo que lo limite (cosecha del 70 al 100 %,
+semillas del almacén, un solo agricultor por huerto).
 
 ### 5.6 Objetivo de ritmo (propuesta)
 Dinero ganado por hora de juego, según etapa, para que cada compra grande llegue cuando toca:
@@ -422,7 +432,7 @@ Pequeños (de datos), el resto en `MEJORAS.md`:
 7. Solo hay 3 pociones y 2 hierbas; todas se abren en el nivel 1.
 8. Las habilidades solo abren compras.
 9. Multas y confiscaciones no escalan con la riqueza.
-10. Falta el negocio legal (tienda propia, personal), pedido en la cola de Alfonso.
+10. Falta el negocio legal (tienda propia). El personal ya existe, pero cobra muy poco para lo que produce.
 11. Los encargos usan 10 puntos fijos de la ciudad actual.
 12. `RedCalles` y los nodos de guardias están hechos a mano.
 13. Gasolina: no hay gasolineras (solo bidón en la ferretería). Cruzar el mapa cuesta ~90 $: hace falta gasolineras repartidas y precio más alto.

@@ -40,6 +40,8 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
   (hierba Sepulcral nivel 2, empaquetadora nivel 2, vacas nivel 6, huertos grandes nivel 7-10…).
   Solo hace falta usar el campo `nivel` que ya existe.
 - [ ] **Metas encadenadas en el móvil** (M): 6 misiones con recompensa. `ui/telefono.gd`, `juego.gd`.
+- [ ] **Subir los sueldos del personal** (S): hoy 35-60 $/día frente a 6.000+ $/h que rinde un huerto grande.
+  Sueldo ≈ 25-40 % de lo que rinde el puesto, o día de 20-24 min. `datos/personal.gd`, `juego.gd`.
 - [ ] **Multas proporcionales** (S): cacheo = 5 % del dinero + valor de lo confiscado; registro de casa
   igual; morir = 10 a 20 % con mínimo. `ui/cacheo.gd`, `juego.gd`, `jugador.gd`.
 
@@ -47,8 +49,8 @@ Escala: **P0** = hacer antes que nada (arregla datos o evita rehacer trabajo), *
 
 - [ ] **Chunks y mapa de 10 x 10 km** (L, por hitos M0 a M7 de `DISENO.md` sección 7.5). Empezar por
   `GestorChunks` + límite fijo + red de carreteras en datos.
-- [ ] **Negocio legal y personal** (L): tienda propia (alquilar un local), empleados con sueldo diario que
-  cultivan, empaquetan o venden, y que den ingresos pasivos. Es la gran salida de gasto recurrente.
+- [ ] **Negocio legal** (L): tienda propia (alquilar un local) con ingresos pasivos y empleados que vendan
+  o empaqueten (el personal básico ya existe en `gestor_personal.gd`).
 - [ ] **Habilidades con efecto** (M): Cultivo, Cocina, Persuasión, Sigilo, Conducción, Mecánica
   (3 niveles). `habilidades.gd`, y donde se use cada efecto.
 - [ ] **Policía que crece con tu riqueza** (M): estrellas 1 a 3, más guardias y retenes en barrios ricos,
