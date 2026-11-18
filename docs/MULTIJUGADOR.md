@@ -215,7 +215,7 @@ Para nosotros es solo **un archivo de texto** que se hace al final, una vez que 
 
 ### 3.11 Máximo de jugadores: estimación y cómo medirlo
 
-**Aviso honesto:** estas cifras son **estimaciones razonadas, no medidas**. El juego no está probado todavía en Godot y no hay servidor. Sirven para decidir cuánto diseñar, no para prometer nada.
+**Aviso honesto (ver también 3.12, que las corrige para el modo ligero):** estas cifras son **estimaciones razonadas, no medidas**. El juego no está probado todavía en Godot y no hay servidor. Sirven para decidir cuánto diseñar, no para prometer nada.
 
 **Qué gasta el servidor por cada jugador:**
 
@@ -248,6 +248,86 @@ Estas cifras salen de suponer que cada jugador "activo" cuesta algo parecido a *
 5. **Servidor que se avisa solo**: cuando pasa de 30 ms de media, escribe un aviso en el registro; opcionalmente no deja entrar a más jugadores.
 
 Estimación de esfuerzo: **2-3 sesiones** (bots + pruebas de carga + una pasada de mejoras). Se hace después de la fase 4, y se repite al acabar las fases 5 y 6, porque cada sistema nuevo cambia el límite.
+
+### 3.12 ¿Debería necesitar poca potencia? Sí, con un "modo ligero"
+
+Alfonso tiene razón en lo principal: **un servidor que no dibuja nada y solo guarda datos es muy ligero.**
+Posiciones, vida, dinero, inventario, hora, cultivos y economía son números y textos. Eso lo aguanta hasta un VPS pequeño con muchos jugadores.
+
+Lo que lo **encarece** no son los jugadores, es **el mundo vivo alrededor**:
+
+| Cosa | Coste | Por qué |
+|---|---|---|
+| Datos de jugadores, hora, cultivos, economía | Muy bajo | Son cuentas, no dibujos |
+| Peatones y tráfico con IA | Medio-alto | Cada uno decide, camina y choca varias veces por segundo |
+| Guardias y policía persiguiendo | Medio | Buscan caminos y ven al jugador |
+| Físicas y colisiones del mapa (trozos) | Alto | El servidor tendría que tener el terreno y los edificios "puestos" para comprobar choques |
+| Vehículos con física completa | Alto | Es física de verdad para cada coche |
+
+**Corrección a mis estimaciones (3.11):** las cifras de antes suponían un servidor "completo" (IA y física en el servidor). Con el **modo ligero** de abajo, calculo que sube, siempre con la misma salvedad de que son estimaciones sin medir:
+
+| Servidor | Cómodos (modo completo) | Cómodos (modo ligero) |
+|---|---|---|
+| PC casero | 4-8 | 10-20 |
+| VPS pequeño | 3-6 | 8-16 |
+| VPS potente | 10-20 | 30-64 |
+
+**Modo ligero** (se elige en `servidor.cfg`: `simulacion = "completa"` o `"ligera"`):
+
+1. **Mundo dormido por zonas**: un trozo de mapa solo "despierta" (con IA y físicas) si hay un jugador cerca. Lejos de jugadores solo existen los **datos** (cultivos, propiedades, reloj). Es el truco de siempre y ya encaja con el reloj absoluto.
+2. **Peatones y tráfico simplificados**: lejos del jugador no hay IA; se **generan** al acercarse según la hora (más gente de día, menos de noche) y se "esfuman" al alejarse. Pocos y con rutas fijas sobre `RedCalles`, sin física.
+3. **Físicas solo cerca**: colisión de verdad solo en un radio pequeño de cada jugador. Fuera de él, el servidor solo comprueba límites de velocidad y de distancia.
+4. **IA a menos frecuencia**: guardias y peatones deciden 5-10 veces por segundo, no 60. La posición se interpola.
+5. **Vehículos**: el conductor manda su física y el servidor comprueba que sea razonable (sin chocar con cada piedra).
+6. **Sin jugadores**: el servidor entra en **reposo**: solo reloj, cultivos y economía por reloj absoluto. Consume casi nada, así que se puede dejar encendido 24 h.
+
+Coste: el mundo es **menos denso** de vida y la policía cerca de jugadores lejanos se simplifica. Se puede ofrecer el modo completo a quien tenga un servidor potente.
+
+### 3.13 Seguridad y anti-trampas
+
+**La regla de oro: el cliente nunca decide nada importante.** El cliente solo dice lo que *quiere hacer*; el servidor decide si se puede.
+
+**Qué decide siempre el servidor** (el cliente no puede cambiarlo aunque modifique el juego):
+
+| Cosa | Cómo se protege |
+|---|---|
+| Dinero, banco, nivel, xp | Solo cambia dentro del servidor. El cliente recibe el resultado |
+| Vida y daño | El servidor calcula el daño y la muerte; ningún cliente se "cura" solo |
+| Inventario | Comprar, vender, mover y usar pasan por el servidor. El cliente pide "mover casilla 3 a 5" y el servidor comprueba que el objeto existe |
+| Posición | El cliente propone dónde está; el servidor comprueba **velocidad máxima**, distancia por salto, no atravesar muros importantes y no salir del mapa. Si no cuadra, lo devuelve al sitio válido |
+| Vehículos | Velocidad y aceleración máximas por tipo; no se manejan vehículos ajenos ni a más de unos metros |
+| Cultivos, granjas, tiempos | Con el reloj del servidor, nunca el del cliente |
+| Compras y alquileres | Se cobra y se registra en el servidor, de forma atómica (todo o nada) |
+| Aleatorio (cacheos, ofertas, qué cae) | Lo tira el servidor |
+| Panel admin (F1) | Solo para los `admins` del `.cfg`, comprobado en el servidor. Un cliente normal no puede ni pedirlo |
+
+**Validación de cada acción:** distancia (¿estás cerca de la tienda?), estado (¿tienes ese dinero?, ¿ese objeto?), tiempo (¿ya pasó el tiempo de espera?) y permiso (¿es tuyo?). Cualquier mensaje raro se ignora y se anota.
+
+**Protección del servidor:**
+- **Contraseña** y **lista blanca** (`whitelist.txt` con IDs permitidos) opcionales, más **lista de expulsados** (`bans.txt`).
+- **Cifrado**: ENet de Godot permite cifrado (DTLS); se activa con una clave del servidor. El WebSocket usa `wss://` (TLS). Con Steam, la conexión ya va cifrada.
+- **Límites de tasa**: máximo de mensajes por segundo por jugador. Si se pasa, se le avisa y luego se le expulsa. Evita inundar el servidor.
+- **Límites de tamaño**: nunca se acepta un mensaje o texto enorme. Los nombres y chats se limpian.
+- **Registro** (`registro.log`): quién entra y sale, compras grandes, expulsiones, acciones rechazadas y desconexiones raras.
+- **Copias automáticas** del mundo y de los jugadores (cada X horas, guardando las últimas N), y guardado atómico (se escribe a archivo temporal y luego se renombra) para que un corte no corrompa nada.
+- **Panel admin protegido**: consola solo por el contenedor o por una clave larga; la página web de estado solo con contraseña y HTTPS.
+- **Versión del juego**: si un cliente tiene otra versión o archivos alterados, se rechaza con un mensaje claro.
+
+**Qué se puede evitar y qué no (la verdad):**
+
+| Trampa | ¿Se evita? |
+|---|---|
+| Dinero, objetos o nivel falsos | **Sí**, con servidor autoritativo |
+| Volar o teletransportarse | **Sí** en gran parte (límites de velocidad y distancia) |
+| Duplicar objetos | **Sí**, con transacciones del servidor y pruebas |
+| Inundar el servidor | **Sí**, con límites de tasa |
+| Mirar datos que el servidor ya te manda (ver a lo lejos, mapa) | **No del todo**: solo se manda lo cercano, pero lo que llega al cliente se puede leer |
+| "Aimbot" o ayudas de apuntado (si hay PvP) | **Difícil**: se pueden detectar patrones raros, pero no se puede evitar al 100 % |
+| Acelerar un poco dentro de los límites | **Se limita**, pero un margen pequeño es imposible de quitar |
+| Programas externos que juegan solos (bots) | **No del todo**; se pueden limitar los patrones sospechosos |
+| Admin malintencionado | Depende de a quién des el rol |
+
+Un anti-trampas de tipo *Easy Anti-Cheat* para Steam se podría estudiar más tarde, pero no es necesario para un juego cooperativo con amigos. Con servidor autoritativo ya se evita lo grave. Las pruebas de seguridad son parte de la fase 9.
 
 ## 4. Qué hay que refactorizar del código actual
 
@@ -324,9 +404,9 @@ Esfuerzo orientativo en **sesiones de trabajo** (una sesión ≈ un hilo grande)
 | **8. Steam** | GodotSteam, lista de amigos, relé, logros de Steam; **servidor dedicado en Steam** (AppID de servidor, SteamCMD, lista de servidores) = opción C | 4-5 | Unirse desde Steam y servidores en la lista |
 | **8b. Plantilla Pterodactyl** | *Egg* para paneles de hosts de juegos, apoyado en C (opción D) | 1 | Hosts de juegos con un clic |
 | **8c. Pruebas de carga** | Bots, tres recorridos de prueba, `docs/RENDIMIENTO.md` y `max_jugadores` recomendado (3.11) | 2-3 | Tabla real de jugadores por máquina |
-| **9. Blindaje** | Anti-trampas, admin autorizado, reconexión, pruebas de carga | 3-4 | Servidor robusto |
+| **9. Blindaje** | Anti-trampas y seguridad (3.13), admin autorizado, cifrado, límites de tasa, reconexión, **modo de simulación ligera** (3.12) | 4-5 | Servidor robusto |
 
-Total aproximado: **36-51 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
+Total aproximado: **37-52 sesiones**. Con un hito jugable ya en la fase 4 (**≈ 13-19 sesiones**).
 
 ### Primer hito mínimo viable (fases 0 a 4)
 
