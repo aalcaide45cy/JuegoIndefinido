@@ -44,6 +44,7 @@ func _ready() -> void:
 	var gestor: GestorTrozos = GestorTrozos.new()
 	gestor.nucleo = nucleo
 	add_child(gestor)
+	add_child(VidaUrbana.new())   # Peatones, coches y semáforos cerca del jugador (vida_urbana.gd).
 
 	var hud: Hud = Hud.new()
 	add_child(hud)
