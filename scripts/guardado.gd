@@ -1,7 +1,8 @@
 # guardado.gd
 # -----------------------------------------------------------------------------
-# Guardar y cargar la partida en un archivo (user://partida.json, que en
-# Windows queda en %APPDATA%\Godot\app_userdata\Elixir Clandestino).
+# Guardar y cargar la partida en un archivo. Hay 5 ranuras (user://partida_1.json
+# ... partida_5.json; en Windows quedan en %APPDATA%\Godot\app_userdata\Elixir Clandestino).
+# Los logros NO van aquí: son de toda la cuenta (ver logros.gd).
 #
 # Se guarda: dinero, vida, nivel, habilidades, hora y día, inventario,
 # estantería, objeto en la mano, si la casa está alquilada, tus macetas
@@ -14,16 +15,96 @@ extends RefCounted
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 
-const RUTA: String = "user://partida.json"
+const RUTA_ANTIGUA: String = "user://partida.json"   # Antes había una sola partida.
+const RUTA_ULTIMA: String = "user://ultima_ranura.txt"
+const NUM_RANURAS: int = 5
 const VERSION: int = 1
 
+# La ranura que se usa al guardar o cargar sin decir cuál (1 a NUM_RANURAS).
+static var ranura: int = 1
 
-static func existe() -> bool:
-	return FileAccess.file_exists(RUTA)
+
+static func ruta(n: int) -> String:
+	return "user://partida_%d.json" % n
+
+
+# La partida de la versión anterior (user://partida.json) pasa a la ranura 1,
+# si esa ranura está vacía. Se llama sola al preguntar por las ranuras.
+static func migrar() -> void:
+	if FileAccess.file_exists(RUTA_ANTIGUA) and not FileAccess.file_exists(ruta(1)):
+		if DirAccess.copy_absolute(RUTA_ANTIGUA, ruta(1)) == OK:
+			DirAccess.remove_absolute(RUTA_ANTIGUA)
+
+
+static func existe(n: int = 0) -> bool:
+	migrar()
+	return FileAccess.file_exists(ruta(_ranura(n)))
+
+
+static func _ranura(n: int) -> int:
+	return clampi(n if n > 0 else ranura, 1, NUM_RANURAS)
+
+
+static func hay_alguna() -> bool:
+	for n in range(1, NUM_RANURAS + 1):
+		if existe(n):
+			return true
+	return false
+
+
+# Primera ranura vacía, o 0 si están todas ocupadas.
+static func ranura_libre() -> int:
+	for n in range(1, NUM_RANURAS + 1):
+		if not existe(n):
+			return n
+	return 0
+
+
+# La ranura que se usó por última vez (y que "Continuar" abre), o 0 si no hay ninguna partida.
+static func ultima_ranura() -> int:
+	if FileAccess.file_exists(RUTA_ULTIMA):
+		var n: int = int(FileAccess.get_file_as_string(RUTA_ULTIMA).strip_edges())
+		if n >= 1 and n <= NUM_RANURAS and existe(n):
+			return n
+	for n in range(1, NUM_RANURAS + 1):
+		if existe(n):
+			return n
+	return 0
+
+
+static func _recordar_ultima(n: int) -> void:
+	var f: FileAccess = FileAccess.open(RUTA_ULTIMA, FileAccess.WRITE)
+	if f != null:
+		f.store_string(str(n))
+		f.close()
+
+
+# Borra una ranura. Devuelve true si ya no existe.
+static func borrar(n: int) -> bool:
+	n = _ranura(n)
+	if FileAccess.file_exists(ruta(n)):
+		DirAccess.remove_absolute(ruta(n))
+	return not FileAccess.file_exists(ruta(n))
+
+
+# Datos para enseñar en la lista de partidas: {dia, nivel, dinero, fecha}. Vacío si no hay.
+static func resumen(n: int) -> Dictionary:
+	if not existe(n):
+		return {}
+	var json: JSON = JSON.new()   # Así un archivo roto no llena la consola de errores.
+	if json.parse(FileAccess.get_file_as_string(ruta(_ranura(n)))) != OK or not json.data is Dictionary:
+		return {"roto": true}
+	var datos: Dictionary = json.data
+	var meta = datos.get("meta", {})
+	if not meta is Dictionary:
+		meta = {}
+	return {"dia": maxi(1, int(datos.get("dia", 1))), "nivel": maxi(1, int(datos.get("nivel", 1))),
+			"dinero": int(datos.get("dinero", 0)), "fecha": str(meta.get("fecha", ""))}
 
 
 # Guarda la partida. Devuelve true si salió bien.
-static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
+static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
+	n = _ranura(n)
 	var macetas: Array = []
 	for nodo in arbol.get_nodes_in_group("macetas"):
 		var maceta: Maceta3D = nodo as Maceta3D
@@ -36,6 +117,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 	var pos: Vector3 = jugador.global_position
 	var datos: Dictionary = {
 		"version": VERSION,
+		"meta": {"fecha": Time.get_datetime_string_from_system(false, true)},
 		"dinero": Juego.dinero,
 		"vida": Juego.vida,
 		"hora": Juego.hora,
@@ -77,19 +159,27 @@ static func guardar(arbol: SceneTree, jugador: Node3D) -> bool:
 		"colocables": _exportar_colocables(arbol),
 		"jugador": [pos.x, pos.y, pos.z],
 	}
-	var archivo: FileAccess = FileAccess.open(RUTA, FileAccess.WRITE)
+	# Se escribe primero en un archivo temporal: si algo falla a medias, la partida buena sigue ahí.
+	var temporal: String = ruta(n) + ".tmp"
+	var archivo: FileAccess = FileAccess.open(temporal, FileAccess.WRITE)
 	if archivo == null:
 		return false
 	archivo.store_string(JSON.stringify(datos, "\t"))
 	archivo.close()
+	if DirAccess.rename_absolute(temporal, ruta(n)) != OK:
+		DirAccess.remove_absolute(temporal)
+		return false
+	ranura = n
+	_recordar_ultima(n)
 	return true
 
 
 # Carga la partida. Devuelve true si salió bien.
-static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
-	if not existe():
+static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
+	n = _ranura(n)
+	if not existe(n):
 		return false
-	var archivo: FileAccess = FileAccess.open(RUTA, FileAccess.READ)
+	var archivo: FileAccess = FileAccess.open(ruta(n), FileAccess.READ)
 	if archivo == null:
 		return false
 	var datos = JSON.parse_string(archivo.get_as_text())
@@ -98,6 +188,8 @@ static func cargar(arbol: SceneTree, jugador: Node3D) -> bool:
 		return false
 
 	Juego.reiniciar()
+	ranura = n
+	_recordar_ultima(n)
 	# Todo se comprueba al leer: un archivo tocado a mano o roto no debe dejar
 	# dinero negativo, vida a cero o montones más grandes de lo permitido.
 	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))

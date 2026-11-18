@@ -187,6 +187,7 @@ func _ready() -> void:
 
 	Juego.cambio.connect(_actualizar_estado)
 	Juego.mensaje.connect(_mostrar_mensaje)
+	Logros.desbloqueado.connect(_aviso_logro)
 	_actualizar_estado()
 	_mostrar_mensaje("Plaza del Ahorcado. Tienes 200 $. La herboristería (luz verde) vende de todo; " +
 			"la casa con el cartel SE ALQUILA puede ser tu escondite. TAB abre el inventario.")
@@ -222,6 +223,12 @@ func _input(evento: InputEvent) -> void:
 			var mapa: MapaGrande = MapaGrande.new()
 			mapa.jugador = jugador
 			_abrir_menu(mapa)
+		get_viewport().set_input_as_handled()
+	elif evento.is_action_pressed("logros"):
+		if _menu is VentanaLogros:
+			_menu.cerrar()
+		elif _menu == null:
+			_abrir_menu(VentanaLogros.new())
 		get_viewport().set_input_as_handled()
 	elif evento.is_action_pressed("aspecto"):
 		if _menu is VentanaAspecto:
@@ -313,6 +320,40 @@ func _actualizar_estado() -> void:
 		if datos_mano.has("cargador"):
 			_label_mano.text += "  [%d/%d]  reserva: %d  (R recarga)" % [mano.get("balas", 0),
 					datos_mano["cargador"], Juego.cuenta(datos_mano["municion"])]
+
+
+# Cartel de "Logro desbloqueado" arriba en el centro. Si salen varios seguidos, van uno tras otro.
+var _cola_logros: Array = []
+var _cartel_logro: Label = null
+
+
+func _aviso_logro(id: String) -> void:
+	_cola_logros.append(id)
+	if _cartel_logro == null:
+		_siguiente_logro()
+
+
+func _siguiente_logro() -> void:
+	if _cola_logros.is_empty():
+		_cartel_logro = null
+		return
+	var d: Dictionary = Logros.Datos.LISTA[_cola_logros.pop_front()]
+	_cartel_logro = crear_label(22, Color(1, 0.88, 0.4))
+	_cartel_logro.text = "Logro desbloqueado: %s\n%s" % [d["nombre"], d["desc"]]
+	_cartel_logro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cartel_logro.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_cartel_logro.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_cartel_logro.offset_top = 40.0
+	_cartel_logro.modulate.a = 0.0
+	_raiz.add_child(_cartel_logro)
+	var cartel: Label = _cartel_logro
+	var anim: Tween = create_tween()
+	anim.tween_property(cartel, "modulate:a", 1.0, 0.4)
+	anim.tween_interval(4.0)
+	anim.tween_property(cartel, "modulate:a", 0.0, 0.6)
+	anim.tween_callback(func():
+		cartel.queue_free()
+		_siguiente_logro())
 
 
 func _mostrar_mensaje(texto: String) -> void:

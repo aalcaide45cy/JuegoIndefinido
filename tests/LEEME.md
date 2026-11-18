@@ -7,6 +7,7 @@ godot --headless --path . --import                       # solo la primera vez
 godot --headless --path . --script res://tests/prueba_recetas.gd   # recetas, efectos, curación
 godot --headless --path . res://tests/prueba_policia.tscn # estrellas, refuerzos, detención, taxi, servicios, distritos
 godot --headless --path . res://tests/prueba_ui.tscn     # abre el mundo, caldero, médico, tiendas, cama, guardado
+godot --headless --path . res://tests/prueba_partidas.tscn   # ranuras de guardado y logros
 xvfb-run -a godot --path . --rendering-driver opengl3 res://tests/captura_ui.tscn -- /carpeta   # capturas
 ```
 Acaban con `RESULTADO: TODO BIEN` o con la lista de `FALLO:`.
