@@ -18,12 +18,20 @@ class_name ServicioMundo
 extends Interactuable
 
 const Economia = preload("res://scripts/datos/economia.gd")
+const Casino = preload("res://scripts/datos/casino.gd")
 
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
-		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos"}
+		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos",
+		"discoteca": "Discoteca", "tragaperras": "Tragaperras"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
+var _neon: MeshInstance3D = null
+var _neon2: Node3D = null
+var _luces: Array = []
+var _t_noche: float = 0.0
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+static var _tiradas_seguidas: int = 0
 
 
 func _ready() -> void:
@@ -34,6 +42,39 @@ func _ready() -> void:
 	rotulo.no_depth_test = false
 	if con_visual and servicio == "gasolinera":
 		_dibujar_gasolinera()
+	_rng.randomize()
+	if Casino.HORARIOS.has(servicio):
+		_montar_local_nocturno()
+		set_process(true)
+	else:
+		set_process(false)
+
+
+# Neón sobre la puerta y focos de colores. Solo brillan mientras el local está abierto.
+func _montar_local_nocturno() -> void:
+	var disco: bool = servicio == "discoteca"
+	var color: Color = Color(0.95, 0.15, 0.75) if disco else Color(1.0, 0.8, 0.15)
+	_neon = Construir.caja(self, Vector3(0, 4.3, 0.0), Vector3(7.0, 0.5, 0.12), color, false, 3.0) as MeshInstance3D
+	_neon2 = Construir.caja(self, Vector3(0, 3.6, 0.0), Vector3(5.0, 0.12, 0.1), Color(0.2, 0.9, 1.0) if disco else Color(0.95, 0.2, 0.2), false, 2.5)
+	var colores: Array = [Color(1.0, 0.1, 0.6), Color(0.2, 0.6, 1.0), Color(0.6, 0.2, 1.0)] if disco \
+			else [Color(1.0, 0.75, 0.2), Color(1.0, 0.3, 0.2)]
+	var i: int = 0
+	for c in colores:
+		var foco: OmniLight3D = Construir.luz(self, Vector3(-2.5 + i * 2.5, 3.0, 1.5), c, 0.0, 12.0)
+		_luces.append(foco)
+		i += 1
+
+
+func _process(delta: float) -> void:
+	_t_noche += delta
+	var abierto: bool = Casino.abierto(servicio, Juego.hora)
+	if _neon != null:
+		_neon.visible = abierto
+		_neon2.visible = abierto
+	for i in _luces.size():
+		var foco: OmniLight3D = _luces[i]
+		var pulso: float = 0.5 + 0.5 * sin(_t_noche * (4.0 if servicio == "discoteca" else 2.0) + i * 2.1)
+		foco.light_energy = (1.5 + 3.0 * pulso) if abierto else 0.0
 
 
 func _dibujar_gasolinera() -> void:
@@ -88,6 +129,14 @@ func texto_accion() -> String:
 			return "Tomar algo (%d $): algo de vida y menos sospecha" % Economia.TABERNA_PRECIO
 		"banco":
 			return "Banco (%d $ ingresados): E ingresar  ·  Mayús+E retirar todo" % Juego.banco
+		"discoteca":
+			if not Casino.abierto("discoteca", Juego.hora):
+				return "Discoteca cerrada (abre %s)" % Casino.texto_horario("discoteca")
+			return "Entrar a la discoteca (%d $ y copas)  ·  Mayús+E: copa (%d $)" % [Casino.ENTRADA_DISCOTECA, Casino.COPA_DISCOTECA]
+		"tragaperras":
+			if not Casino.abierto("tragaperras", Juego.hora):
+				return "Salón cerrado (abre %s)" % Casino.texto_horario("tragaperras")
+			return "Tragaperras: E apuesta %d $  ·  Mayús+E apuesta %d $  (la casa gana a la larga)" % [Casino.APUESTAS[0], Casino.APUESTAS[1]]
 	return ""
 
 
@@ -108,6 +157,8 @@ func usar(_jugador: Node) -> void:
 		"comisaria", "bomberos": _usar_oficio()
 		"taberna": _usar_taberna()
 		"banco": _usar_banco(mayus)
+		"discoteca": _usar_discoteca(mayus)
+		"tragaperras": _usar_tragaperras(mayus)
 
 
 func _precio_gasolina(v) -> int:
@@ -217,6 +268,57 @@ func _usar_taberna() -> void:
 	Juego.comer(10.0)
 	Juego.sospecha = maxf(0.0, Juego.sospecha - 15.0)
 	Juego.avisar("Te tomas algo en la barra. Te relajas.")
+
+
+func _usar_discoteca(solo_copa: bool) -> void:
+	if not Casino.abierto("discoteca", Juego.hora):
+		Juego.avisar("La discoteca está cerrada. Abre de %s." % Casino.texto_horario("discoteca"))
+		return
+	if solo_copa:
+		if not Juego.gastar(Casino.COPA_DISCOTECA):
+			Juego.avisar("Una copa cuesta %d $." % Casino.COPA_DISCOTECA)
+			return
+		Juego.beber(25.0)
+		Juego.cambiar_vida(4.0)
+		Juego.avisar("Te tomas una copa en la barra. La música retumba.")
+		return
+	if not Juego.gastar(Casino.ENTRADA_DISCOTECA):
+		Juego.avisar("La entrada cuesta %d $." % Casino.ENTRADA_DISCOTECA)
+		return
+	Juego.beber(40.0)
+	Juego.sospecha = maxf(0.0, Juego.sospecha - 10.0)
+	# Un encuentro al azar: la noche siempre trae algo.
+	var r: float = _rng.randf()
+	if r < 0.3 and Juego.dinero >= 30:
+		Juego.gastar(25)
+		Juego.avisar("Bailas toda la noche... y alguien te aligera la cartera (-25 $).")
+	elif r < 0.6:
+		Juego.reputacion = mini(100, Juego.reputacion + 3)
+		Juego.avisar("Conoces a gente interesante en la pista. Tu fama sube un poco.")
+	else:
+		Juego.avisar("Una buena noche de música y luces. Te sienta bien.")
+
+
+func _usar_tragaperras(grande: bool) -> void:
+	if not Casino.abierto("tragaperras", Juego.hora):
+		Juego.avisar("El salón está cerrado. Abre de %s." % Casino.texto_horario("tragaperras"))
+		return
+	var apuesta: int = int(Casino.APUESTAS[1] if grande else Casino.APUESTAS[0])
+	if not Juego.gastar(apuesta):
+		Juego.avisar("No tienes %d $ para apostar." % apuesta)
+		return
+	_tiradas_seguidas += 1
+	var t: Dictionary = Casino.tirada(_rng.randf(), _rng)
+	var mult: float = float(t["multiplicador"])
+	var texto: String = "[ %s | %s | %s ]" % [t["rodillos"][0], t["rodillos"][1], t["rodillos"][2]]
+	var premio: int = int(round(apuesta * mult))
+	if premio > 0:
+		Juego.cobrar(premio)
+		Juego.avisar("%s  ¡Premio de %d $!" % [texto, premio])
+	else:
+		Juego.avisar("%s  Nada esta vez (-%d $)." % [texto, apuesta])
+	if _tiradas_seguidas % 20 == 0:
+		Juego.avisar("Llevas %d tiradas seguidas. La casa siempre gana a la larga: ¿no será hora de parar?" % _tiradas_seguidas)
 
 
 func _usar_banco(retirar: bool) -> void:
