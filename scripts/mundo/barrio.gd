@@ -123,7 +123,10 @@ func tejado(casa: Node3D, ancho: float, fondo: float, alto: float) -> void:
 	var contenedor: Node3D = Node3D.new()
 	contenedor.add_child(modelo)
 	contenedor.scale = Vector3(sx, sy, sz)
-	contenedor.position = Vector3(0, alto - caja.position.y * sy, -fondo / 2.0)
+	# Un desnivel de 0-4 cm distinto en cada tejado: si dos tejados vecinos se solapan en el
+	# alero no comparten plano exacto y no parpadean (z-fighting).
+	var desnivel: float = fmod(absf(ancho * 7.13 + fondo * 3.17 + alto * 1.71), 1.0) * 0.04
+	contenedor.position = Vector3(0, alto - caja.position.y * sy + desnivel, -fondo / 2.0)
 	casa.add_child(contenedor)
 	# El tejado deja abiertos los triángulos de delante y detrás: los tapamos
 	# con un prisma de yeso para que no se vea el cielo por dentro.
@@ -193,9 +196,9 @@ func marcos_de_huecos(casa: Node3D, huecos: Array) -> void:
 		var arriba: float = h["arriba"]
 		var alto_h: float = arriba - abajo
 		var cy: float = (abajo + arriba) / 2.0
-		Construir.caja(casa, Vector3(x - ancho / 2.0 - f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color(0.32, 0.2, 0.11), false, 0.0, madera)
-		Construir.caja(casa, Vector3(x + ancho / 2.0 + f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.2), Color(0.32, 0.2, 0.11), false, 0.0, madera)
-		Construir.caja(casa, Vector3(x, arriba + f / 2.0, 0.08), Vector3(ancho + 2.0 * f, f, 0.22), Color(0.32, 0.2, 0.11), false, 0.0, madera)
+		Construir.caja(casa, Vector3(x - ancho / 2.0 - f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.19), Color(0.32, 0.2, 0.11), false, 0.0, madera)
+		Construir.caja(casa, Vector3(x + ancho / 2.0 + f / 2.0, cy, 0.08), Vector3(f, alto_h + f, 0.19), Color(0.32, 0.2, 0.11), false, 0.0, madera)
+		Construir.caja(casa, Vector3(x, arriba + f / 2.0, 0.08), Vector3(ancho + 2.0 * f, f + 0.01, 0.21), Color(0.32, 0.2, 0.11), false, 0.0, madera)
 		if abajo > 0.05:   # Los escaparates tienen alféizar; la puerta no.
 			Construir.caja(casa, Vector3(x, abajo - f / 2.0, 0.1), Vector3(ancho + 2.0 * f, f, 0.26), Color(0.32, 0.2, 0.11), false, 0.0, madera)
 

@@ -46,7 +46,7 @@ static func _generar(nombre: String) -> AudioStream:
 	var tabla: Dictionary = {
 		"disparo": [0.18, 0.0, 14.0], "explosion": [0.9, 0.0, 4.0],
 		"golpe": [0.12, 140.0, 20.0], "compra": [0.25, 880.0, 9.0],
-		"alerta": [0.5, 520.0, 3.0],
+		"alerta": [0.5, 520.0, 3.0], "clic": [0.06, 1900.0, 45.0],
 	}
 	if nombre == "trueno":
 		return _trueno()
@@ -70,6 +70,41 @@ static func _generar(nombre: String) -> AudioStream:
 	w.mix_rate = tasa
 	w.stereo = false
 	w.data = datos
+	return w
+
+
+# Agua de fuente en bucle: ruido suave con burbujeo. Se genera una vez.
+static var _fuente: AudioStreamWAV = null
+
+static func fuente() -> AudioStream:
+	if _fuente != null:
+		return _fuente
+	var tasa: int = 11025
+	var n: int = tasa * 4
+	var datos: PackedByteArray = PackedByteArray()
+	datos.resize(n * 2)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 31
+	var bajo: float = 0.0
+	var medio: float = 0.0
+	for i in n:
+		var r: float = rng.randf_range(-1.0, 1.0)
+		bajo = lerpf(bajo, r, 0.18)
+		medio = lerpf(medio, r, 0.5)
+		var burbuja: float = 0.6 + 0.4 * sin(TAU * float(i) / n * 7.0 + sin(TAU * float(i) / n * 3.0) * 2.0)
+		var v: float = (bajo * 1.6 + (medio - bajo) * 0.9) * burbuja * 0.55
+		# Fundido en los extremos para que el bucle no haga "clic".
+		var borde: float = minf(1.0, minf(float(i), float(n - i)) / 600.0)
+		datos.encode_s16(i * 2, int(clampf(v * borde, -1.0, 1.0) * 24000.0))
+	var w: AudioStreamWAV = AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = tasa
+	w.stereo = false
+	w.data = datos
+	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	w.loop_begin = 0
+	w.loop_end = n
+	_fuente = w
 	return w
 
 

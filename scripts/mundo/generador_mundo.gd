@@ -904,9 +904,22 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 			props.append({"id": h["id"], "tipo": "huerto", "pos": Vector3(gate.x, h["y"], gate.y),
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
+	# Aceras, parques y jardines de los bloques cuyo centro cae en este trozo.
+	var verde: ConstructorMalla = ConstructorMalla.new()
+	for s in lista:
+		var ps: Vector2 = s["pos"]
+		var ns: int = s["n"]
+		for k in range(-ns, ns):
+			for l in range(-ns, ns):
+				var centro_b: Vector2 = Vector2(ps.x + k * BLOQUE + CALLE_ANCHO / 2.0 + 18.0,
+						ps.y + l * BLOQUE + CALLE_ANCHO / 2.0 + 18.0)
+				if rect.has_point(centro_b):
+					Parques.bloque(objetos, verde, props, s, k, l)
 	if not objetos.esta_vacio():
 		superficies.append(objetos.superficie())
 		caras.append_array(objetos.vertices)
+	if not verde.esta_vacio():
+		superficies.append(verde.superficie())
 
 	return {"superficies": superficies, "caras": caras, "arboles": _arboles(x0, z0, rect, lista, segs),
 			"props": props}

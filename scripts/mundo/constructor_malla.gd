@@ -89,6 +89,15 @@ func cono(c: Vector3, radio: float, alto: float, lados: int, col: Color, radio_p
 		cuadro(p1, p0, q0, q1, tono)
 
 
+# Disco plano mirando hacia arriba (agua de fuentes, estanques).
+func disco(c: Vector3, radio: float, lados: int, col: Color) -> void:
+	for i in lados:
+		var a0: float = TAU * float(i) / float(lados)
+		var a1: float = TAU * float(i + 1) / float(lados)
+		_tri(c, c + Vector3(cos(a1) * radio, 0.0, sin(a1) * radio),
+				c + Vector3(cos(a0) * radio, 0.0, sin(a0) * radio), Vector3.UP, col)
+
+
 # Tira de carretera plana entre dos puntos ya a su altura (normal hacia arriba).
 func tira(a_izq: Vector3, a_der: Vector3, b_izq: Vector3, b_der: Vector3, col: Color) -> void:
 	var n: Vector3 = Vector3.UP

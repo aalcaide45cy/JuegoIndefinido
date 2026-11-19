@@ -68,6 +68,7 @@ func construir() -> void:
 	add_child(bolsa)
 	registrar_poi(bolsa, "Bolsa de trabajo", Color(1.0, 0.9, 0.5))
 	_decorar_plaza()
+	_adornos()
 	_guardia([Vector3(-12, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 12), Vector3(-12, 0, 12)])
 
 	farola(Vector3(-10, 0, -10))
@@ -88,10 +89,10 @@ func _suelo() -> void:
 	for ix in range(-2, 2):
 		for iz in range(-2, 2):
 			Construir.caja(self, Vector3(ix * 20 + 10, -0.1, iz * 20 + 10), Vector3(20, 0.2, 20),
-					Color(0.17, 0.17, 0.19))
+					Color(0.27, 0.25, 0.24))
 	# Un "camino" algo más claro que cruza la plaza.
-	Construir.caja(self, Vector3(0, 0.005, 0), Vector3(4, 0.01, 2 * MITAD), Color(0.22, 0.21, 0.21), false)
-	Construir.caja(self, Vector3(10, 0.006, 0), Vector3(20, 0.01, 4), Color(0.22, 0.21, 0.21), false)
+	Construir.caja(self, Vector3(0, 0.005, 0), Vector3(4, 0.01, 2 * MITAD), Color(0.34, 0.31, 0.28), false)
+	Construir.caja(self, Vector3(10, 0.006, 0), Vector3(20, 0.01, 4), Color(0.34, 0.31, 0.28), false)
 
 
 # ------------------------------ La herboristería ------------------------------
@@ -162,11 +163,174 @@ func _guardia(puntos: Array) -> void:
 
 
 func _fuente() -> void:
-	# Fuente seca (el agua mágica también se prohibió).
-	Construir.cilindro(self, Vector3(0, 0.35, 0), 2.6, 0.7, Color(0.3, 0.3, 0.32), true)
-	Construir.cilindro(self, Vector3(0, 0.72, 0), 2.3, 0.05, Color(0.1, 0.1, 0.11))
-	Construir.cilindro(self, Vector3(0, 1.5, 0), 0.35, 1.6, Color(0.32, 0.32, 0.34), true)
-	# Una estatua decapitada: el último alquimista de la ciudad.
-	Construir.caja(self, Vector3(0, 2.8, 0), Vector3(0.7, 1.0, 0.4), Color(0.36, 0.36, 0.38), false)
-	Construir.texto(self, Vector3(0, 0.45, 2.68), "Aquí ardió el último alquimista. Que sirva de lección.",
-			40, Color(0.7, 0.7, 0.7))
+	# Fuente de tres pisos con agua que brilla un poco (el agua mágica está prohibida, pero ahí sigue).
+	Construir.cilindro(self, Vector3(0, 0.11, 0), 4.0, 0.22, Color(0.36, 0.35, 0.37), false)       # Grada baja
+	Construir.cilindro(self, Vector3(0, 0.55, 0), 3.4, 0.9, Color(0.5, 0.5, 0.53), true)          # Muro de la pila
+	Construir.cilindro(self, Vector3(0, 1.05, 0), 3.65, 0.14, Color(0.62, 0.62, 0.65), false)      # Borde
+	var agua: MeshInstance3D = _agua(3.3, 0.04, Vector3(0, 0.92, 0))
+	Construir.cilindro(self, Vector3(0, 0.7, 0), 0.8, 0.8, Color(0.48, 0.48, 0.5), false)         # Pie 1
+	Construir.cilindro(self, Vector3(0, 1.62, 0), 1.9, 0.14, Color(0.6, 0.6, 0.63), false, 0.0, 1.6)   # Plato 1
+	Construir.cilindro(self, Vector3(0, 1.82, 0), 1.6, 0.26, Color(0.5, 0.5, 0.53), false, 0.0, 1.3)
+	_agua(1.3, 0.03, Vector3(0, 1.98, 0))
+	Construir.cilindro(self, Vector3(0, 2.5, 0), 0.32, 1.1, Color(0.46, 0.46, 0.5), false)         # Pie 2
+	Construir.cilindro(self, Vector3(0, 3.15, 0), 1.0, 0.12, Color(0.6, 0.6, 0.63), false, 0.0, 0.85)   # Plato 2
+	_agua(0.85, 0.03, Vector3(0, 3.22, 0))
+	# Colisión de toda la fuente: un cilindro macizo.
+	var cuerpo: StaticBody3D = StaticBody3D.new()
+	var choque: CollisionShape3D = CollisionShape3D.new()
+	var forma: CylinderShape3D = CylinderShape3D.new()
+	forma.radius = 3.7
+	forma.height = 1.2
+	choque.shape = forma
+	cuerpo.position = Vector3(0, 0.6, 0)
+	cuerpo.add_child(choque)
+	add_child(cuerpo)
+	# Una estatua del último alquimista sobre el plato de arriba: capa, cabeza y sombrero de pico.
+	Construir.cilindro(self, Vector3(0, 3.9, 0), 0.5, 1.3, Color(0.52, 0.52, 0.56), false, 0.0, 0.28)
+	Construir.esfera(self, Vector3(0, 4.75, 0), 0.24, Color(0.58, 0.58, 0.62))
+	Construir.cilindro(self, Vector3(0, 4.98, 0), 0.4, 0.06, Color(0.5, 0.5, 0.54), false)
+	Construir.cilindro(self, Vector3(0, 5.27, 0), 0.25, 0.55, Color(0.46, 0.46, 0.5), false, 0.0, 0.0)
+	Construir.cilindro(self, Vector3(0.45, 4.4, 0), 0.05, 0.9, Color(0.44, 0.44, 0.48), false, 0.0)  # Bastón
+	Construir.esfera(self, Vector3(0.45, 4.9, 0), 0.12, Color(0.4, 0.8, 0.9), Vector3.ONE, 1.6)      # Cristal que brilla
+	# Chorros de agua que caen de plato en plato.
+	_chorro(Vector3(0, 3.4, 0), 0.0, Vector3(0, 2.6, 0))
+	for i in 8:
+		var a: float = TAU * float(i) / 8.0
+		_chorro(Vector3(cos(a) * 1.55, 2.0, sin(a) * 1.55), a, Vector3(cos(a), 0.9, sin(a)))
+	# Luz azulada bajo el agua (solo de noche) y sonido de agua corriendo.
+	Construir.luz_noche(self, Vector3(0, 1.4, 0), Color(0.4, 0.75, 1.0), 1.1, 8.0)
+	var sonido: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+	sonido.stream = Sonido.fuente()
+	sonido.unit_size = 5.0
+	sonido.max_distance = 30.0
+	sonido.volume_db = -4.0
+	sonido.autoplay = true
+	sonido.position = Vector3(0, 1.5, 0)
+	add_child(sonido)
+	Construir.texto(self, Vector3(0, 0.55, 3.72), "Aquí ardió el último alquimista. Dicen que el agua aún guarda su magia.",
+			36, Color(0.8, 0.82, 0.85))
+
+
+# Un disco de agua semitransparente que brilla suavemente.
+func _agua(radio: float, alto: float, pos: Vector3) -> MeshInstance3D:
+	var malla: CylinderMesh = CylinderMesh.new()
+	malla.top_radius = radio
+	malla.bottom_radius = radio
+	malla.height = alto
+	malla.radial_segments = 20
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.25, 0.62, 0.8, 0.72)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.roughness = 0.08
+	mat.metallic = 0.3
+	mat.emission_enabled = true
+	mat.emission = Color(0.1, 0.4, 0.55)
+	mat.emission_energy_multiplier = 0.7
+	malla.material = mat
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	mi.mesh = malla
+	mi.position = pos
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	return mi
+
+
+# Partículas de agua: salen en la dirección indicada y caen por la gravedad.
+func _chorro(pos: Vector3, _giro: float, dir: Vector3) -> void:
+	var p: CPUParticles3D = CPUParticles3D.new()
+	p.position = pos
+	p.amount = 24
+	p.lifetime = 0.9
+	p.direction = dir.normalized()
+	p.spread = 10.0
+	p.initial_velocity_min = 1.8
+	p.initial_velocity_max = 2.8
+	p.gravity = Vector3(0, -7.0, 0)
+	p.local_coords = true
+	var malla: SphereMesh = SphereMesh.new()
+	malla.radius = 0.05
+	malla.height = 0.1
+	malla.radial_segments = 6
+	malla.rings = 3
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.7, 0.9, 1.0, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = Color(0.4, 0.7, 0.9)
+	mat.emission_energy_multiplier = 0.8
+	malla.material = mat
+	p.mesh = malla
+	add_child(p)
+
+
+# Árboles, parterres y luces de fiesta: la plaza deja de estar pelada.
+func _adornos() -> void:
+	# Círculos de adoquín de distintos tonos alrededor de la fuente (cada uno un pelín más alto).
+	var tonos: Array = [[12.5, Color(0.36, 0.33, 0.3)], [10.5, Color(0.5, 0.45, 0.38)],
+			[8.2, Color(0.33, 0.3, 0.28)], [7.4, Color(0.55, 0.5, 0.42)], [5.3, Color(0.42, 0.38, 0.34)],
+			[4.6, Color(0.6, 0.55, 0.47)]]
+	for i in tonos.size():
+		Construir.cilindro(self, Vector3(0, 0.02 + i * 0.014, 0), tonos[i][0], 0.012, tonos[i][1], false)
+	# Árboles en alcorques de piedra (copas de colores: otoño y cerezo).
+	var copas: Array = [Color(0.86, 0.5, 0.14), Color(0.28, 0.55, 0.22), Color(0.9, 0.55, 0.65),
+			Color(0.82, 0.62, 0.15), Color(0.2, 0.48, 0.25), Color(0.9, 0.5, 0.58)]
+	var sitios: Array = [Vector3(-9, 0, -16.5), Vector3(9, 0, -16.5), Vector3(-9, 0, 16.5), Vector3(9, 0, 16.5),
+			Vector3(-16.5, 0, 7.5), Vector3(16.5, 0, -7.5)]
+	for i in sitios.size():
+		_arbol(sitios[i], copas[i], i)
+	# Parterres de flores.
+	for pos in [Vector3(-9, 0, 4.5), Vector3(-9, 0, -4.5), Vector3(9, 0, 5.5), Vector3(9, 0, -5.5)]:
+		_parterre(pos)
+	# Guirnaldas de bombillas de lado a lado de la plaza (de noche brillan).
+	_guirnalda(-6.0)
+	_guirnalda(6.5)
+
+
+func _arbol(pos: Vector3, copa: Color, n: int) -> void:
+	Construir.cilindro(self, pos + Vector3(0, 0.2, 0), 1.0, 0.4, Color(0.45, 0.44, 0.46), true)
+	Construir.cilindro(self, pos + Vector3(0, 0.42, 0), 0.85, 0.05, Color(0.28, 0.2, 0.14), false)
+	Construir.cilindro(self, pos + Vector3(0, 1.4, 0), 0.22, 2.0, Color(0.38, 0.25, 0.15), false, 0.0, 0.14)
+	var y: float = 2.2
+	Construir.cilindro(self, pos + Vector3(0, y + 0.4, 0), 1.6, 0.8, copa.darkened(0.08), false, 0.0, 1.95)
+	Construir.cilindro(self, pos + Vector3(0, y + 1.2, 0), 1.95, 0.8, copa.lightened(0.06), false, 0.0, 1.25)
+	Construir.cilindro(self, pos + Vector3(0, y + 1.95, 0), 1.25, 0.8, copa.lightened(0.14), false, 0.0, 0.0)
+	# Pétalos / hojas caídas alrededor.
+	for i in 6:
+		var a: float = float(n * 7 + i) * 1.1
+		Construir.caja(self, pos + Vector3(cos(a) * (1.3 + 0.3 * i), 0.03, sin(a) * (1.3 + 0.3 * i)),
+				Vector3(0.18, 0.01, 0.18), copa.lightened(0.1), false)
+
+
+func _parterre(pos: Vector3) -> void:
+	Construir.caja(self, pos + Vector3(0, 0.25, 0), Vector3(3.2, 0.5, 1.2), Color(0.5, 0.48, 0.46), true)
+	Construir.caja(self, pos + Vector3(0, 0.52, 0), Vector3(2.9, 0.06, 0.9), Color(0.2, 0.14, 0.1), false)
+	var cols: Array = [Color(0.9, 0.25, 0.3), Color(0.95, 0.8, 0.25), Color(0.75, 0.4, 0.9), Color(0.95, 0.95, 0.9)]
+	for i in 7:
+		var x: float = -1.2 + i * 0.4
+		for dz in [-0.25, 0.25]:
+			Construir.caja(self, pos + Vector3(x, 0.7, dz + 0.04 * (i % 2)), Vector3(0.24, 0.24, 0.24), cols[(i + int(dz * 8)) % 4], false)
+			Construir.caja(self, pos + Vector3(x, 0.58, dz + 0.04 * (i % 2)), Vector3(0.04, 0.2, 0.04), Color(0.2, 0.5, 0.22), false)
+
+
+func _guirnalda(z: float) -> void:
+	var colores: Array = [Color(1.0, 0.8, 0.4), Color(1.0, 0.5, 0.4), Color(0.6, 0.85, 1.0), Color(0.7, 1.0, 0.6)]
+	var n: int = 24
+	var alto_extremo: float = 6.4
+	var caida: float = 1.6
+	var anterior: Vector3 = Vector3(-19.7, alto_extremo, z)
+	for i in range(1, n + 1):
+		var t: float = float(i) / float(n)
+		var x: float = lerpf(-19.7, 19.7, t)
+		var y: float = alto_extremo - caida * 4.0 * t * (1.0 - t)
+		var actual: Vector3 = Vector3(x, y, z)
+		# Tramo de cable: una caja fina orientada entre los dos puntos.
+		var medio: Vector3 = (anterior + actual) / 2.0
+		var cable: Node3D = Construir.caja(self, medio, Vector3(anterior.distance_to(actual), 0.02, 0.02), Color(0.1, 0.1, 0.1), false)
+		cable.rotation.z = atan2(actual.y - anterior.y, actual.x - anterior.x)
+		if i % 2 == 0 and i < n:
+			var b: Node3D = Construir.esfera(self, actual + Vector3(0, -0.12, 0), 0.1, colores[(i / 2) % 4],
+					Vector3.ONE, 3.0)
+			b.visible = false
+			b.add_to_group("ventanas_noche")
+			Construir.esfera(self, actual + Vector3(0, -0.12, 0), 0.08, Color(0.3, 0.3, 0.3))
+		anterior = actual

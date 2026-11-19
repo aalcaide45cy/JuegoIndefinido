@@ -175,7 +175,7 @@ func _ready() -> void:
 
 	# Abajo: ayuda de controles.
 	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
-	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · G montar objeto · O aspecto · TAB inventario · F1 admin · V cámara · Esc pausa"
+	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · G montar objeto · F linterna · O aspecto · TAB inventario · F1 admin · V cámara · Esc pausa"
 	_colocar_abajo(ayuda, 22)
 
 	# Rectángulo negro para el fundido (empieza transparente).
