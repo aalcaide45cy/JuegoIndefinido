@@ -26,6 +26,7 @@ const DatosEfectos = preload("res://scripts/datos/efectos.gd")
 const DatosOficios = preload("res://scripts/datos/oficios.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
 const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
+const Bandas = preload("res://scripts/datos/bandas.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -43,7 +44,8 @@ var dinero: int = 0
 var vida: float = VIDA_MAX
 # Estadísticas (ver datos/estadisticas.gd): vitales y atributos.
 var resistencia: float = Estadisticas.RESISTENCIA_MAX
-var agotado: bool = false             # true tras vaciar la resistencia: no corres hasta recuperar un poco.
+var agotado: bool = false
+var invulnerable: float = 0.0         # Segundos sin recibir daño (esquiva).             # true tras vaciar la resistencia: no corres hasta recuperar un poco.
 var hambre: float = 0.0               # 0 bien, 100 fatal.
 var sed: float = 0.0
 var atributos: Dictionary = Estadisticas.nuevos_atributos()
@@ -93,6 +95,9 @@ var interiores: int = 0              # Cuántos edificios con interior pisas aho
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
 var xp: int = 0                      # Experiencia hacia el siguiente nivel.
+var rep_hampa: int = 0              # -100..100: respeto en el hampa (ver datos/bandas.gd).
+var rep_ley: int = 0                # -100..100: bien o mal visto por la ley.
+var proteccion_hasta_dia: int = 0   # Hasta qué día (incluido) estás protegido por la banda del barrio.
 var reputacion: int = 0              # -50..100: sube al entregar encargos, baja si dejas plantado.
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
@@ -129,6 +134,9 @@ func _ready() -> void:
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
 	vida = VIDA_MAX
+	rep_hampa = 0
+	rep_ley = 0
+	proteccion_hasta_dia = 0
 	resistencia = Estadisticas.RESISTENCIA_MAX
 	agotado = false
 	hambre = 0.0
@@ -211,6 +219,7 @@ func _process(delta: float) -> void:
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	_avanzar_estrellas(delta)
+	invulnerable = maxf(0.0, invulnerable - delta)
 	_t_atraco -= delta
 	if _t_atraco <= 0.0:
 		_t_atraco = 12.0
@@ -434,6 +443,8 @@ func cobrar(cantidad: int) -> void:
 
 
 func cambiar_vida(cantidad: float) -> void:
+	if cantidad < 0.0 and invulnerable > 0.0:
+		return   # Estás esquivando.
 	if cantidad < 0.0:
 		# Los efectos de resistencia (o debilidad) cambian el daño que recibes.
 		cantidad *= clampf(1.0 + mod("dano_recibido"), 0.1, 2.0)
@@ -485,6 +496,27 @@ func avanzar_resistencia(delta: float, corriendo: bool) -> void:
 		if agotado and resistencia >= Estadisticas.UMBRAL_RECUPERAR:
 			agotado = false
 	resistencia = minf(resistencia, tope)
+
+
+# Gasta resistencia de golpe (golpes, esquiva). Devuelve false si no hay suficiente.
+func gastar_resistencia(cantidad: float) -> bool:
+	if resistencia < cantidad:
+		return false
+	resistencia -= cantidad
+	return true
+
+
+# Cambia la reputación de un bando: "gente" (la de siempre), "hampa" o "ley".
+func cambiar_rep(bando: String, cantidad: int) -> void:
+	match bando:
+		"gente": reputacion = clampi(reputacion + cantidad, -50, 100)
+		"hampa": rep_hampa = clampi(rep_hampa + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
+		"ley": rep_ley = clampi(rep_ley + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
+	cambio.emit()
+
+
+func protegido() -> bool:
+	return dia <= proteccion_hasta_dia or rep_hampa >= Bandas.REP_RESPETO
 
 
 func comer(cantidad: float) -> void:
@@ -1067,6 +1099,7 @@ func _crear_controles() -> void:
 	_accion("aspecto", [KEY_O])   # Cambiar de ropa y peinado.
 	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
+	_accion("esquivar", [KEY_X])   # Voltereta corta: esquiva golpes un instante.
 	_accion("liberar_raton", [KEY_ESCAPE])
 	for i in TAM_BARRA:
 		_accion("barra_%d" % (i + 1), [KEY_1 + i])

@@ -6,7 +6,10 @@
 # los props "chunga" de generador_mundo.gd. Ver docs/MUNDO_NOCTURNO_STATS_BANDAS.md.
 # -----------------------------------------------------------------------------
 class_name ZonaChunga
-extends Node3D
+extends Interactuable
+
+const Bandas = preload("res://scripts/datos/bandas.gd")
+var banda: String = "cuervos"
 
 var semilla: int = 0
 var _luz: OmniLight3D = null
@@ -15,6 +18,11 @@ var _t: float = 0.0
 
 
 func _ready() -> void:
+	distancia = 3.0
+	# La banda del barrio es la dueña de la ciudad donde está este rincón.
+	for s in GeneradorMundo.asentamientos_cerca(Rect2(position.x - 2.0, position.z - 2.0, 4.0, 4.0)):
+		banda = Bandas.dueno(int(s["ci"]), int(s["cj"]))
+		break
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = semilla
 	# Bidón oxidado con fuego dentro.
@@ -42,3 +50,21 @@ func _process(delta: float) -> void:
 	var parpadeo: float = 0.75 + 0.25 * sin(_t * 11.0) * sin(_t * 7.3)
 	_luz.light_energy = (2.8 * parpadeo) if noche else 0.8 * parpadeo
 	_llama.scale = Vector3(1.0, 0.8 + 0.5 * parpadeo, 1.0)
+
+
+func texto_accion() -> String:
+	if Juego.dia <= Juego.proteccion_hasta_dia:
+		return "%s: ya estás bajo su protección (hasta el día %d)" % [Bandas.nombre(banda), Juego.proteccion_hasta_dia]
+	return "Pagar protección a %s (%d $): hoy sus matones te dejan en paz" % [Bandas.nombre(banda), Bandas.CUOTA_DIA]
+
+
+func usar(_jugador: Node) -> void:
+	if Juego.dia <= Juego.proteccion_hasta_dia:
+		Juego.avisar("Un tipo te hace un gesto: ya has pagado. Tranquilo.")
+		return
+	if not Juego.gastar(Bandas.CUOTA_DIA):
+		Juego.avisar("La cuota son %d $. Vuelve con dinero." % Bandas.CUOTA_DIA)
+		return
+	Juego.proteccion_hasta_dia = Juego.dia
+	Juego.cambiar_rep("hampa", 3)
+	Juego.avisar("Pagas %d $ a %s. Hoy los matones del barrio te dejan pasar." % [Bandas.CUOTA_DIA, Bandas.nombre(banda)])

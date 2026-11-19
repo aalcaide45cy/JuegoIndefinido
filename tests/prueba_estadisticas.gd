@@ -57,6 +57,55 @@ func _ready() -> void:
 	comprobar(J.atributo("constitucion") == 10 and J.atributo("fuerza") == 20, "se cargan los atributos")
 	comprobar(absf(J.hambre - 33.0) < 0.01 and absf(J.sed - 44.0) < 0.01, "se cargan hambre y sed")
 
+	# Esquiva y golpes: gastan aliento; esquivando no recibes daño.
+	J.reiniciar()
+	comprobar(J.gastar_resistencia(25.0) and is_equal_approx(J.resistencia, 75.0), "esquivar gasta 25 de aliento")
+	J.invulnerable = 0.4
+	var v0: float = J.vida
+	J.cambiar_vida(-30.0)
+	comprobar(is_equal_approx(J.vida, v0), "esquivando no hay daño")
+	J.invulnerable = 0.0
+	J.cambiar_vida(-30.0)
+	comprobar(J.vida < v0, "sin esquivar sí hay daño")
+	comprobar(not J.gastar_resistencia(1000.0), "no se puede gastar más aliento del que hay")
+
+	# Matón: pelea, barra y botín.
+	var maton: Maton = Maton.new()
+	escena.add_child(maton)
+	await get_tree().process_frame
+	var dinero0: int = J.dinero
+	maton.recibir_dano(30.0)
+	var bm: BarraVida = maton.get_node_or_null("BarraVida") as BarraVida
+	comprobar(bm != null and bm.visible, "el matón herido enseña su barra")
+	maton.recibir_dano(100.0)
+	comprobar(J.dinero > dinero0, "el matón muerto deja botín")
+	comprobar(not maton.is_in_group("danable"), "el matón muerto ya no se puede herir")
+
+	# Reputación en tres bandos, bandas y protección.
+	var Bandas = load("res://scripts/datos/bandas.gd")
+	J.reiniciar()
+	J.cambiar_rep("hampa", 20)
+	J.cambiar_rep("ley", -150)
+	J.cambiar_rep("gente", 10)
+	comprobar(J.rep_hampa == 20 and J.rep_ley == -100 and J.reputacion == 10, "la reputación se guarda por bando y se limita")
+	comprobar(not J.protegido(), "sin cuota ni respeto no estás protegido")
+	J.cambiar_rep("hampa", 15)
+	comprobar(J.protegido(), "con 30 de hampa te respetan")
+	J.reiniciar()
+	J.dia = 5
+	J.proteccion_hasta_dia = 5
+	comprobar(J.protegido(), "pagar la cuota protege ese día")
+	J.dia = 6
+	comprobar(not J.protegido(), "al día siguiente caduca")
+	comprobar(Bandas.dueno(3, 4) == Bandas.dueno(3, 4) and Bandas.BANDAS.has(Bandas.dueno(-7, 12)), "cada ciudad tiene una banda fija")
+	J.rep_hampa = 12
+	J.rep_ley = -7
+	J.proteccion_hasta_dia = 9
+	Guardado.guardar(get_tree(), hud.jugador, 5)
+	J.reiniciar()
+	Guardado.cargar(get_tree(), hud.jugador, 5)
+	comprobar(J.rep_hampa == 12 and J.rep_ley == -7 and J.proteccion_hasta_dia == 9, "se guardan reputación y protección")
+
 	# Barra de vida de NPC: se crea al recibir daño y se oculta después.
 	var guardias: Array = get_tree().get_nodes_in_group("guardias")
 	if not guardias.is_empty():

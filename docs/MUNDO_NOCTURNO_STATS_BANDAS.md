@@ -270,8 +270,12 @@ Con esto, tras la fase 4 ya hay una noche distinta a la del día; las bandas lle
 | Fase | Estado | Notas |
 |---|---|---|
 | 0 Estadísticas | Hecha | Aliento, hambre, sed y 7 atributos en `Juego`; panel en el HUD; guardado |
-| 1 Barras de vida | Hecha | `BarraVida` sobre guardias y peatones al recibir daño. Falta el combate cuerpo a cuerpo con esquiva |
+| 1 Barras de vida y combate | Hecha | `BarraVida` sobre guardias, peatones y matones. Puñetazo, golpe fuerte (Mayús, gasta 20 de aliento) y esquiva con X (25 de aliento, 0,4 s sin daño). Falta bloqueo y efectos de sangrado |
 | 2 Locales nocturnos | Hecha | Discoteca y tragaperras con horario, neones y focos (`scripts/datos/casino.gd`) |
-| 3 Casino | Hecha | Ruleta y blackjack en `VentanaCasino`; seguridad te echa si ganas 5.000 $ en una noche |
-| 4 Zonas chungas | Parcial | Zona industrial de las ciudades con bidones con fuego, basura y pintadas; atracos de noche (menos con *Sigilo*). Faltan matones y borrachos como peatones y los cacheos al salir del casino |
-| 5-9 | Pendiente | Reputación en tres bandos, Club de Copas, bandas, guerra, multijugador |
+| 3 Casino | Hecha | Ruleta y blackjack en `VentanaCasino`; seguridad te echa si ganas 5.000 $ en una noche; con 500 $ o más de ganancia pueden seguirte a la calle |
+| 4 Zonas chungas | Hecha | Zona industrial de las ciudades: bidones con fuego, pintadas, atracos de noche y hasta 3 matones (`Maton`, `GestorMatones`). Los borrachos ya existían como peatones de noche |
+| 5 Reputación | Hecha | Gente, Hampa y Ley (`Juego.cambiar_rep`), en el panel del HUD y guardada. Matar matones sube Ley y baja Hampa; matar guardias al revés |
+| 6 Club de Copas, timba, prestamista, mercado negro | Pendiente | Se harán con los límites de la sección 2 |
+| 7 Bandas | Parcial | 4 bandas en `scripts/datos/bandas.gd`; cada ciudad tiene una dueña; el bidón cobra 50 $ de protección por día (o con 30 de Hampa te respetan). Faltan territorios por barrio, jefes de barrio, reclutas y cuotas de locales |
+| 8 Escaramuzas y guerra abierta | Pendiente | |
+| 9 Multijugador | Pendiente | |

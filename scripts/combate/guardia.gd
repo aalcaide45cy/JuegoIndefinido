@@ -362,6 +362,8 @@ func _caer() -> void:
 	_poner_activo(false)
 	_material.emission_enabled = false
 	Juego.cobrar(15)
+	Juego.cambiar_rep("ley", -8)
+	Juego.cambiar_rep("hampa", 3)
 	Juego.subir_estrellas(1, "Has abatido a un guardia")
 	Juego.avisar("Un guardia cae. Llevaba 15 $ encima.")
 	if refuerzo:

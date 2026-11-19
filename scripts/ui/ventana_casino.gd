@@ -173,3 +173,24 @@ func _mostrar_mano(final: bool) -> void:
 		suyo.append("?")
 	_texto_mano.text = "Tú: %s (%d)    Crupier: %s%s" % [" ".join(tuyo), Casino.total_mano(_mano_j), " ".join(suyo),
 			(" (%d)" % Casino.total_mano(_mano_c)) if final else ""]
+
+
+# Al salir con buenas ganancias, alguien puede seguirte hasta la calle.
+func cerrar() -> void:
+	var ganancia: int = neto_noche
+	super()
+	if ganancia >= 500 and randf() < 0.4:
+		seguir_al_jugador(get_tree())
+
+
+static func seguir_al_jugador(arbol: SceneTree) -> void:
+	var jugador: Node3D = arbol.get_first_node_in_group("jugador") as Node3D
+	if jugador == null:
+		return
+	var m: Maton = Maton.new()
+	var atras: Vector3 = Basis(Vector3.UP, randf() * TAU) * Vector3(0, 0, 12.0)
+	m.position = jugador.global_position + atras
+	m._enfado = true
+	jugador.get_parent().add_child(m)
+	Juego.sospecha = minf(100.0, Juego.sospecha + 8.0)
+	Juego.avisar("Unos tipos te vieron ganar y te siguen hasta la calle. ¡Cuidado!")

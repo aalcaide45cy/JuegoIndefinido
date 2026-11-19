@@ -8,11 +8,12 @@ class_name PanelEstado
 extends Control
 
 const ANCHO: float = 270.0
-const ALTO: float = 168.0
+const ALTO: float = 188.0
 
 var _vida_mostrada: float = 100.0   # La barra se mueve suave hacia la vida real.
 var _tiempo: float = 0.0
 const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
+const Bandas = preload("res://scripts/datos/bandas.gd")
 
 
 func _ready() -> void:
@@ -82,6 +83,8 @@ func _draw() -> void:
 			Color(0.95, 0.75, 0.2) if not Juego.agotado else Color(0.6, 0.35, 0.15))
 	_barra_fina(fuente, "Hambre", Juego.hambre / 100.0, 138.0, Color(0.85, 0.5, 0.25))
 	_barra_fina(fuente, "Sed", Juego.sed / 100.0, 154.0, Color(0.3, 0.6, 0.9))
+	draw_string(fuente, Vector2(12, 182), Bandas.texto_reputacion(Juego.reputacion, Juego.rep_hampa, Juego.rep_ley),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.8, 0.78, 0.6))
 
 
 # Una barra pequeña con su nombre. Para hambre y sed, llena = mal (se pone roja).
