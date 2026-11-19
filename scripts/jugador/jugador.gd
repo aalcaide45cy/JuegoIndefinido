@@ -196,7 +196,7 @@ func _physics_process(delta: float) -> void:
 	if not _bloqueado and not Juego.menu_abierto:
 		teclas = Input.get_vector("izquierda", "derecha", "adelante", "atras")
 		if Input.is_action_just_pressed("saltar") and is_on_floor():
-			velocity.y = FUERZA_SALTO * (1.0 + Juego.mod("salto"))
+			velocity.y = FUERZA_SALTO * AjustesMundo.valor("salto") * (1.0 + Juego.mod("salto"))
 	var direccion: Vector3 = Basis(Vector3.UP, _giro) * Vector3(teclas.x, 0.0, teclas.y)
 
 	agachado = Input.is_action_pressed("agacharse") and not Juego.menu_abierto
@@ -213,7 +213,7 @@ func _physics_process(delta: float) -> void:
 			_excluir_en_camara()
 	_pivote.position.y = lerpf(_pivote.position.y, altura_ojos, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
-	var velocidad: float = VELOCIDAD_CORRER if Input.is_action_pressed("correr") else VELOCIDAD_ANDAR
+	var velocidad: float = VELOCIDAD_CORRER * AjustesMundo.valor("vel_correr") if Input.is_action_pressed("correr") 			else VELOCIDAD_ANDAR * AjustesMundo.valor("vel_andar")
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
 	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.
@@ -256,7 +256,7 @@ func _actualizar_mano() -> void:
 	_mano = ModeloMano.crear(id)
 	_colocar_mano()
 	_zoom = false
-	_camara.fov = 70.0
+	_camara.fov = AjustesMundo.valor("fov")
 	# near 0.05 con far 4000 deja muy poca precisión de profundidad a lo lejos: las caras casi
 	# pegadas (paredes, marcos, tejados) parpadean. Con near 0.1 se gana el doble de precisión (far se queda en 4000: acortarlo estropea las sombras).
 	_camara.near = 0.1
@@ -426,7 +426,7 @@ func _alternar_zoom() -> void:
 	if _datos_mano().get("forma", "") != "francotirador":
 		return
 	_zoom = not _zoom
-	_camara.fov = 22.0 if _zoom else 70.0
+	_camara.fov = 22.0 if _zoom else AjustesMundo.valor("fov")
 
 
 # Se llama si el jugador cae por debajo de ALTURA_MINIMA (un hueco del mapa).
@@ -604,10 +604,6 @@ var _linterna: SpotLight3D
 
 func _crear_linterna() -> void:
 	_linterna = SpotLight3D.new()
-	_linterna.light_color = Color(1.0, 0.94, 0.8)
-	_linterna.light_energy = 5.0
-	_linterna.spot_range = 34.0
-	_linterna.spot_angle = 30.0
 	_linterna.spot_angle_attenuation = 1.8
 	_linterna.spot_attenuation = 0.8
 	_linterna.shadow_enabled = false   # (Con sombras salían rayas en las paredes.)
@@ -615,6 +611,18 @@ func _crear_linterna() -> void:
 	_linterna.shadow_normal_bias = 2.0
 	_linterna.visible = false
 	_camara.add_child(_linterna)
+	aplicar_ajustes()
+
+
+# Linterna y campo de visión según los ajustes del panel de administrador (ver ajustes_mundo.gd).
+func aplicar_ajustes() -> void:
+	if _linterna != null:
+		_linterna.light_color = AjustesMundo.linterna_color
+		_linterna.light_energy = AjustesMundo.valor("linterna_energia")
+		_linterna.spot_range = AjustesMundo.valor("linterna_alcance")
+		_linterna.spot_angle = AjustesMundo.valor("linterna_angulo")
+	if _camara != null and not _zoom:
+		_camara.fov = AjustesMundo.valor("fov")
 
 
 func linterna_encendida() -> bool:
@@ -636,7 +644,7 @@ func _crear_camara() -> void:
 	_brazo.add_excluded_object(get_rid())  # Que no choque con el propio jugador.
 	_pivote.add_child(_brazo)
 	_camara = Camera3D.new()
-	_camara.fov = 70.0
+	_camara.fov = AjustesMundo.valor("fov")
 	_brazo.position.x = DESPLAZAMIENTO_HOMBRO  # (El SpringArm3D coloca a la cámara; por eso se mueve el brazo.)
 	_brazo.add_child(_camara)
 	_camara.current = true

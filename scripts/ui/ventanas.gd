@@ -699,6 +699,8 @@ class Admin extends Ventana:
 	func construir() -> void:
 		var caja: VBoxContainer = panel_centrado(Vector2(640, 880))
 		cabecera(caja, "Panel de administrador (F1)")
+		caja.add_child(Hud.crear_boton("Ajustes del mundo y presets (linterna, jugador, clima...)",
+				func() -> void: add_child(VentanaAjustes.new())))
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 		caja.add_child(_estado)
 
