@@ -121,6 +121,10 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"meta": {"fecha": Time.get_datetime_string_from_system(false, true)},
 		"dinero": Juego.dinero,
 		"vida": Juego.vida,
+		"resistencia": Juego.resistencia,
+		"hambre": Juego.hambre,
+		"sed": Juego.sed,
+		"atributos": Juego.atributos,
 		"hora": Juego.hora,
 		"dia": Juego.dia,
 		"duracion_dia_min": Juego.duracion_dia_min,
@@ -236,7 +240,14 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	# dinero negativo, vida a cero o montones más grandes de lo permitido.
 	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))
 	Juego.banco = maxi(0, int(datos.get("banco", 0)))
-	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
+	var attrs = datos.get("atributos")
+	if attrs is Dictionary:
+		for id in Juego.Estadisticas.ORDEN:
+			Juego.atributos[id] = clampi(int(attrs.get(id, Juego.Estadisticas.ATRIBUTO_INICIAL)), 1, Juego.Estadisticas.ATRIBUTO_MAX)
+	Juego.hambre = clampf(float(datos.get("hambre", 0.0)), 0.0, 100.0)
+	Juego.sed = clampf(float(datos.get("sed", 0.0)), 0.0, 100.0)
+	Juego.resistencia = clampf(float(datos.get("resistencia", 100.0)), 0.0, 100.0)
+	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.vida_max())
 	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
 	Clima.importar(datos.get("clima"))
 	Juego.dia = maxi(1, int(datos.get("dia", 1)))

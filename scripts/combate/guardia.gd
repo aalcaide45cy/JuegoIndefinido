@@ -341,6 +341,7 @@ func recibir_dano(cantidad: float) -> void:
 	if _muerto or not visible:
 		return
 	_vida -= cantidad
+	BarraVida.de(self, 2.3, "ley").mostrar(_vida / VIDA_MAXIMA)
 	_persiguiendo = true
 	Juego.alerta = 100.0
 	Juego.exigir_estrellas(2, "Has atacado a un guardia")

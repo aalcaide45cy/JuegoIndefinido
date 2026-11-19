@@ -221,7 +221,9 @@ func _physics_process(delta: float) -> void:
 			_excluir_en_camara()
 	_pivote.position.y = lerpf(_pivote.position.y, altura_ojos, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
-	var velocidad: float = VELOCIDAD_CORRER if (Input.is_action_pressed("correr") and Juego.sin_correr <= 0.0) else VELOCIDAD_ANDAR
+	var corriendo: bool = Input.is_action_pressed("correr") and Juego.puede_correr() and velocity.length() > 1.0
+	Juego.avanzar_resistencia(delta, corriendo)
+	var velocidad: float = VELOCIDAD_CORRER if corriendo else VELOCIDAD_ANDAR
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
 	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.
@@ -381,6 +383,11 @@ func _mult_dano() -> float:
 	return clampf(1.0 + Juego.mod("dano_hecho"), 0.2, 3.0)
 
 
+# Daño cuerpo a cuerpo: la fuerza suma un 5 % por punto sobre 5.
+func _mult_fuerza() -> float:
+	return 1.0 + 0.05 * float(Juego.atributo("fuerza") - 5)
+
+
 func _golpear(datos: Dictionary) -> void:
 	_enfriamiento = 0.45
 	_animar_mano(-0.25)
@@ -389,7 +396,7 @@ func _golpear(datos: Dictionary) -> void:
 		return
 	var cosa = choque["collider"]
 	if cosa != null and cosa.has_method("recibir_dano"):
-		cosa.recibir_dano(float(datos["dano"]) * _mult_dano())
+		cosa.recibir_dano(float(datos["dano"]) * _mult_dano() * _mult_fuerza())
 
 
 func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
@@ -547,7 +554,7 @@ func _morir() -> void:
 		get_tree().call_group("policia_refuerzo", "queue_free")
 		var multa: int = mini(Juego.dinero, maxi(Economia.MULTA_MUERTE_MINIMA, int(Juego.dinero * Economia.MULTA_MUERTE_PORCENTAJE)))
 		Juego.dinero -= multa
-		Juego.vida = Juego.VIDA_MAX * 0.6
+		Juego.vida = Juego.vida_max() * 0.6
 		Juego.efectos_activos.clear()
 		Juego.efectos_cambiados.emit()
 		global_position = Vector3(0, 0.2, 8)

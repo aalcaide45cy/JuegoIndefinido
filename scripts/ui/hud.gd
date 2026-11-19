@@ -71,7 +71,7 @@ func _ready() -> void:
 
 	# Barra de vida, debajo del dinero.
 	_barra_vida = ProgressBar.new()
-	_barra_vida.max_value = Juego.VIDA_MAX
+	_barra_vida.max_value = Juego.vida_max()
 	_barra_vida.show_percentage = false
 	_barra_vida.custom_minimum_size = Vector2(220, 14)
 	_barra_vida.size = Vector2(220, 14)

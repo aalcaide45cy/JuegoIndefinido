@@ -25,6 +25,7 @@ const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 const DatosEfectos = preload("res://scripts/datos/efectos.gd")
 const DatosOficios = preload("res://scripts/datos/oficios.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
+const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -40,6 +41,12 @@ const DURACION_DIA_POR_DEFECTO: float = 60.0
 
 var dinero: int = 0
 var vida: float = VIDA_MAX
+# Estadísticas (ver datos/estadisticas.gd): vitales y atributos.
+var resistencia: float = Estadisticas.RESISTENCIA_MAX
+var agotado: bool = false             # true tras vaciar la resistencia: no corres hasta recuperar un poco.
+var hambre: float = 0.0               # 0 bien, 100 fatal.
+var sed: float = 0.0
+var atributos: Dictionary = Estadisticas.nuevos_atributos()
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
 var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
@@ -121,6 +128,11 @@ func _ready() -> void:
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
 	vida = VIDA_MAX
+	resistencia = Estadisticas.RESISTENCIA_MAX
+	agotado = false
+	hambre = 0.0
+	sed = 0.0
+	atributos = Estadisticas.nuevos_atributos()
 	hora = 20.0
 	dia = 1
 	reloj = 0.0
@@ -198,6 +210,8 @@ func _process(delta: float) -> void:
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	_avanzar_estrellas(delta)
+	hambre = minf(100.0, hambre + Estadisticas.HAMBRE_POR_MIN * delta / 60.0 * velocidad_tiempo)
+	sed = minf(100.0, sed + Estadisticas.SED_POR_MIN * delta / 60.0 * velocidad_tiempo)
 	if alerta > 0.0:
 		var bajada: float = 30.0 if interiores > 0 else 6.0
 		alerta = maxf(0.0, alerta - delta * bajada / (1.0 + mod("alerta")))   # Paranoia: baja más despacio.
@@ -418,7 +432,63 @@ func cambiar_vida(cantidad: float) -> void:
 	if cantidad < 0.0:
 		# Los efectos de resistencia (o debilidad) cambian el daño que recibes.
 		cantidad *= clampf(1.0 + mod("dano_recibido"), 0.1, 2.0)
-	vida = clampf(vida + cantidad, 0.0, VIDA_MAX)
+	vida = clampf(vida + cantidad, 0.0, vida_max())
+	cambio.emit()
+
+
+# ------------------------------- Estadísticas ----------------------------------
+
+func atributo(id: String) -> int:
+	return int(atributos.get(id, Estadisticas.ATRIBUTO_INICIAL))
+
+
+func subir_atributo(id: String, cantidad: int = 1) -> void:
+	if not Estadisticas.ATRIBUTOS.has(id):
+		return
+	atributos[id] = clampi(atributo(id) + cantidad, 1, Estadisticas.ATRIBUTO_MAX)
+	cambio.emit()
+
+
+func vida_max() -> float:
+	return Estadisticas.vida_maxima(atributo("constitucion"))
+
+
+# Resistencia máxima: baja si tienes mucha hambre o sed.
+func resistencia_max() -> float:
+	var peor: float = maxf(hambre, sed)
+	if peor <= Estadisticas.MAL_ESTADO:
+		return Estadisticas.RESISTENCIA_MAX
+	return lerpf(Estadisticas.RESISTENCIA_MAX, 40.0,
+			(peor - Estadisticas.MAL_ESTADO) / (100.0 - Estadisticas.MAL_ESTADO))
+
+
+func puede_correr() -> bool:
+	return sin_correr <= 0.0 and not agotado and resistencia > 0.0
+
+
+# Lo llama el jugador cada fotograma: gasta resistencia si corre, la recupera si no.
+func avanzar_resistencia(delta: float, corriendo: bool) -> void:
+	var tope: float = resistencia_max()
+	if corriendo:
+		var gasto: float = Estadisticas.GASTO_CORRER * (1.0 - 0.025 * float(atributo("agilidad") - Estadisticas.ATRIBUTO_INICIAL))
+		resistencia = maxf(0.0, resistencia - gasto * delta)
+		if resistencia <= 0.0:
+			agotado = true
+	else:
+		var recupera: float = Estadisticas.RECUPERA * (1.0 + 0.05 * float(atributo("agilidad") - Estadisticas.ATRIBUTO_INICIAL))
+		resistencia = minf(tope, resistencia + recupera * delta)
+		if agotado and resistencia >= Estadisticas.UMBRAL_RECUPERAR:
+			agotado = false
+	resistencia = minf(resistencia, tope)
+
+
+func comer(cantidad: float) -> void:
+	hambre = clampf(hambre - cantidad, 0.0, 100.0)
+	cambio.emit()
+
+
+func beber(cantidad: float) -> void:
+	sed = clampf(sed - cantidad, 0.0, 100.0)
 	cambio.emit()
 
 
@@ -664,7 +734,7 @@ func usar_en_mano() -> void:
 		efectos = datos.get("efectos", [])
 	if cura <= 0.0 and efectos.is_empty() and quita.is_empty():
 		return   # No se puede usar (armas, semillas...).
-	var cura_util: bool = cura > 0.0 and vida < VIDA_MAX
+	var cura_util: bool = cura > 0.0 and vida < vida_max()
 	var quita_util: bool = false
 	for q in quita:
 		if efectos_activos.has(q):
@@ -855,8 +925,8 @@ func _avanzar_efectos(delta: float) -> void:
 	var avisar_ui: bool = _t_aviso_regen >= 0.25
 	if avisar_ui:
 		_t_aviso_regen = 0.0
-	if regen > 0.0 and vida < VIDA_MAX:
-		vida = minf(VIDA_MAX, vida + regen * delta)
+	if regen > 0.0 and vida < vida_max():
+		vida = minf(vida_max(), vida + regen * delta)
 		if avisar_ui:
 			cambio.emit()
 	elif regen < 0.0 and vida > 1.0:

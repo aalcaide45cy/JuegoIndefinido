@@ -34,7 +34,7 @@ func construir() -> void:
 
 
 static func precio_curar() -> int:
-	var falta: float = Juego.VIDA_MAX - Juego.vida
+	var falta: float = Juego.vida_max() - Juego.vida
 	if falta < 1.0:
 		return 0
 	return maxi(PRECIO_MINIMO, int(ceil(falta * PRECIO_POR_PUNTO)))
@@ -48,7 +48,7 @@ static func tiene_efectos_malos() -> bool:
 
 
 func _refrescar() -> void:
-	_estado.text = "Vida %d/%d  ·  Dinero %d $" % [int(Juego.vida), int(Juego.VIDA_MAX), Juego.dinero]
+	_estado.text = "Vida %d/%d  ·  Dinero %d $" % [int(Juego.vida), int(Juego.vida_max()), Juego.dinero]
 	for hijo in _lista.get_children():
 		hijo.queue_free()
 	var curar: int = precio_curar()
@@ -85,7 +85,7 @@ func _cobrar(precio: int) -> bool:
 
 func _curar(precio: int) -> void:
 	if precio > 0 and _cobrar(precio):
-		Juego.vida = Juego.VIDA_MAX
+		Juego.vida = Juego.vida_max()
 		Juego.avisar("El médico te cose, te venda y te cobra %d $. Vida completa." % precio)
 		Juego.cambio.emit()
 		Juego.empezar_convalecencia(Juego.DatosOficios.CONVALECENCIA_MEDICO)
@@ -99,7 +99,7 @@ func _desintoxicar(precio: int) -> void:
 
 func _revision(precio: int) -> void:
 	if _cobrar(precio):
-		Juego.vida = Juego.VIDA_MAX
+		Juego.vida = Juego.vida_max()
 		Juego.quitar_efectos_malos()
 		Juego.aplicar_efecto("regeneracion", DURACION_REGENERACION, 1.0)
 		Juego.avisar("Revisión completa por %d $: como nuevo." % precio)

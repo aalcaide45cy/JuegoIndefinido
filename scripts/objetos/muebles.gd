@@ -40,7 +40,7 @@ class Cama extends Interactuable:
 				Juego.hora -= 24.0
 				Juego.dia += 1
 			# Dormir cura: vida completa y se te pasan los efectos malos de las pociones.
-			Juego.vida = Juego.VIDA_MAX
+			Juego.vida = Juego.vida_max()
 			Juego.quitar_efectos_malos()
 			Juego.cambio.emit()
 			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido y te sientes recuperado (vida completa)."), 1.2)

@@ -8,10 +8,11 @@ class_name PanelEstado
 extends Control
 
 const ANCHO: float = 270.0
-const ALTO: float = 124.0
+const ALTO: float = 168.0
 
 var _vida_mostrada: float = 100.0   # La barra se mueve suave hacia la vida real.
 var _tiempo: float = 0.0
+const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
 
 
 func _ready() -> void:
@@ -38,8 +39,8 @@ func _draw() -> void:
 	draw_style_box(estilo, Rect2(0, 0, ANCHO, ALTO))
 
 	# --- Vida: corazón y barra ---
-	var fraccion: float = clampf(_vida_mostrada / Juego.VIDA_MAX, 0.0, 1.0)
-	var baja: bool = Juego.vida / Juego.VIDA_MAX < 0.25
+	var fraccion: float = clampf(_vida_mostrada / Juego.vida_max(), 0.0, 1.0)
+	var baja: bool = Juego.vida / Juego.vida_max() < 0.25
 	var latido: float = 1.0 + (0.12 * sin(_tiempo * 9.0) if baja else 0.0)
 	_corazon(Vector2(24, 26), latido)
 	var barra: Rect2 = Rect2(46, 16, 208, 20)
@@ -50,7 +51,7 @@ func _draw() -> void:
 	draw_rect(Rect2(barra.position, Vector2(barra.size.x * fraccion, barra.size.y)), color_vida)
 	draw_rect(Rect2(barra.position, Vector2(barra.size.x * fraccion, 6.0)), Color(1, 1, 1, 0.18))   # Brillo.
 	draw_rect(barra, Color(0, 0, 0, 0.8), false, 1.5)
-	var texto_vida: String = "%d / %d" % [int(ceil(Juego.vida)), int(Juego.VIDA_MAX)]
+	var texto_vida: String = "%d / %d" % [int(ceil(Juego.vida)), int(Juego.vida_max())]
 	_texto_centrado(fuente, texto_vida, barra.position.x + barra.size.x / 2.0, barra.position.y + 15.0, 14, Color.WHITE)
 
 	# --- Dinero: moneda y cifra ---
@@ -75,6 +76,25 @@ func _draw() -> void:
 	var texto_xp: String = "%d / %d XP" % [Juego.xp, necesaria]
 	draw_string(fuente, Vector2(ANCHO - 12 - fuente.get_string_size(texto_xp, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x, 92),
 			texto_xp, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.65, 0.78, 0.95))
+
+	# --- Vitales: resistencia, hambre y sed (barras finas) ---
+	_barra_fina(fuente, "Aliento", Juego.resistencia / Estadisticas.RESISTENCIA_MAX, 122.0,
+			Color(0.95, 0.75, 0.2) if not Juego.agotado else Color(0.6, 0.35, 0.15))
+	_barra_fina(fuente, "Hambre", Juego.hambre / 100.0, 138.0, Color(0.85, 0.5, 0.25))
+	_barra_fina(fuente, "Sed", Juego.sed / 100.0, 154.0, Color(0.3, 0.6, 0.9))
+
+
+# Una barra pequeña con su nombre. Para hambre y sed, llena = mal (se pone roja).
+func _barra_fina(fuente: Font, nombre: String, fraccion: float, y: float, color: Color) -> void:
+	fraccion = clampf(fraccion, 0.0, 1.0)
+	draw_string(fuente, Vector2(12, y + 8), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.75, 0.78, 0.8))
+	var r: Rect2 = Rect2(70, y, 184, 9)
+	draw_rect(r, Color(0.08, 0.08, 0.1))
+	var c: Color = color
+	if nombre != "Aliento" and fraccion * 100.0 >= Estadisticas.MAL_ESTADO:
+		c = Color(0.9, 0.2, 0.2) if int(_tiempo * 3.0) % 2 == 0 else color
+	draw_rect(Rect2(r.position, Vector2(r.size.x * fraccion, r.size.y)), c)
+	draw_rect(r, Color(0, 0, 0, 0.8), false, 1.0)
 
 
 func _texto_centrado(fuente: Font, texto: String, x: float, y: float, tam: int, color: Color) -> void:

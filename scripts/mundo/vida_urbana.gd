@@ -156,6 +156,7 @@ class Agente extends AnimatableBody3D:
 	var alegre: bool = false      # Peatón de noche que va zigzagueando.
 	var huyendo: bool = false
 	var vida: float = 30.0
+	var vida_max: float = 30.0
 	var modelo: Node3D = null
 	var fase: float = 0.0
 	# --- Coches ---
@@ -187,6 +188,7 @@ class Agente extends AnimatableBody3D:
 			return
 		vida -= cantidad
 		huyendo = true
+		BarraVida.de(self, 2.1, "neutral").mostrar(vida / vida_max)
 		if vida <= 0.0:
 			Juego.sospecha = minf(100.0, Juego.sospecha + 10.0)
 			Juego.avisar("Has herido a un ciudadano. La policía lo sabrá.")
@@ -727,6 +729,7 @@ func _comprobar_atropello(a: Agente, dir: Vector2) -> void:
 func _atropellar_peaton(a: Agente, p: Agente) -> void:
 	a.t_golpe = 2.0
 	p.vida -= a.vel * 3.5
+	BarraVida.de(p, 2.1, "neutral").mostrar(p.vida / p.vida_max)
 	a.vel = 0.0
 	a.frenazo = 2.5
 	p.huyendo = false

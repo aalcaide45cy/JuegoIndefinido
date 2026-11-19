@@ -120,7 +120,7 @@ func _precio_reparacion(v) -> int:
 
 
 func _precio_cura() -> int:
-	var base: int = maxi(Economia.CURA_MINIMA, int(ceil((Juego.VIDA_MAX - Juego.vida) * Economia.CURA_POR_PUNTO)))
+	var base: int = maxi(Economia.CURA_MINIMA, int(ceil((Juego.vida_max() - Juego.vida) * Economia.CURA_POR_PUNTO)))
 	return maxi(1, int(round(base * (1.0 - Juego.descuento_servicio("hospital")))))
 
 
@@ -194,14 +194,14 @@ func _usar_taller() -> void:
 
 
 func _usar_hospital() -> void:
-	if Juego.vida >= Juego.VIDA_MAX - 0.5:
+	if Juego.vida >= Juego.vida_max() - 0.5:
 		Juego.avisar("Estás sano. No hace falta.")
 		return
 	var precio: int = _precio_cura()
 	if not Juego.gastar(precio):
 		Juego.avisar("El tratamiento cuesta %d $." % precio)
 		return
-	Juego.vida = Juego.VIDA_MAX
+	Juego.vida = Juego.vida_max()
 	Juego.quitar_efectos_malos()
 	Juego.cambio.emit()
 	Juego.avisar("Te curan del todo por %d $." % precio)
@@ -213,6 +213,8 @@ func _usar_taberna() -> void:
 		Juego.avisar("Una copa cuesta %d $." % Economia.TABERNA_PRECIO)
 		return
 	Juego.cambiar_vida(10.0)
+	Juego.beber(35.0)
+	Juego.comer(10.0)
 	Juego.sospecha = maxf(0.0, Juego.sospecha - 15.0)
 	Juego.avisar("Te tomas algo en la barra. Te relajas.")
 
