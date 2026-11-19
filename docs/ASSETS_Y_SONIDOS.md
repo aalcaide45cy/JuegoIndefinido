@@ -52,9 +52,10 @@ Nota técnica: las animaciones Quaternius y KayKit usan rigs distintos; elegir u
 | **Quaternius Public Transport Pack** | https://quaternius.com/packs/publictransport.html | ⚠️ comprobar | Autobuses/tranvías |
 | **OpenGameArt** (filtrar CC0) | https://opengameart.org | Varía por archivo | Aceptable: **CC0** y **OGA-BY** (con crédito). Evitar CC-BY-SA y GPL |
 | **Poly Haven** (modelos, texturas, HDRIs) | https://polyhaven.com | CC0 ✅ | Texturas de asfalto, ladrillo, hormigón; cielos HDRI para el ciclo día/noche |
-| **ambientCG** (texturas PBR) | https://ambientcg.com | ⚠️ la web enlaza https://docs.ambientcg.com/license/ pero no pude leerla; sé que es CC0, confírmalo | Texturas para suelos y paredes |
+| **ambientCG** (texturas PBR) | https://ambientcg.com | CC0 ✅ (verificada en https://docs.ambientcg.com/license/, sin crédito obligatorio) | Texturas para suelos y paredes |
 
 ### Huecos que ninguno cubre bien (decirlo ya)
+- Segunda búsqueda (2026-11-19): las tragaperras y packs de casino que salen son casi todos de pago (CGTrader, etc.); no los recomiendo. No hay pack gratuito CC0 verificado.
 - **Discotecas / casinos / tragaperras / neones**: no hay un pack gratuito grande verificado. Plan: Poly Pizza (filtrando CC0) para tragaperras, barra y sofás, y **hacerlos nosotros** con cubos + materiales emisivos (neones) en Godot, que además queda coherente con el estilo. El pack de sonido Casino de Kenney ayuda mucho al ambiente.
 - **Fuente de plaza**: probar en Poly Pizza; si no, la modelamos nosotros (piedra + agua con shader) que es lo que más mejora la plaza inicial.
 
