@@ -119,7 +119,7 @@ func _probar() -> void:
 				var sv: String = GeneradorMundo.servicio_de(s, k, l)
 				if sv != "":
 					servicios.append(sv)
-		comprobar(servicios.size() == 10 and servicios.has("comisaria") and servicios.has("bomberos") and servicios.has("discoteca") and servicios.has("tragaperras"), "la ciudad tiene 10 servicios (%s)" % str(servicios))
+		comprobar(servicios.size() == 14 and servicios.has("comisaria") and servicios.has("bomberos") and servicios.has("discoteca") and servicios.has("tragaperras"), "la ciudad tiene 14 servicios (%s)" % str(servicios))
 		var p: Vector2 = s["pos"]
 		var dist: Dictionary = GeneradorMundo.distrito_en(p.x + 1.0, p.y + 1.0)
 		comprobar(not dist.is_empty() and dist["id"] == "centro", "distrito en el centro de la ciudad")

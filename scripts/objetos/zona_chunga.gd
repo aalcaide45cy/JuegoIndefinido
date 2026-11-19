@@ -52,13 +52,34 @@ func _process(delta: float) -> void:
 	_llama.scale = Vector3(1.0, 0.8 + 0.5 * parpadeo, 1.0)
 
 
+func _clave() -> String:
+	return Bandas.clave_en(global_position.x, global_position.z)
+
+
 func texto_accion() -> String:
+	var clave: String = _clave()
+	if clave != "" and Juego.territorios.has(clave):
+		if Juego.reclutas >= Bandas.MAX_RECLUTAS:
+			return "Barrio tuyo: ya tienes %d hombres (el máximo)" % Juego.reclutas
+		return "Barrio tuyo: reclutar un matón (%d $, %d $ al día). Tienes %d" % [Bandas.PRECIO_RECLUTA, Bandas.SUELDO_RECLUTA, Juego.reclutas]
 	if Juego.dia <= Juego.proteccion_hasta_dia:
 		return "%s: ya estás bajo su protección (hasta el día %d)" % [Bandas.nombre(banda), Juego.proteccion_hasta_dia]
 	return "Pagar protección a %s (%d $): hoy sus matones te dejan en paz" % [Bandas.nombre(banda), Bandas.CUOTA_DIA]
 
 
 func usar(_jugador: Node) -> void:
+	var clave: String = _clave()
+	if clave != "" and Juego.territorios.has(clave):
+		if Juego.reclutas >= Bandas.MAX_RECLUTAS:
+			Juego.avisar("No caben más hombres a tu servicio.")
+			return
+		if not Juego.gastar(Bandas.PRECIO_RECLUTA):
+			Juego.avisar("Reclutar cuesta %d $." % Bandas.PRECIO_RECLUTA)
+			return
+		Juego.reclutas += 1
+		Juego.cambio.emit()
+		Juego.avisar("Un matón del barrio se une a ti. Te sigue y pelea por ti (%d $ al día)." % Bandas.SUELDO_RECLUTA)
+		return
 	if Juego.dia <= Juego.proteccion_hasta_dia:
 		Juego.avisar("Un tipo te hace un gesto: ya has pagado. Tranquilo.")
 		return

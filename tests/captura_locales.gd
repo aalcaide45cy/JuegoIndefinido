@@ -47,7 +47,7 @@ func _ready() -> void:
 			elegido = s
 			break
 	var n: int = 1
-	for par in [["discoteca", Vector2i(-3, -1)], ["tragaperras", Vector2i(1, -2)], ["casino", Vector2i(3, 2)]]:
+	for par in [["discoteca", Vector2i(-3, -1)], ["tragaperras", Vector2i(1, -2)], ["casino", Vector2i(3, 2)], ["club", Vector2i(-4, -3)], ["prestamista", Vector2i(0, 3)], ["mercado_negro", Vector2i(3, -3)]]:
 		var c: Dictionary = GeneradorMundo.casa(elegido, par[1].x, par[1].y, 0)
 		var punto: Vector3 = GeneradorMundo._punto_servicio(c)
 		for hora in [23.0, 12.0]:
@@ -60,7 +60,7 @@ func _ready() -> void:
 			for sv in get_tree().get_nodes_in_group("interactuable"):
 				if sv is ServicioMundo and sv.servicio == par[0]:
 					print("SERV ", par[0], " en ", sv.global_position, " jugador ", jugador.global_position, " neon ", sv._neon != null)
-			await _foto("loc_%d_%s_%s" % [n, par[0], "noche" if hora > 20.0 else "dia"])
+			await _foto("loc_%02d_%s_%s" % [n, par[0], "noche" if hora > 20.0 else "dia"])
 			n += 1
 	# Zona chunga: el bidón con fuego de la zona industrial, de noche.
 	J.hora = 23.0
@@ -81,7 +81,7 @@ func _ready() -> void:
 	jugador._inclinacion = -0.22
 	J.dinero = 0   # Sin dinero no hay atraco que tape la captura.
 	await get_tree().create_timer(6.0).timeout
-	await _foto("loc_7_zona_chunga_noche")
+	await _foto("loc_90_zona_chunga_noche")
 	# Ventana del casino con una mano de blackjack y una vuelta de ruleta.
 	hud.abrir_casino()
 	await get_tree().process_frame
@@ -90,5 +90,5 @@ func _ready() -> void:
 		J.dinero = 500
 		v._girar("rojo", 0)
 		v._repartir()
-		await _foto("loc_8_casino_ventana")
+		await _foto("loc_91_casino_ventana")
 	get_tree().quit()

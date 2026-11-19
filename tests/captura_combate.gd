@@ -72,4 +72,25 @@ func _ready() -> void:
 	J.cambio.emit()
 	await get_tree().create_timer(0.4).timeout
 	await _foto("com_1_matones_barras_y_banda")
+	# Jefe de barrio con dos reclutas tuyos (azules) peleando.
+	J.proteccion_hasta_dia = 0
+	for n in get_tree().get_nodes_in_group("matones"):
+		n.queue_free()
+	await get_tree().process_frame
+	var jefe: Maton = Maton.new()
+	jefe.jefe = true
+	jefe.territorio = "0,0"
+	jefe.position = punto + Vector3(0.0, 0.5, cara * 5.0)
+	escena.add_child(jefe)
+	for i in 2:
+		var a: Maton = Maton.new()
+		a.aliado = true
+		a.position = punto + Vector3(-2.0 + i * 4.0, 0.5, cara * 8.5)
+		escena.add_child(a)
+	J.reclutas = 2
+	jefe.recibir_dano(70.0)
+	jefe._enfado = false
+	J.proteccion_hasta_dia = J.dia
+	await get_tree().create_timer(0.5).timeout
+	await _foto("com_2_jefe_y_reclutas")
 	get_tree().quit()

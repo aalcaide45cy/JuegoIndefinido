@@ -106,6 +106,76 @@ func _ready() -> void:
 	J.dinero = 2
 	slot.usar(hud.jugador)
 	comprobar(J.dinero == 2, "sin dinero no apuesta")
+	# Timba: retorno 92 %, trampas solo con Ojo alto.
+	var rt: RandomNumberGenerator = RandomNumberGenerator.new()
+	rt.seed = 11
+	var ganado: float = 0.0
+	for i in 100000:
+		var r: String = Casino.timba(rt, 5)
+		comprobar(r != "trampa", "sin Ojo no se descubren trampas")
+		if r == "gana":
+			ganado += 2.0
+	comprobar(absf(ganado / 100000.0 - 0.92) < 0.03, "la timba devuelve ~92 %%: %f" % (ganado / 100000.0))
+	var vio_trampa: bool = false
+	for i in 400:
+		if Casino.timba(rt, 10) == "trampa":
+			vio_trampa = true
+	comprobar(vio_trampa, "con Ojo alto se ven trampas")
+	comprobar(Casino.deuda_tras_dia(300) == 390 and Casino.deuda_tras_dia(390) == 507, "interés del 30 %% diario")
+	comprobar(Casino.oferta_mercado(3)[0] != null and Casino.abierto("mercado_negro", 2.0) and not Casino.abierto("mercado_negro", 14.0), "mercado negro de madrugada")
+	# Prestamista y mercado.
+	var pre: ServicioMundo = ServicioMundo.new()
+	pre.servicio = "prestamista"
+	escena.add_child(pre)
+	var mer: ServicioMundo = ServicioMundo.new()
+	mer.servicio = "mercado_negro"
+	escena.add_child(mer)
+	var club: ServicioMundo = ServicioMundo.new()
+	club.servicio = "club"
+	escena.add_child(club)
+	await get_tree().process_frame
+	J.dinero = 100
+	pre.usar(hud.jugador)
+	comprobar(J.deuda == 300 and J.dinero == 400, "el prestamista da 300")
+	J.dia_nuevo.emit()
+	comprobar(J.deuda == 390 and J.dias_deuda == 1, "la deuda crece cada día")
+	pre.usar(hud.jugador)
+	comprobar(J.deuda == 0 and J.dinero == 10, "pagar la deuda")
+	J.hora = 12.0
+	J.dinero = 1000
+	mer.usar(hud.jugador)
+	comprobar(J.dinero == 1000, "el mercado negro cerrado de día no cobra")
+	J.hora = 2.0
+	mer.usar(hud.jugador)
+	comprobar(J.dinero < 1000, "el mercado negro vende de madrugada")
+	var copa_antes: int = J.dinero
+	J.hora = 23.0
+	club.usar(hud.jugador)
+	comprobar(J.dinero == copa_antes - Casino.COPA_CLUB, "el club cobra la copa")
+	# Territorios y reclutas.
+	var Bandas = load("res://scripts/datos/bandas.gd")
+	var jefe: Maton = Maton.new()
+	jefe.jefe = true
+	jefe.territorio = "1,2"
+	escena.add_child(jefe)
+	await get_tree().process_frame
+	comprobar(is_equal_approx(jefe.vida, Bandas.VIDA_JEFE), "el jefe tiene más vida")
+	jefe.recibir_dano(1000.0)
+	comprobar(J.territorios.has("1,2"), "tumbar al jefe da el barrio")
+	var d0: int = J.dinero
+	J.dia_nuevo.emit()
+	comprobar(J.dinero == d0 + Bandas.CUOTA_TERRITORIO, "el barrio paga su cuota")
+	J.reclutas = 2
+	d0 = J.dinero
+	J.dia_nuevo.emit()
+	comprobar(J.dinero == d0 + Bandas.CUOTA_TERRITORIO - 2 * Bandas.SUELDO_RECLUTA, "se paga a los reclutas")
+	var aliado: Maton = Maton.new()
+	aliado.aliado = true
+	escena.add_child(aliado)
+	await get_tree().process_frame
+	comprobar(aliado.is_in_group("aliados") and not aliado.is_in_group("danable") and not aliado.is_in_group("matones"), "el aliado no es objetivo")
+	aliado.recibir_dano(1000.0)
+	comprobar(J.reclutas == 1, "un recluta caído se pierde")
 	# Atraco en zona chunga: solo de noche, en la zona industrial y con dinero encima.
 	J.distrito_actual = {"id": "industrial"}
 	J.dinero = 1000

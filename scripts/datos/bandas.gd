@@ -35,3 +35,26 @@ static func nombre(id: String) -> String:
 
 static func texto_reputacion(gente: int, hampa: int, ley: int) -> String:
 	return "Gente %+d   Hampa %+d   Ley %+d" % [gente, hampa, ley]
+
+
+# ------------------------- Territorios, jefes y reclutas -----------------------
+const CUOTA_TERRITORIO: int = 150     # Por día, de cada barrio que controlas.
+const MAX_RECLUTAS: int = 4
+const PRECIO_RECLUTA: int = 100
+const SUELDO_RECLUTA: int = 40        # Por día y recluta.
+const VIDA_JEFE: float = 220.0
+
+
+# Clave del territorio (la zona chunga de una ciudad) en una posición, o "" si no hay ciudad.
+static func clave_en(x: float, z: float) -> String:
+	for s in GeneradorMundo.asentamientos_cerca(Rect2(x - 2.0, z - 2.0, 4.0, 4.0)):
+		if int(s["tipo"]) == 2:
+			return "%d,%d" % [int(s["ci"]), int(s["cj"])]
+	return ""
+
+
+static func dueno_de_clave(clave: String) -> String:
+	var partes: PackedStringArray = clave.split(",")
+	if partes.size() != 2:
+		return "cuervos"
+	return dueno(int(partes[0]), int(partes[1]))

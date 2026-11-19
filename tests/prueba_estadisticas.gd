@@ -101,10 +101,15 @@ func _ready() -> void:
 	J.rep_hampa = 12
 	J.rep_ley = -7
 	J.proteccion_hasta_dia = 9
+	J.territorios = {"3,4": "jugador"}
+	J.reclutas = 3
+	J.deuda = 500
+	J.dias_deuda = 2
 	Guardado.guardar(get_tree(), hud.jugador, 5)
 	J.reiniciar()
 	Guardado.cargar(get_tree(), hud.jugador, 5)
 	comprobar(J.rep_hampa == 12 and J.rep_ley == -7 and J.proteccion_hasta_dia == 9, "se guardan reputación y protección")
+	comprobar(J.territorios.has("3,4") and J.reclutas == 3 and J.deuda == 500 and J.dias_deuda == 2, "se guardan territorios, reclutas y deuda")
 
 	# Barra de vida de NPC: se crea al recibir daño y se oculta después.
 	var guardias: Array = get_tree().get_nodes_in_group("guardias")

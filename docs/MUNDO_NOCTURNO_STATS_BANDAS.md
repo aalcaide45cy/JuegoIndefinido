@@ -275,7 +275,7 @@ Con esto, tras la fase 4 ya hay una noche distinta a la del día; las bandas lle
 | 3 Casino | Hecha | Ruleta y blackjack en `VentanaCasino`; seguridad te echa si ganas 5.000 $ en una noche; con 500 $ o más de ganancia pueden seguirte a la calle |
 | 4 Zonas chungas | Hecha | Zona industrial de las ciudades: bidones con fuego, pintadas, atracos de noche y hasta 3 matones (`Maton`, `GestorMatones`). Los borrachos ya existían como peatones de noche |
 | 5 Reputación | Hecha | Gente, Hampa y Ley (`Juego.cambiar_rep`), en el panel del HUD y guardada. Matar matones sube Ley y baja Hampa; matar guardias al revés |
-| 6 Club de Copas, timba, prestamista, mercado negro | Pendiente | Se harán con los límites de la sección 2 |
-| 7 Bandas | Parcial | 4 bandas en `scripts/datos/bandas.gd`; cada ciudad tiene una dueña; el bidón cobra 50 $ de protección por día (o con 30 de Hampa te respetan). Faltan territorios por barrio, jefes de barrio, reclutas y cuotas de locales |
+| 6 Club de Copas, timba, prestamista, mercado negro | Hecha | Club (copas y rumores, sin contenido sexual), timba (92 %, trampas con *Ojo* 8), prestamista (300 $, +30 % al día, cobrador a los 3 días) y mercado negro (una oferta por noche) |
+| 7 Bandas | Hecha (base) | 4 bandas, una por ciudad; jefe de barrio (220 de vida) al que se tumba para tomar el barrio (150 $ al día); hasta 4 reclutas (100 $ + 40 $ al día) que te siguen y pelean. Faltan territorios por manzana y cuotas de locales concretos |
 | 8 Escaramuzas y guerra abierta | Pendiente | |
 | 9 Multijugador | Pendiente | |

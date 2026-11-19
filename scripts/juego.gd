@@ -27,6 +27,7 @@ const DatosOficios = preload("res://scripts/datos/oficios.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
 const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
 const Bandas = preload("res://scripts/datos/bandas.gd")
+const Casino = preload("res://scripts/datos/casino.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -97,6 +98,10 @@ var nivel: int = 1
 var xp: int = 0                      # Experiencia hacia el siguiente nivel.
 var rep_hampa: int = 0              # -100..100: respeto en el hampa (ver datos/bandas.gd).
 var rep_ley: int = 0                # -100..100: bien o mal visto por la ley.
+var territorios: Dictionary = {}    # "ci,cj" -> "jugador": barrios que controlas (ver datos/bandas.gd).
+var reclutas: int = 0               # Matones a tu servicio (te acompañan y pelean).
+var deuda: int = 0                  # Lo que debes al prestamista.
+var dias_deuda: int = 0
 var proteccion_hasta_dia: int = 0   # Hasta qué día (incluido) estás protegido por la banda del barrio.
 var reputacion: int = 0              # -50..100: sube al entregar encargos, baja si dejas plantado.
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
@@ -126,6 +131,7 @@ var menu_abierto: bool = false
 
 func _ready() -> void:
 	dia_nuevo.connect(_interes_banco)
+	dia_nuevo.connect(_vida_de_banda)
 	randomize()
 	_crear_controles()
 	reiniciar()
@@ -136,6 +142,10 @@ func reiniciar() -> void:
 	vida = VIDA_MAX
 	rep_hampa = 0
 	rep_ley = 0
+	territorios = {}
+	reclutas = 0
+	deuda = 0
+	dias_deuda = 0
 	proteccion_hasta_dia = 0
 	resistencia = Estadisticas.RESISTENCIA_MAX
 	agotado = false
@@ -512,6 +522,27 @@ func cambiar_rep(bando: String, cantidad: int) -> void:
 		"gente": reputacion = clampi(reputacion + cantidad, -50, 100)
 		"hampa": rep_hampa = clampi(rep_hampa + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
 		"ley": rep_ley = clampi(rep_ley + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
+	cambio.emit()
+
+
+# Cada día: cobras las cuotas de tus barrios, pagas a tus reclutas y el prestamista cobra interés.
+func _vida_de_banda() -> void:
+	if not territorios.is_empty():
+		var cuota: int = territorios.size() * Bandas.CUOTA_TERRITORIO
+		dinero += cuota
+		avisar("Tus barrios te pagan %d $ de cuota." % cuota)
+	if reclutas > 0:
+		var sueldo: int = reclutas * Bandas.SUELDO_RECLUTA
+		if dinero >= sueldo:
+			dinero -= sueldo
+		else:
+			reclutas -= 1
+			avisar("No puedes pagar a todos tus hombres: uno se marcha.")
+	if deuda > 0:
+		deuda = Casino.deuda_tras_dia(deuda)
+		dias_deuda += 1
+		if dias_deuda >= Casino.DIAS_ANTES_COBRADOR:
+			GestorMatones.enviar_cobrador(get_tree(), "Un cobrador del prestamista te busca por tu deuda de %d $." % deuda)
 	cambio.emit()
 
 

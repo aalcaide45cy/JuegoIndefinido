@@ -22,7 +22,8 @@ const Casino = preload("res://scripts/datos/casino.gd")
 
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
 		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos",
-		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino"}
+		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino", "club": "Club de Copas", "timba": "Timba",
+		"prestamista": "Préstamos", "mercado_negro": "Mercado negro"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -133,6 +134,23 @@ func texto_accion() -> String:
 			if not Casino.abierto("discoteca", Juego.hora):
 				return "Discoteca cerrada (abre %s)" % Casino.texto_horario("discoteca")
 			return "Entrar a la discoteca (%d $ y copas)  ·  Mayús+E: copa (%d $)" % [Casino.ENTRADA_DISCOTECA, Casino.COPA_DISCOTECA]
+		"club":
+			if not Casino.abierto("club", Juego.hora):
+				return "Club de Copas cerrado (abre %s)" % Casino.texto_horario("club")
+			return "Club de Copas: tomar una copa (%d $) y escuchar rumores" % Casino.COPA_CLUB
+		"timba":
+			if not Casino.abierto("timba", Juego.hora):
+				return "Timba clandestina cerrada (abre %s)" % Casino.texto_horario("timba")
+			return "Timba: E apuesta %d $  ·  Mayús+E apuesta %d $  (hay quien hace trampas)" % [Casino.TIMBA_APUESTAS[0], Casino.TIMBA_APUESTAS[1]]
+		"prestamista":
+			if Juego.deuda > 0:
+				return "Prestamista: debes %d $ (+30 %% al día)  ·  E: pagar todo" % Juego.deuda
+			return "Prestamista: pedir %d $ (30 %% de interés al día; a los 3 días sin pagar, mandan un cobrador)" % Casino.PRESTAMO
+		"mercado_negro":
+			if not Casino.abierto("mercado_negro", Juego.hora):
+				return "Mercado negro cerrado (abre %s)" % Casino.texto_horario("mercado_negro")
+			var of: Array = Casino.oferta_mercado(Juego.dia)
+			return "Mercado negro: %s por %d $ (solo esta noche)" % [Juego.DatosObjetos.datos(of[0])["nombre"], _precio_mercado(of)]
 		"casino":
 			if not Casino.abierto("casino", Juego.hora):
 				return "Casino cerrado (abre %s)" % Casino.texto_horario("casino")
@@ -166,6 +184,10 @@ func usar(_jugador: Node) -> void:
 		"discoteca": _usar_discoteca(mayus)
 		"tragaperras": _usar_tragaperras(mayus)
 		"casino": _usar_casino(_jugador)
+		"club": _usar_club()
+		"timba": _usar_timba(mayus)
+		"prestamista": _usar_prestamista()
+		"mercado_negro": _usar_mercado()
 
 
 func _precio_gasolina(v) -> int:
@@ -304,6 +326,79 @@ func _usar_discoteca(solo_copa: bool) -> void:
 		Juego.avisar("Conoces a gente interesante en la pista. Tu fama sube un poco.")
 	else:
 		Juego.avisar("Una buena noche de música y luces. Te sienta bien.")
+
+
+func _precio_mercado(oferta: Array) -> int:
+	return int(round(float(Juego.DatosObjetos.datos(oferta[0])["precio"]) * float(oferta[1])))
+
+
+func _usar_club() -> void:
+	if not Casino.abierto("club", Juego.hora):
+		Juego.avisar("El Club de Copas está cerrado. Abre de %s." % Casino.texto_horario("club"))
+		return
+	if not Juego.gastar(Casino.COPA_CLUB):
+		Juego.avisar("Una copa cuesta %d $." % Casino.COPA_CLUB)
+		return
+	Juego.beber(30.0)
+	Juego.cambiar_vida(5.0)
+	Juego.cambiar_rep("hampa", 1)
+	Juego.avisar(Casino.RUMORES[_rng.randi() % Casino.RUMORES.size()])
+
+
+func _usar_timba(grande: bool) -> void:
+	if not Casino.abierto("timba", Juego.hora):
+		Juego.avisar("La timba está cerrada. Abre de %s." % Casino.texto_horario("timba"))
+		return
+	var apuesta: int = int(Casino.TIMBA_APUESTAS[1] if grande else Casino.TIMBA_APUESTAS[0])
+	if not Juego.gastar(apuesta):
+		Juego.avisar("No tienes %d $ para sentarte a esta mesa." % apuesta)
+		return
+	match Casino.timba(_rng, Juego.atributo("ojo")):
+		"gana":
+			Juego.cobrar(apuesta * 2)
+			Juego.avisar("Ganas la mano: +%d $." % apuesta)
+		"trampa":
+			Juego.cobrar(apuesta)
+			Juego.cambiar_rep("hampa", 2)
+			Juego.avisar("Notas las cartas marcadas. Lo dices en voz baja y recuperas tu apuesta. Te miran con respeto.")
+		_:
+			Juego.avisar("Pierdes la mano (-%d $)." % apuesta)
+
+
+func _usar_prestamista() -> void:
+	if Juego.deuda > 0:
+		if not Juego.gastar(Juego.deuda):
+			Juego.avisar("Debes %d $ y no te llega. El interés sigue corriendo." % Juego.deuda)
+			return
+		Juego.avisar("Pagas tu deuda de %d $. El prestamista sonríe." % Juego.deuda)
+		Juego.deuda = 0
+		Juego.dias_deuda = 0
+		Juego.cambio.emit()
+		return
+	Juego.cobrar(Casino.PRESTAMO)
+	Juego.deuda = Casino.PRESTAMO
+	Juego.dias_deuda = 0
+	Juego.avisar("Te dan %d $ sin preguntas. Mañana deberás %d $." % [Casino.PRESTAMO, Casino.deuda_tras_dia(Casino.PRESTAMO)])
+
+
+func _usar_mercado() -> void:
+	if not Casino.abierto("mercado_negro", Juego.hora):
+		Juego.avisar("El mercado negro está cerrado. Abre de %s." % Casino.texto_horario("mercado_negro"))
+		return
+	var of: Array = Casino.oferta_mercado(Juego.dia)
+	var precio: int = _precio_mercado(of)
+	if not Juego.gastar(precio):
+		Juego.avisar("Cuesta %d $." % precio)
+		return
+	if Juego.anadir(of[0], 1) > 0:
+		Juego.cobrar(precio)
+		Juego.avisar("No te cabe en la mochila.")
+		return
+	Juego.cambiar_rep("hampa", 1)
+	Juego.sospecha = minf(100.0, Juego.sospecha + 3.0)
+	Juego.avisar("Compras %s por %d $ y te vas sin mirar atrás." % [Juego.DatosObjetos.datos(of[0])["nombre"], precio])
+	if _rng.randf() < 0.1:
+		Juego.exigir_estrellas(1, "Redada en el mercado negro")
 
 
 func _usar_casino(jugador: Node) -> void:

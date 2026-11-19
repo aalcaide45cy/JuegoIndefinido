@@ -11,6 +11,9 @@ const HORARIOS: Dictionary = {
 	"discoteca": {"abre": 21.0, "cierra": 6.0},
 	"tragaperras": {"abre": 18.0, "cierra": 4.0},
 	"casino": {"abre": 20.0, "cierra": 7.0},
+	"club": {"abre": 22.0, "cierra": 5.0},
+	"timba": {"abre": 0.0, "cierra": 5.0},
+	"mercado_negro": {"abre": 23.0, "cierra": 5.0},
 }
 
 # Ruleta europea (37 números, un solo cero). Pago: pleno x35, docena x2, color/par/mitad x1.
@@ -173,3 +176,44 @@ static func pago_blackjack(jugador: Array, crupier: Array, apuesta: int) -> int:
 	if tj == tc:
 		return apuesta
 	return 0
+
+
+# ----------------------- Club de copas, timba y préstamos ----------------------
+# Ambiente adulto sugerido: música, copas, rumores y apuestas. Sin contenido sexual.
+
+const COPA_CLUB: int = 18
+const RUMORES: Array = [
+	"El camarero susurra: «Los matones del barrio cobran protección en el bidón de la esquina.»",
+	"Una mesa comenta que el casino echa a quien gana demasiado.",
+	"Alguien dice que el prestamista no perdona ni un día de retraso.",
+	"Un cliente jura que a los jefes de barrio se les puede tumbar... con ayuda.",
+	"Dicen que el mercado negro solo abre de madrugada y cambia de género cada noche.",
+	"Una canción lenta suena de fondo. Nadie mira a nadie. Así se hacen los tratos.",
+]
+const TIMBA_APUESTAS: Array = [200, 1000]
+const TIMBA_PROB_GANAR: float = 0.46      # Paga x2: retorno 92 %.
+const TIMBA_OJO_TRAMPA: int = 8           # Con este Ojo puedes descubrir las cartas marcadas.
+
+const PRESTAMO: int = 300
+const INTERES_DIA: float = 0.30
+const DIAS_ANTES_COBRADOR: int = 3
+
+# Género del mercado negro: una oferta por noche. [id de objeto, multiplicador de precio]
+const MERCADO_NEGRO: Array = [["cuchillo", 1.5], ["bate", 1.5], ["barra_hierro", 1.5], ["pistola", 1.4], ["venda", 2.0]]
+
+
+static func oferta_mercado(dia: int) -> Array:
+	return MERCADO_NEGRO[dia % MERCADO_NEGRO.size()]
+
+
+# Resultado de una mano de timba: "gana", "pierde" o "trampa" (la descubres con Ojo).
+static func timba(rng: RandomNumberGenerator, ojo: int) -> String:
+	var gana: bool = rng.randf() < TIMBA_PROB_GANAR
+	if not gana and ojo >= TIMBA_OJO_TRAMPA and rng.randf() < 0.25:
+		return "trampa"
+	return "gana" if gana else "pierde"
+
+
+# Lo que debes tras un día más (interés compuesto, redondeado hacia arriba).
+static func deuda_tras_dia(deuda: int) -> int:
+	return int(ceil(float(deuda) * (1.0 + INTERES_DIA)))

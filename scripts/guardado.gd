@@ -123,6 +123,10 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"vida": Juego.vida,
 		"resistencia": Juego.resistencia,
 		"rep_hampa": Juego.rep_hampa,
+		"territorios": Juego.territorios,
+		"reclutas": Juego.reclutas,
+		"deuda": Juego.deuda,
+		"dias_deuda": Juego.dias_deuda,
 		"rep_ley": Juego.rep_ley,
 		"proteccion_hasta_dia": Juego.proteccion_hasta_dia,
 		"hambre": Juego.hambre,
@@ -247,6 +251,13 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	if attrs is Dictionary:
 		for id in Juego.Estadisticas.ORDEN:
 			Juego.atributos[id] = clampi(int(attrs.get(id, Juego.Estadisticas.ATRIBUTO_INICIAL)), 1, Juego.Estadisticas.ATRIBUTO_MAX)
+	var terr = datos.get("territorios")
+	if terr is Dictionary:
+		for k in terr:
+			Juego.territorios[str(k)] = "jugador"
+	Juego.reclutas = clampi(int(datos.get("reclutas", 0)), 0, 4)
+	Juego.deuda = maxi(0, int(datos.get("deuda", 0)))
+	Juego.dias_deuda = maxi(0, int(datos.get("dias_deuda", 0)))
 	Juego.rep_hampa = clampi(int(datos.get("rep_hampa", 0)), -100, 100)
 	Juego.rep_ley = clampi(int(datos.get("rep_ley", 0)), -100, 100)
 	Juego.proteccion_hasta_dia = maxi(0, int(datos.get("proteccion_hasta_dia", 0)))
