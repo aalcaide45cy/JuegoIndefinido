@@ -102,6 +102,9 @@ func _unhandled_input(evento: InputEvent) -> void:
 		_alternar_zoom()
 	elif _tecla_barra(evento) >= 0:
 		Juego.seleccionar(_tecla_barra(evento))
+	elif evento.is_action_pressed("linterna"):
+		poner_linterna(not linterna_encendida())
+		Sonido.tocar(self, "clic", -10.0)
 	elif evento.is_action_pressed("recargar"):
 		_recargar()
 	elif evento.is_action_pressed("colocar") and not _bloqueado:
@@ -135,7 +138,9 @@ func radio_deteccion() -> float:
 		radio *= 0.45
 	elif Input.is_action_pressed("correr") and velocity.length() > 3.0:
 		radio *= 1.3
-	if en_sombra:
+	if linterna_encendida():
+		radio *= 1.4   # Con la linterna te ven desde más lejos.
+	elif en_sombra:
 		radio *= 0.6
 	radio *= clampf(1.0 - Juego.mod("sigilo"), 0.3, 1.8)   # Efectos de sigilo / paranoia.
 	radio *= Clima.sigilo()   # Con niebla y lluvia te ven menos.
@@ -252,6 +257,10 @@ func _actualizar_mano() -> void:
 	_colocar_mano()
 	_zoom = false
 	_camara.fov = 70.0
+	# near 0.05 con far 4000 deja muy poca precisión de profundidad a lo lejos: las caras casi
+	# pegadas (paredes, marcos, tejados) parpadean. Con near 0.1 se gana el doble de precisión (far se queda en 4000: acortarlo estropea las sombras).
+	_camara.near = 0.1
+	_camara.far = 4000.0
 
 
 # ------------------------- Combate: golpear, disparar, explotar ----------------
@@ -586,6 +595,37 @@ func vestir() -> void:
 	_modelo_anim = Aspecto.vestir(_ropa, Juego.aspecto)
 
 
+# ------------------------------- Linterna -------------------------------------
+# Un foco que sale de la cámara y alumbra donde miras (tecla F). Con ella puedes ver de
+# noche, pero los guardias te ven desde más lejos.
+
+var _linterna: SpotLight3D
+
+
+func _crear_linterna() -> void:
+	_linterna = SpotLight3D.new()
+	_linterna.light_color = Color(1.0, 0.94, 0.8)
+	_linterna.light_energy = 5.0
+	_linterna.spot_range = 34.0
+	_linterna.spot_angle = 30.0
+	_linterna.spot_angle_attenuation = 1.8
+	_linterna.spot_attenuation = 0.8
+	_linterna.shadow_enabled = false   # (Con sombras salían rayas en las paredes.)
+	_linterna.shadow_bias = 0.12
+	_linterna.shadow_normal_bias = 2.0
+	_linterna.visible = false
+	_camara.add_child(_linterna)
+
+
+func linterna_encendida() -> bool:
+	return _linterna != null and _linterna.visible
+
+
+func poner_linterna(encendida: bool) -> void:
+	if _linterna != null:
+		_linterna.visible = encendida
+
+
 func _crear_camara() -> void:
 	_pivote = Node3D.new()
 	_pivote.position.y = 1.6
@@ -600,6 +640,7 @@ func _crear_camara() -> void:
 	_brazo.position.x = DESPLAZAMIENTO_HOMBRO  # (El SpringArm3D coloca a la cámara; por eso se mueve el brazo.)
 	_brazo.add_child(_camara)
 	_camara.current = true
+	_crear_linterna()
 
 
 # ------------------------------- Vehículos ------------------------------------

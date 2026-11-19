@@ -276,6 +276,15 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			serv.servicio = pr["serv"]
 			serv.position = pr["pos"]
 			raiz.add_child(serv)
+		elif pr["tipo"] == "farola":
+			var lampara: Node3D = Node3D.new()
+			lampara.position = pr["pos"]
+			raiz.add_child(lampara)
+			var cristal_f: Node3D = Construir.caja(lampara, Vector3.ZERO, Vector3(0.26, 0.34, 0.26),
+					Color(1.0, 0.75, 0.4), false, 3.0)
+			cristal_f.visible = false
+			cristal_f.add_to_group("ventanas_noche")
+			Construir.luz_noche(lampara, Vector3(0, 0.1, 0), Color(1.0, 0.7, 0.4), 1.4, 10.0)
 		elif pr["tipo"] == "casa":
 			var puerta: PropiedadMundo = PropiedadMundo.new()
 			puerta.id_prop = pr["id"]

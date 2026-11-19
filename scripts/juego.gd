@@ -864,6 +864,7 @@ func _crear_controles() -> void:
 	_accion("enganchar", [KEY_H])   # Enganchar o soltar un remolque.
 	_accion("logros", [KEY_L])   # Lista de logros.
 	_accion("aspecto", [KEY_O])   # Cambiar de ropa y peinado.
+	_accion("linterna", [KEY_F])   # Encender o apagar la linterna.
 	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
 	_accion("liberar_raton", [KEY_ESCAPE])
