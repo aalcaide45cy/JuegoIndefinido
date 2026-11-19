@@ -337,6 +337,11 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 			serv.servicio = pr["serv"]
 			serv.position = pr["pos"]
 			raiz.add_child(serv)
+		elif pr["tipo"] == "chunga":
+			var zc: ZonaChunga = ZonaChunga.new()
+			zc.semilla = int(pr["sem"])
+			zc.position = pr["pos"]
+			raiz.add_child(zc)
 		elif pr["tipo"] == "luces_casa":
 			_poner_luces_casa(raiz, pr)
 		elif pr["tipo"] == "casa":

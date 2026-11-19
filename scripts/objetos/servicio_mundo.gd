@@ -22,7 +22,7 @@ const Casino = preload("res://scripts/datos/casino.gd")
 
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
 		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos",
-		"discoteca": "Discoteca", "tragaperras": "Tragaperras"}
+		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -133,6 +133,12 @@ func texto_accion() -> String:
 			if not Casino.abierto("discoteca", Juego.hora):
 				return "Discoteca cerrada (abre %s)" % Casino.texto_horario("discoteca")
 			return "Entrar a la discoteca (%d $ y copas)  ·  Mayús+E: copa (%d $)" % [Casino.ENTRADA_DISCOTECA, Casino.COPA_DISCOTECA]
+		"casino":
+			if not Casino.abierto("casino", Juego.hora):
+				return "Casino cerrado (abre %s)" % Casino.texto_horario("casino")
+			if VentanaCasino.dia_vetado == Juego.dia:
+				return "Seguridad no te deja entrar hoy"
+			return "Entrar al casino: ruleta y blackjack (dinero del juego)"
 		"tragaperras":
 			if not Casino.abierto("tragaperras", Juego.hora):
 				return "Salón cerrado (abre %s)" % Casino.texto_horario("tragaperras")
@@ -159,6 +165,7 @@ func usar(_jugador: Node) -> void:
 		"banco": _usar_banco(mayus)
 		"discoteca": _usar_discoteca(mayus)
 		"tragaperras": _usar_tragaperras(mayus)
+		"casino": _usar_casino(_jugador)
 
 
 func _precio_gasolina(v) -> int:
@@ -297,6 +304,18 @@ func _usar_discoteca(solo_copa: bool) -> void:
 		Juego.avisar("Conoces a gente interesante en la pista. Tu fama sube un poco.")
 	else:
 		Juego.avisar("Una buena noche de música y luces. Te sienta bien.")
+
+
+func _usar_casino(jugador: Node) -> void:
+	if not Casino.abierto("casino", Juego.hora):
+		Juego.avisar("El casino está cerrado. Abre de %s." % Casino.texto_horario("casino"))
+		return
+	if VentanaCasino.dia_vetado == Juego.dia:
+		Juego.avisar("Seguridad te recuerda que hoy ya has ganado bastante.")
+		return
+	if jugador != null and "hud" in jugador and jugador.hud != null:
+		VentanaCasino.neto_noche = 0
+		jugador.hud.abrir_casino()
 
 
 func _usar_tragaperras(grande: bool) -> void:

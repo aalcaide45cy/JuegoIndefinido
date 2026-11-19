@@ -47,7 +47,7 @@ func _ready() -> void:
 			elegido = s
 			break
 	var n: int = 1
-	for par in [["discoteca", Vector2i(-3, -1)], ["tragaperras", Vector2i(1, -2)]]:
+	for par in [["discoteca", Vector2i(-3, -1)], ["tragaperras", Vector2i(1, -2)], ["casino", Vector2i(3, 2)]]:
 		var c: Dictionary = GeneradorMundo.casa(elegido, par[1].x, par[1].y, 0)
 		var punto: Vector3 = GeneradorMundo._punto_servicio(c)
 		for hora in [23.0, 12.0]:
@@ -62,4 +62,33 @@ func _ready() -> void:
 					print("SERV ", par[0], " en ", sv.global_position, " jugador ", jugador.global_position, " neon ", sv._neon != null)
 			await _foto("loc_%d_%s_%s" % [n, par[0], "noche" if hora > 20.0 else "dia"])
 			n += 1
+	# Zona chunga: el bidón con fuego de la zona industrial, de noche.
+	J.hora = 23.0
+	var zonas: Array = []
+	var industrial: Vector3 = Vector3.ZERO
+	var cara_i: float = 1.0
+	for k in range(-4, 0):
+		for l in range(1, 4):
+			var cz: Dictionary = GeneradorMundo.casa(elegido, k, l, 0)
+			if not cz.is_empty() and str(cz.get("distrito", "")) == "industrial":
+				cara_i = float(cz["puerta"])
+				industrial = Vector3(float(cz["x"]) + float(cz["w"]) * 0.3, cz["y"], float(cz["z"]) + cara_i * (float(cz["d"]) / 2.0 + 3.5))
+				break
+		if industrial != Vector3.ZERO:
+			break
+	jugador.global_position = industrial + Vector3(0, 3.5, cara_i * 9.0)
+	jugador._giro = 0.0 if cara_i > 0.0 else PI
+	jugador._inclinacion = -0.22
+	J.dinero = 0   # Sin dinero no hay atraco que tape la captura.
+	await get_tree().create_timer(6.0).timeout
+	await _foto("loc_7_zona_chunga_noche")
+	# Ventana del casino con una mano de blackjack y una vuelta de ruleta.
+	hud.abrir_casino()
+	await get_tree().process_frame
+	var v = hud._menu
+	if v != null and v.has_method("_girar"):
+		J.dinero = 500
+		v._girar("rojo", 0)
+		v._repartir()
+		await _foto("loc_8_casino_ventana")
 	get_tree().quit()

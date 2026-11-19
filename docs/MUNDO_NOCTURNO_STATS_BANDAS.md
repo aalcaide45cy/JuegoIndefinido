@@ -264,3 +264,14 @@ Con esto, tras la fase 4 ya hay una noche distinta a la del día; las bandas lle
 - Confirmar el **orden de fases** y por cuál empezar (recomendado: 0 y 1).
 - Decidir si el multijugador entra antes o después de las bandas (recomendado: después).
 - Dar visto bueno a la **lista de assets gratuitos** cuando se prepare (sección 10).
+
+## 14. Estado de la implementación (2026-11-19)
+
+| Fase | Estado | Notas |
+|---|---|---|
+| 0 Estadísticas | Hecha | Aliento, hambre, sed y 7 atributos en `Juego`; panel en el HUD; guardado |
+| 1 Barras de vida | Hecha | `BarraVida` sobre guardias y peatones al recibir daño. Falta el combate cuerpo a cuerpo con esquiva |
+| 2 Locales nocturnos | Hecha | Discoteca y tragaperras con horario, neones y focos (`scripts/datos/casino.gd`) |
+| 3 Casino | Hecha | Ruleta y blackjack en `VentanaCasino`; seguridad te echa si ganas 5.000 $ en una noche |
+| 4 Zonas chungas | Parcial | Zona industrial de las ciudades con bidones con fuego, basura y pintadas; atracos de noche (menos con *Sigilo*). Faltan matones y borrachos como peatones y los cacheos al salir del casino |
+| 5-9 | Pendiente | Reputación en tres bandos, Club de Copas, bandas, guerra, multijugador |

@@ -60,6 +60,7 @@ var texto_aviso_oficio: String = ""  # Lo escribe gestor_oficio.gd para el HUD.
 var sin_correr: float = 0.0           # Segundos de convalecencia: tras curarte no puedes correr.
 var _t_metas: float = 0.0
 var _t_aviso_regen: float = 0.0
+var _t_atraco: float = 12.0
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
@@ -210,6 +211,10 @@ func _process(delta: float) -> void:
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	_avanzar_estrellas(delta)
+	_t_atraco -= delta
+	if _t_atraco <= 0.0:
+		_t_atraco = 12.0
+		_posible_atraco()
 	hambre = minf(100.0, hambre + Estadisticas.HAMBRE_POR_MIN * delta / 60.0 * velocidad_tiempo)
 	sed = minf(100.0, sed + Estadisticas.SED_POR_MIN * delta / 60.0 * velocidad_tiempo)
 	if alerta > 0.0:
@@ -938,6 +943,30 @@ func _avanzar_efectos(delta: float) -> void:
 		avisar("Se acaba el efecto: %s." % DatosEfectos.nombre(id))
 	if not caducados.is_empty():
 		efectos_cambiados.emit()
+
+
+# Zonas chungas: de noche, en la zona industrial de una ciudad, alguien puede atracarte.
+# Con más sigilo y sin ir llamando la atención (sospecha baja) hay menos riesgo.
+func probabilidad_atraco() -> float:
+	if distrito_actual.get("id", "") != "industrial" or interiores > 0 or dinero < 100:
+		return 0.0
+	if not (hora >= 21.0 or hora < 5.0):
+		return 0.0
+	var p: float = 0.12 + clampf(float(dinero) / 5000.0, 0.0, 0.2)
+	p *= clampf(1.0 - 0.05 * float(atributo("sigilo") - Estadisticas.ATRIBUTO_INICIAL), 0.3, 1.5)
+	return clampf(p, 0.0, 0.5)
+
+
+func _posible_atraco() -> void:
+	if randf() >= probabilidad_atraco():
+		return
+	var robado: int = clampi(int(dinero * 0.2), 20, 400)
+	robado = mini(robado, dinero)
+	dinero -= robado
+	cambio.emit()
+	cambiar_vida(-8.0)
+	sospecha = minf(100.0, sospecha + 5.0)
+	avisar("¡Un tipo sale de un callejón! Te quita %d $ y te da un empujón." % robado)
 
 
 # Apunta una receta nueva en el recetario. Devuelve true si es la primera vez.

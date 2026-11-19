@@ -389,6 +389,10 @@ func abrir_instructor() -> void:
 	_abrir_menu(Ventanas.Instructor.new())
 
 
+func abrir_casino() -> void:
+	_abrir_menu(VentanaCasino.new())
+
+
 func abrir_medico() -> void:
 	_abrir_menu(VentanaMedico.new())
 
