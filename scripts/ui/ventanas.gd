@@ -196,7 +196,7 @@ class Tienda extends Ventana:
 
 	func construir() -> void:
 		var panel: PanelContainer = Hud.crear_panel()
-		Hud.centrar(panel, Vector2(1180, 650))
+		Hud.centrar(panel, Vector2(1180, 650), espacio_visible())
 		add_child(panel)
 		var raiz: VBoxContainer = VBoxContainer.new()
 		raiz.add_theme_constant_override("separation", 10)
@@ -391,7 +391,7 @@ class VentanaCaldero extends Ventana:
 	func construir() -> void:
 		_slots.resize(GameData.Mezclas.max_ingredientes(Juego.nivel))   # Más casillas al subir de nivel (6 y 9).
 		var panel: PanelContainer = Hud.crear_panel()
-		Hud.centrar(panel, Vector2(1120, 640))
+		Hud.centrar(panel, Vector2(1120, 640), espacio_visible())
 		add_child(panel)
 		var raiz: VBoxContainer = VBoxContainer.new()
 		raiz.add_theme_constant_override("separation", 10)
@@ -654,7 +654,7 @@ class Estanteria extends Ventana:
 
 	func construir() -> void:
 		var panel: PanelContainer = Hud.crear_panel()
-		Hud.centrar(panel, Vector2(1100, 620))
+		Hud.centrar(panel, Vector2(1100, 620), espacio_visible())
 		add_child(panel)
 		var raiz: VBoxContainer = VBoxContainer.new()
 		raiz.add_theme_constant_override("separation", 10)
@@ -695,10 +695,14 @@ class Admin extends Ventana:
 	var _cantidad: SpinBox
 	var _casillas_habilidad: Dictionary = {}
 	var _texto_duracion: Label
+	var jugador: Node3D = null
+	var _lista_vehiculos: OptionButton
 
 	func construir() -> void:
 		var caja: VBoxContainer = panel_centrado(Vector2(640, 880))
 		cabecera(caja, "Panel de administrador (F1)")
+		caja.add_child(Hud.crear_boton("Teletransporte (mapa del mundo)…", _abrir_teletransporte))
+		_construir_vehiculos(caja)
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 		caja.add_child(_estado)
 
@@ -898,6 +902,44 @@ class Admin extends Ventana:
 
 		Juego.cambio.connect(_refrescar)
 		_refrescar()
+
+	func _abrir_teletransporte() -> void:
+		var v: VentanaTeletransporte = VentanaTeletransporte.new()
+		v.jugador = jugador
+		add_child(v)
+
+	# Aparecer un vehículo delante de ti, mirando hacia donde miras.
+	func _construir_vehiculos(caja: VBoxContainer) -> void:
+		subtitulo(caja, "Aparecer un vehículo delante de mí (a 1 m, hacia donde miras)")
+		var fila: HBoxContainer = HBoxContainer.new()
+		caja.add_child(fila)
+		_lista_vehiculos = OptionButton.new()
+		_lista_vehiculos.focus_mode = Control.FOCUS_NONE
+		for tipo_v in Vehiculo.TIPOS:
+			_lista_vehiculos.add_item(str(Vehiculo.TIPOS[tipo_v]["nombre"]))
+			_lista_vehiculos.set_item_metadata(_lista_vehiculos.item_count - 1, tipo_v)
+		fila.add_child(_lista_vehiculos)
+		fila.add_child(Hud.crear_boton("Aparecer", _aparecer_vehiculo))
+
+	func _aparecer_vehiculo() -> void:
+		var gestor: Node = get_tree().get_first_node_in_group("gestor_vehiculos")
+		if gestor == null or jugador == null or _lista_vehiculos.selected < 0:
+			Juego.avisar("No se puede crear el vehículo ahora.")
+			return
+		var tipo_v: String = str(_lista_vehiculos.get_item_metadata(_lista_vehiculos.selected))
+		var giro: float = float(jugador.get("_giro"))
+		var adelante: Vector3 = Basis(Vector3.UP, giro) * Vector3.FORWARD
+		var largo: float = float(Vehiculo.TIPOS[tipo_v]["largo"])
+		var hueco: float = 1.0 + largo / 2.0   # El morro queda a 1 m de ti.
+		var p: Vector3 = jugador.global_position + adelante * hueco
+		# Suelo bajo ese punto (rayo hacia abajo); si no hay, a la altura de tus pies.
+		var espacio: PhysicsDirectSpaceState3D = jugador.get_world_3d().direct_space_state
+		var rayo: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
+				p + Vector3(0, 3, 0), p - Vector3(0, 30, 0))
+		var golpe: Dictionary = espacio.intersect_ray(rayo)
+		p.y = float(golpe["position"].y) + 0.15 if not golpe.is_empty() else jugador.global_position.y
+		var id_v: String = gestor.entregar(tipo_v, p, giro)
+		Juego.avisar("Vehículo creado: %s (es tuyo, id %s)." % [Vehiculo.TIPOS[tipo_v]["nombre"], id_v])
 
 	func _process(_delta: float) -> void:
 		if not _hora.has_focus():

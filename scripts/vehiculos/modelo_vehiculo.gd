@@ -103,7 +103,11 @@ static func crear(clave: String, largo: float, con_direccion: bool = true) -> Di
 			if rueda == null:
 				continue
 			var caja_r: AABB = Assets.caja_de(rueda)
-			rueda.scale = Vector3.ONE * (radio / maxf(0.01, caja_r.size.y / 2.0))
+			var k: float = radio / maxf(0.01, caja_r.size.y / 2.0)
+			# Las ruedas de Kenney son anchas (el ancho es 2/3 del diámetro): se estrechan para
+			# que parezcan neumáticos normales (tractor y excavadora, algo más anchas).
+			var fino: float = 0.8 if str(eje[2]).contains("tractor") else 0.6
+			rueda.scale = Vector3(k * fino, k, k)
 			if lado < 0.0:
 				rueda.rotation.y = PI   # el buje mira hacia fuera
 			var spin: Node3D = Node3D.new()
