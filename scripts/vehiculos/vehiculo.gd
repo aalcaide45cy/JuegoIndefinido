@@ -1,8 +1,11 @@
 # vehiculo.gd
 # -----------------------------------------------------------------------------
-# Coches, furgonetas, camiones y tractores que se pueden conducir (modelos CC0
-# de Kenney, assets/kenney/car-kit). Conducción "arcade" (sin ruedas físicas):
-# un CharacterBody3D que acelera, gira y choca con las paredes.
+# Coches, furgonetas, camiones y tractores que se pueden conducir. Los modelos son
+# carrocerías 3D generadas con IA (assets/vehiculos/, ver ModeloVehiculo) con las
+# ruedas de Kenney (CC0) como nodos aparte: ruedan al avanzar y las delanteras
+# viran al girar. Si falta el GLB se usan los modelos de Kenney (assets/kenney/car-kit)
+# o cajas. Conducción "arcade" (sin ruedas físicas): un CharacterBody3D que acelera,
+# gira y choca con las paredes.
 #
 #   E junto al vehículo   subir (si no es tuyo, es un ROBO: sube la sospecha)
 #   W/S  acelerar / marcha atrás      A/D  girar      Espacio  freno
@@ -68,6 +71,12 @@ var tractor = null             # Si esto es un remolque enganchado: quién lo ar
 var _vy: float = 0.0
 var _rotor: Node3D = null
 var _modelo_aire: Node3D = null
+# Ruedas y hélices del modelo nuevo (ModeloVehiculo).
+var _giros: Array = []         # Nodos que ruedan (rotación en X).
+var _radios: Array = []        # Radio de cada rueda (m).
+var _pivotes: Array = []       # Ruedas delanteras: viran (rotación en Y).
+var _rotores: Array = []       # [{"nodo": Node3D, "eje": Vector3}]
+var _viraje: float = 0.0       # Ángulo actual de las ruedas delanteras.
 
 var chasis: CharacterBody3D
 var _ancho: float = 2.0
@@ -110,6 +119,19 @@ func _ready() -> void:
 # Si no está el modelo, una caja de color.
 func _crear_modelo(d: Dictionary) -> Node3D:
 	var raiz: Node3D = Node3D.new()
+	var nuevo: Dictionary = ModeloVehiculo.crear(tipo, float(d["largo"]), d.get("clase", "suelo") == "suelo")
+	if not nuevo.is_empty():
+		_giros = nuevo["giros"]
+		_radios = nuevo["radios"]
+		_pivotes = nuevo["pivotes"]
+		_rotores = nuevo["rotores"]
+		if d.get("clase", "suelo") == "aire":
+			_ancho = 3.0
+			_modelo_aire = nuevo["nodo"]
+		else:
+			_ancho = clampf(float(nuevo["ancho"]), 1.4, 3.2)
+		raiz.add_child(nuevo["nodo"])
+		return raiz
 	if d.get("clase", "suelo") == "aire":
 		_ancho = 3.0
 		_modelo_aire = Node3D.new()
@@ -172,6 +194,19 @@ func _avioneta(raiz: Node3D, color: Color) -> void:
 
 func clase() -> String:
 	return str(TIPOS[tipo].get("clase", "suelo"))
+
+
+# Hace rodar las ruedas según la velocidad (m/s) y vira las delanteras. Lo llama el propio
+# vehículo al conducir y, para un remolque, el vehículo que lo arrastra.
+func girar_ruedas(v: float, delta: float, direccion: float = 0.0) -> void:
+	for i in _giros.size():
+		(_giros[i] as Node3D).rotation.x -= v * delta / maxf(0.05, float(_radios[i]))
+	if _pivotes.is_empty():
+		return
+	var objetivo: float = direccion * 0.5 if absf(v) > 0.3 else 0.0
+	_viraje = lerpf(_viraje, objetivo, clampf(delta * 10.0, 0.0, 1.0))
+	for p in _pivotes:
+		(p as Node3D).rotation.y = _viraje
 
 
 # ------------------------------- Interacción ---------------------------------
@@ -346,13 +381,14 @@ func _enganchar() -> void:
 
 
 # El remolque sigue al vehículo (sin física propia): detrás, con un poco de retraso al girar.
-func _arrastrar() -> void:
+func _arrastrar(delta: float) -> void:
 	var r = remolque
 	var atras: Vector3 = chasis.global_transform.basis.z
 	var pos: Vector3 = chasis.global_position + atras * (_largo / 2.0 + float(r._largo) / 2.0 + 0.5)
 	r.global_position = Vector3(pos.x, chasis.global_position.y, pos.z)
 	r.chasis.position = Vector3.ZERO
 	r.chasis.rotation.y = lerp_angle(r.chasis.rotation.y, chasis.rotation.y, 0.15)
+	r.girar_ruedas(_v, delta)
 
 
 func _physics_process(delta: float) -> void:
@@ -411,8 +447,11 @@ func _physics_process(delta: float) -> void:
 		if chasis.is_on_floor() and _vy < 0.0:
 			_vy = 0.0
 		chasis.velocity.y = _vy
+		var vel_rotor: float = delta * (30.0 if gasolina > 0.0 else 3.0)
 		if _rotor != null:
-			_rotor.rotation.y += delta * (30.0 if gasolina > 0.0 else 3.0) * (1.0 if d["modo"] == "helicoptero" else 1.0)
+			_rotor.rotation.y += vel_rotor
+		for r in _rotores:
+			((r["nodo"]) as Node3D).rotate((r["eje"]) as Vector3, vel_rotor)
 		if _modelo_aire != null:
 			_modelo_aire.rotation.z = lerpf(_modelo_aire.rotation.z, direccion * 0.45 if volando else 0.0, delta * 3.0)
 			_modelo_aire.rotation.x = lerpf(_modelo_aire.rotation.x, -entrada * 0.12 if volando else 0.0, delta * 3.0)
@@ -425,6 +464,8 @@ func _physics_process(delta: float) -> void:
 	chasis.move_and_slide()
 	_contener_en_el_mundo()
 	_v = chasis.velocity.dot(adelante)
+	if not aire:
+		girar_ruedas(_v, delta, direccion)
 	if aire and chasis.is_on_floor() and vy_antes < -7.0:
 		salud = maxf(0.0, salud - absf(vy_antes) * 4.0)
 		Juego.cambiar_vida(-absf(vy_antes) * 2.0)
@@ -438,7 +479,7 @@ func _physics_process(delta: float) -> void:
 	chasis.position = Vector3.ZERO
 	conductor.global_position = global_position + Vector3(0, 0.9, 0)
 	if remolque != null:
-		_arrastrar()
+		_arrastrar(delta)
 	if is_on_ground_safe():
 		_ultimo_suelo = global_position
 	elif global_position.y < -10.0:

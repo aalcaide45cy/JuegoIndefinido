@@ -34,3 +34,7 @@ Motor: Godot Engine (licencia MIT), https://godotengine.org
 
 Música, sonidos ambientales (lluvia, truenos, pájaros, grillos...) e iconos de objetos: generados por código
 en `scripts/musica.gd`, `scripts/sonido.gd` y `scripts/ui/iconos.gd`; no usan archivos de terceros.
+
+## Vehículos generados con IA (assets/vehiculos/)
+Carrocerías 3D creadas con Higgsfield (imagen de referencia + Meshy 7). Las ruedas son de
+Kenney Car Kit (CC0). Detalles en `docs/VEHICULOS_IA.md`.
