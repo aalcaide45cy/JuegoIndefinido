@@ -68,6 +68,7 @@ var salud: float = 100.0
 var conductor: Node3D = null
 var remolque = null            # Remolque enganchado (otro Vehiculo) o null.
 var tractor = null             # Si esto es un remolque enganchado: quién lo arrastra.
+var destruido: bool = false     # Reventado por una explosión: quemado, sin motor, con fuego.
 var _vy: float = 0.0
 var _rotor: Node3D = null
 var _modelo_aire: Node3D = null
@@ -91,6 +92,7 @@ var _ultimo_suelo: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	ignora_vista = true
 	add_to_group("vehiculos")
+	add_to_group("danable")   # Las explosiones le hacen daño (ver recibir_dano).
 	var d: Dictionary = TIPOS[tipo]
 	_largo = d["largo"]
 	chasis = CharacterBody3D.new()
@@ -395,7 +397,7 @@ func _physics_process(delta: float) -> void:
 	if conductor == null:
 		return
 	var d: Dictionary = TIPOS[tipo]
-	var vmax: float = float(d["vmax"]) * (0.3 if salud <= 0.0 else 1.0)
+	var vmax: float = float(d["vmax"]) * (0.0 if destruido else (0.3 if salud <= 0.0 else 1.0))
 	var entrada: float = 0.0
 	var direccion: float = 0.0
 	var freno: bool = false
@@ -539,3 +541,27 @@ func _choques(v_antes: float, delta: float) -> void:
 func texto_conduccion() -> String:
 	return "[E] Bajar · %s · %d km/h · gasolina %d %% · estado %d %%" % [TIPOS[tipo]["nombre"],
 			int(absf(_v) * 3.6), int(gasolina), int(salud)]
+
+
+# Daño de una explosión o golpe fuerte. Con la salud a cero el coche revienta: queda
+# quemado y en llamas, sin poder moverse (Destruccion lo restaura al alejarte).
+func recibir_dano(cantidad: float) -> void:
+	if destruido:
+		return
+	salud = maxf(0.0, salud - cantidad)
+	if salud <= 0.0:
+		reventar()
+
+
+func reventar() -> void:
+	if destruido:
+		return
+	destruido = true
+	salud = 0.0
+	Destruccion.quemar_modelo(chasis)
+	Destruccion.fuego_en(self, global_position + Vector3.UP * 0.8)
+	chasis.velocity = Vector3.ZERO
+	_v = 0.0
+	if conductor != null:
+		Juego.cambiar_vida(-40.0)
+		Juego.avisar("¡El vehículo ha reventado!")
