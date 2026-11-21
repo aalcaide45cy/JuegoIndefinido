@@ -1568,6 +1568,16 @@ static func _huerto(mb: ConstructorMalla, h: Dictionary) -> void:
 	mb.caja(Vector3(gate.x + frente.y * 2.4, y + 1.4, gate.y - frente.x * 2.4), Vector3(0.9, 0.6, 0.9), Color(0.2, 0.65, 0.3))
 
 
+# Triángulos (de tres en tres vértices) de las carreteras de un trozo cercano. Para pruebas.
+static func triangulos_carreteras(c: Vector2i) -> PackedVector3Array:
+	var rect: Rect2 = Rect2(c.x * TROZO, c.y * TROZO, TROZO, TROZO)
+	var lista_t: Array = asentamientos_cerca(rect.grow(10.0))
+	lista_t.append_array(caminos_cerca(rect.grow(40.0)))
+	var vias: ConstructorMalla = ConstructorMalla.new()
+	_dibujar_carreteras(vias, segmentos_para(rect.grow(20.0)), rect, 4.0, lista_t, 0.15, 0.0)
+	return vias.vertices
+
+
 # Genera todo lo de un trozo cercano (128 m). Se puede llamar desde un hilo.
 # Resultado: {"vacio": true} si cae entero dentro de la ciudad original; si no
 #   "superficies": lista de arrays para ArrayMesh (terreno, carreteras, objetos),
