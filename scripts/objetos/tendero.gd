@@ -12,6 +12,12 @@ extends Interactuable
 # Dónde está el muñeco respecto al nodo (detrás del mostrador y en el suelo).
 const POS_MUNECO: Vector3 = Vector3(0, -1.0, -0.9)
 
+# Qué vende (campo "tienda" en scripts/datos/objetos.gd) y cómo se llama el negocio.
+var tienda: String = "herbolario"
+var nombre_tienda: String = "Herboristería La Mandrágora Honrada"
+var texto_hablar: String = "Hablar con el herbolario (comprar)"
+var es_instructor: bool = false   # true: en vez de tienda, abre la academia de habilidades.
+
 
 func _ready() -> void:
 	distancia = 2.4
@@ -22,11 +28,25 @@ func _ready() -> void:
 	Construir.esfera(self, m + Vector3(0, 1.48, 0), 0.19, Color(0.8, 0.68, 0.58))
 	Construir.caja(self, m + Vector3(0, 1.52, 0.18), Vector3(0.24, 0.05, 0.03), Color(0.1, 0.1, 0.1), false)
 	Construir.esfera(self, m + Vector3(0, 1.62, -0.02), 0.17, Color(0.85, 0.85, 0.85), Vector3(1, 0.5, 1))
+	# Con el modelo de Quaternius puesto, el muñeco de cajas se oculta.
+	# Personaje de Quaternius con ropa y animación de reposo (los "base characters"
+	# salen sin ropa y en T). Mira hacia +Z, hacia el cliente.
+	var persona: Node3D = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/Character_Enemy", "", "Idle")
+	if persona != null:
+		for h in get_children():
+			if h is MeshInstance3D:
+				(h as MeshInstance3D).visible = false
+		persona.position = m
+		persona.rotation.y = PI
+		add_child(persona)
 
 
 func texto_accion() -> String:
-	return "Hablar con el herbolario (comprar)"
+	return texto_hablar
 
 
 func usar(jugador: Node) -> void:
-	jugador.hud.abrir_tienda()
+	if es_instructor:
+		jugador.hud.abrir_instructor()
+	else:
+		jugador.hud.abrir_tienda(tienda, nombre_tienda)
