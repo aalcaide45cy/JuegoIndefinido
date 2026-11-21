@@ -37,6 +37,7 @@ const NOM_AA: Array = ["Sin antialiasing", "FXAA", "MSAA 2x", "MSAA 4x", "MSAA 8
 const NOM_ESCALADO: Array = ["Bilineal", "FSR 1", "FSR 2 (Forward+)"]
 const NOM_VSYNC: Array = ["Desactivada", "Activada", "Adaptativa", "Buzón (baja latencia)"]
 const LIMITES_FPS: Array = [0, 30, 60, 90, 120, 144, 165, 240]
+const NOM_GORE: Array = ["Apagada (sin sangre)", "Reducida", "Completa"]
 const NOM_MODO: Array = ["Ventana", "Pantalla completa (sin bordes)", "Pantalla completa (exclusiva)"]
 const RESOLUCIONES: Array = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080),
 		Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
@@ -48,6 +49,7 @@ const BASE: Dictionary = {
 	"sombras": 3, "dist_dibujado": 2, "trozos": 2, "vegetacion": 4, "peatones": 3, "trafico": 3,
 	"aa": 1, "ssao": true, "ssr": false, "glow": true, "niebla_vol": false, "sdfgi": false,
 	"escalado": 0, "escala": 1.0, "fov": 70.0, "brillo": 1.0, "contador_fps": false,
+	"gore": 2, "gritos": true,   # Violencia: 0 apagada, 1 reducida, 2 completa.
 }
 
 # Las opciones de calidad que fija cada preset (las demás —ventana, vsync, FOV...— no se tocan).

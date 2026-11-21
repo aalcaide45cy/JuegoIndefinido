@@ -44,6 +44,10 @@ var _espera: float = 0.0
 var _t_atasco: float = 0.0            # Segundos intentando andar sin avanzar.
 var _pos_atasco: Vector3 = Vector3.ZERO
 var _modelo: Node3D   # Personaje de Quaternius (null = muñeco de cajas).
+var _t_aturdido: float = 0.0          # Derribado o aturdido: no hace nada hasta que pase.
+var _t_anim: float = 0.0              # Mientras es > 0 suena una animación de pelea (no se pisa con andar).
+var _t_salto: float = 0.0
+var _impulso: Vector3 = Vector3.ZERO  # Empujón (esquiva, golpe fuerte) que se va apagando.
 
 
 func _ready() -> void:
@@ -109,6 +113,18 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 	_golpe -= delta
+	_t_anim -= delta
+	_t_salto -= delta
+	if _t_aturdido > 0.0:
+		# Derribado: no se mueve ni ataca; al terminar se levanta.
+		_t_aturdido -= delta
+		velocity.x = _impulso.x
+		velocity.z = _impulso.z
+		_impulso = _impulso.move_toward(Vector3.ZERO, 25.0 * delta)
+		move_and_slide()
+		if _t_aturdido <= 0.0:
+			_levantarse()
+		return
 
 	_t_puertas -= delta
 	if _t_puertas <= 0.0:
@@ -156,6 +172,8 @@ func _physics_process(delta: float) -> void:
 					jugador.ser_detenido()
 			elif _golpe <= 0.0:
 				_golpe = 1.0
+				_t_anim = maxf(0.4, AnimCombate.una_vez(_modelo, "Punch", "Run"))
+				Sonido.tocar(self, "golpe", -2.0)
 				Juego.cambiar_vida(-float(DatosPolicia.DANO_GUARDIA[Juego.estrellas]))
 				Juego.avisar("¡Un guardia te golpea!")
 		else:
@@ -203,9 +221,11 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = 0.0
 		velocity.z = 0.0
+	velocity += Vector3(_impulso.x, 0.0, _impulso.z)
+	_impulso = _impulso.move_toward(Vector3.ZERO, 25.0 * delta)
 	move_and_slide()
 	_vigilar_atasco(delta, velocidad > 0.0 and hacia.length() > 0.1)
-	if _modelo != null:
+	if _modelo != null and _t_anim <= 0.0:
 		var corre: bool = velocity.length() > 0.2
 		Assets.poner_animacion(_modelo, "Run" if velocity.length() > 3.0 else ("Walk" if corre else "Idle"))
 
@@ -219,6 +239,10 @@ func _vigilar_atasco(delta: float, intenta_andar: bool) -> void:
 		_t_atasco = 0.0
 		return
 	_t_atasco += delta
+	if _t_atasco > 1.0 and _persiguiendo and _t_salto <= 0.0 and is_on_floor():
+		_t_salto = 2.5   # Persiguiendo y atascado con algo bajo delante: salta.
+		velocity.y = 6.0
+		_t_anim = maxf(0.3, AnimCombate.una_vez(_modelo, "Jump", "Run"))
 	if _t_atasco > 8.0:
 		_nodo_destino = RedCalles.nodo_mas_cercano(global_position)
 		global_position = RedCalles.NODOS[_nodo_destino] + Vector3(0, 0.1, 0)
@@ -340,36 +364,104 @@ func _mirar_cacheo(jugador: Node3D, de_noche: bool) -> void:
 func recibir_dano(cantidad: float) -> void:
 	if _muerto or not visible:
 		return
+	# Si te ve venir, a veces para el golpe con los brazos o lo esquiva de un salto.
+	if _persiguiendo and _t_aturdido <= 0.0 and cantidad < 30.0:
+		var azar: float = randf()
+		if azar < 0.18:
+			_parar()
+			return
+		elif azar < 0.28:
+			_esquivar()
+			return
 	_vida -= cantidad
-	BarraVida.de(self, 2.3, "ley").mostrar(_vida / VIDA_MAXIMA)
+	BarraVida.de(self, 2.3, "ley").mostrar(maxf(_vida, 0.0) / VIDA_MAXIMA)
 	_persiguiendo = true
 	Juego.alerta = 100.0
 	Juego.exigir_estrellas(2, "Has atacado a un guardia")
 	var jug: Node3D = _buscar_jugador()
 	if jug != null:
 		_ultima_pos = jug.global_position
+	var centro: Vector3 = global_position + Vector3(0, 1.2, 0)
+	var dir: Vector3 = (global_position - jug.global_position).normalized() if jug != null else Vector3.UP
+	Gore.salpicar(self, centro, dir, clampf(cantidad / 12.0, 0.5, 2.0))
+	Gore.grito(self, centro, 1)
+	Sonido.tocar(self, "golpe", -4.0)
 	_material.emission_enabled = true
 	_material.emission = Color(1, 0.2, 0.1)
 	if _vida <= 0.0:
-		_caer()
+		_caer(dir)
 		return
+	if cantidad >= 18.0:
+		_impulso = Vector3(dir.x, 0.0, dir.z) * 5.0
+		_derribar(4.0 if _vida < VIDA_MAXIMA * 0.25 else 2.0)   # Casi KO: tarda más en levantarse.
+	else:
+		_t_anim = maxf(0.3, AnimCombate.una_vez(_modelo, "HitReact", "Run"))
 	await get_tree().create_timer(0.15).timeout
 	_material.emission_enabled = false
 
 
-func _caer() -> void:
-	_muerto = true
-	_poner_activo(false)
+# Parada: se cubre con los brazos y no recibe el golpe (destello azul y sonido seco).
+func _parar() -> void:
+	_t_anim = maxf(0.4, AnimCombate.una_vez(_modelo, "Duck", "Run"))
+	Sonido.tocar(self, "golpe", 0.0)
+	_material.emission_enabled = true
+	_material.emission = Color(0.4, 0.6, 1.0)
+	await get_tree().create_timer(0.15).timeout
 	_material.emission_enabled = false
+
+
+# Esquiva: salto lateral rápido.
+func _esquivar() -> void:
+	var lado: Vector3 = _cuerpo.global_basis.x * (1.0 if randf() < 0.5 else -1.0)
+	_impulso = lado * 7.0
+	if is_on_floor():
+		velocity.y = 3.5
+	_t_anim = maxf(0.4, AnimCombate.una_vez(_modelo, "Jump", "Run"))
+
+
+# Cae al suelo y se queda aturdido "segundos".
+func _derribar(segundos: float) -> void:
+	_t_aturdido = segundos
+	_t_captura = 0.0
+	var anim: Tween = create_tween()
+	anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.25)
+	anim.parallel().tween_property(_cuerpo, "position:y", 0.25, 0.25)
+	if _modelo != null:
+		Assets.poner_animacion(_modelo, "Idle")
+
+
+func _levantarse() -> void:
+	var anim: Tween = create_tween()
+	anim.tween_property(_cuerpo, "rotation:x", 0.0, 0.4)
+	anim.parallel().tween_property(_cuerpo, "position:y", 0.0, 0.4)
+
+
+func _caer(dir: Vector3 = Vector3.UP) -> void:
+	_muerto = true
+	collision_layer = 0
+	collision_mask = 0
+	_material.emission_enabled = false
+	if _modelo == null or AnimCombate.una_vez(_modelo, "Death") <= 0.0:
+		var anim: Tween = create_tween()
+		anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.3)
+		anim.parallel().tween_property(_cuerpo, "position:y", 0.25, 0.3)
+	Gore.muerte(self, global_position, dir, 1.2)
 	Juego.cobrar(15)
 	Juego.cambiar_rep("ley", -8)
 	Juego.cambiar_rep("hampa", 3)
 	Juego.subir_estrellas(1, "Has abatido a un guardia")
 	Juego.avisar("Un guardia cae. Llevaba 15 $ encima.")
+	await get_tree().create_timer(3.0).timeout   # Se queda tendido un momento.
 	if refuerzo:
 		queue_free()
 		return
-	await get_tree().create_timer(90.0).timeout
+	_poner_activo(false)
+	await get_tree().create_timer(87.0).timeout
+	_cuerpo.rotation.x = 0.0
+	_cuerpo.position.y = 0.0
+	_t_aturdido = 0.0
+	if _modelo != null:
+		Assets.poner_animacion(_modelo, "Idle")
 	_vida = VIDA_MAXIMA
 	_persiguiendo = false
 	if pasea_ciudad:
