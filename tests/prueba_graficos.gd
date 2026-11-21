@@ -94,7 +94,30 @@ func _ready() -> void:
 		for i in sitios.size():
 			idx.append(i)
 
-	if modo == "menu":
+	if modo == "escape":
+		# Recorrido real: Esc -> menú de pausa -> botón Gráficos… -> ventana de gráficos.
+		var ev := InputEventKey.new()
+		ev.keycode = KEY_ESCAPE
+		ev.physical_keycode = KEY_ESCAPE
+		ev.pressed = true
+		Input.parse_input_event(ev)
+		await _esperar(1.0)
+		print("ESC menu abierto: ", hud._menu != null, " tipo ", hud._menu.get_script().get_global_name() if hud._menu != null else "-")
+		await _foto("escape_1_pausa")
+		var boton: Button = null
+		for b in hud._menu.find_children("*", "Button", true, false):
+			if b.text.begins_with("Gráficos"):
+				boton = b
+		print("ESC boton Graficos encontrado: ", boton != null)
+		if boton != null:
+			boton.pressed.emit()
+			await _esperar(1.0)
+			print("ESC ventana graficos presente: ", hud._menu.find_children("*", "VentanaGraficos", true, false).size() > 0)
+			var vg = hud._menu.find_children("*", "VentanaGraficos", true, false)[0]
+			print("ESC lista hijos: ", vg._lista.get_child_count(), " scroll tam ", vg._scroll.size, " lista tam ", vg._lista.size)
+			await _esperar(2.0)
+			await _foto("escape_2_graficos")
+	elif modo == "menu":
 		hud._abrir_menu(VentanaGraficos.new())
 		await _esperar(1.0)
 		await _foto("menu_graficos_1")

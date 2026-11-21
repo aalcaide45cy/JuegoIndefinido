@@ -15,7 +15,14 @@ var _scroll: ScrollContainer
 
 func construir() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	var caja: VBoxContainer = panel_centrado(Vector2(900, 700))
+	# Panel propio (sin el desplazamiento de panel_centrado): esta ventana ya trae su ScrollContainer,
+	# y uno dentro de otro dejaba la lista con altura 0 (solo se veía el título).
+	var panel: PanelContainer = Hud.crear_panel()
+	Hud.centrar(panel, Vector2(900, 700), espacio_visible())
+	add_child(panel)
+	var caja: VBoxContainer = VBoxContainer.new()
+	caja.add_theme_constant_override("separation", 10)
+	panel.add_child(caja)
 	cabecera(caja, "Gráficos  (renderizador: %s)" % Graficos.nombre_renderizador())
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
