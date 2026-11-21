@@ -864,6 +864,22 @@ static func _servicio_edificio(s: Dictionary, k: int, l: int, serv: String) -> D
 
 # ---------------------------------- casas -------------------------------------
 
+# Las manzanas son de 36 m con 4 solares de 18 m. Las casas dejan RETRANQUEO m libres hacia la
+# calle (acera y peatones) y 0,4 m hacia el solar vecino. Con eso, el lado máximo de una casa es
+# 18 - 0,4 - RETRANQUEO = 14,1 m.
+const RETRANQUEO: float = 3.5
+const RETRANQUEO_CHUNGO: float = 7.7
+const MAX_LADO_CASA: float = 14.0
+
+
+# Centro (0-36, desde el borde de la manzana) de una casa de "lado" m en el solar "i" (0 o 1) de ese
+# eje; "r" (0-1) la reparte entre sus posiciones posibles.
+static func _centro_en_solar(i: int, lado: float, r: float, retr_ini: float, retr_fin: float) -> float:
+	var borde_min: float = retr_ini if i == 0 else 18.4
+	var borde_max: float = 17.6 if i == 0 else 36.0 - retr_fin
+	return lerpf(borde_min + lado / 2.0, borde_max - lado / 2.0, r)
+
+
 # La casa del solar "sub" (0-3) del bloque (k, l) de un asentamiento, o {} si ahí no hay.
 static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	var n: int = s["n"]
@@ -901,11 +917,17 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	elif distrito == "industrial":
 		pisos = 1
 		ancho = minf(ancho + 2.0, 15.5)
-	# La casa se mueve dentro de su solar de 18 m (más holgura cuanto más pequeña).
-	var holgura_x: float = maxf(0.0, (18.0 - ancho) / 2.0 - 0.4)
-	var holgura_z: float = maxf(0.0, (18.0 - fondo) / 2.0 - 0.4)
-	var cx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0 + a * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 3) * 2.0 - 1.0) * holgura_x
-	var cz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0 + b * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 4) * 2.0 - 1.0) * holgura_z
+	# La casa se mueve dentro de su solar de 18 m (más holgura cuanto más pequeña), pero nunca a
+	# menos de RETRANQUEO m del borde de la manzana (la calle): por ahí andan los peatones, a 2 m
+	# de la calzada, y las casas pegadas al borde se los "comían".
+	# En los barrios industriales de las ciudades, delante de cada casa va el rincón chungo (bidón con
+	# fuego, basura y valla: ZonaChunga), que necesita más sitio entre la fachada y la acera.
+	var frente: float = RETRANQUEO_CHUNGO if distrito == "industrial" and tipo == 2 else RETRANQUEO
+	ancho = minf(ancho, MAX_LADO_CASA)
+	fondo = minf(fondo, 17.6 - frente)
+	var cx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0 + _centro_en_solar(a, ancho, _f(sid, clave, sub * 16 + 3), RETRANQUEO, RETRANQUEO)
+	var cz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0 + _centro_en_solar(b, fondo, _f(sid, clave, sub * 16 + 4),
+			frente if b == 0 else RETRANQUEO, frente if b == 1 else RETRANQUEO)
 	var v: int = _h(sid, clave, sub * 16 + 9)
 	var paredes: Array = est["paredes"]
 	var techos: Array = est["techos"]
@@ -1217,7 +1239,8 @@ static func _extras_casa(mb: ConstructorMalla, c: Dictionary) -> void:
 		var zp: float = z + cara * (d / 2.0 + 1.0)
 		mb.caja(Vector3(x, y + 2.7, zp), Vector3(3.0, 0.18, 2.0), (c["techo"] as Color))
 		for sx in [-1.3, 1.3]:
-			mb.caja(Vector3(x + sx, y + 1.3, zp + cara * 0.8), Vector3(0.15, 2.6, 0.15), Color(0.35, 0.25, 0.18))
+			# Postes pegados a la fachada (a 2,35 m de la calzada hay acera: por ahí andan los peatones).
+			mb.caja(Vector3(x + sx, y + 1.3, zp - cara * 0.65), Vector3(0.15, 2.6, 0.15), Color(0.35, 0.25, 0.18))
 	if (v / 12) % 5 == 0 and d < 12.5:   # Anexo por detrás (cobertizo).
 		var za: float = z - cara * (d / 2.0 + 1.2)
 		mb.caja(Vector3(x + w * 0.1, y + 1.2, za), Vector3(w * 0.55, 2.4, 2.4), (c["color"] as Color).darkened(0.12))
@@ -1402,7 +1425,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 				var cara_c: float = casa_d["puerta"]
 				props.append({"tipo": "chunga", "sem": int(casa_d["x"]) * 31 + int(casa_d["z"]),
 						"pos": Vector3(float(casa_d["x"]) + float(casa_d["w"]) * 0.3, float(casa_d["y"]),
-								float(casa_d["z"]) + cara_c * (float(casa_d["d"]) / 2.0 + 3.5))})
+								float(casa_d["z"]) + cara_c * (float(casa_d["d"]) / 2.0 + 3.3))})
 			if casa_d.has("servicio"):
 				props.append({"tipo": "servicio", "serv": casa_d["servicio"], "pos": _punto_servicio(casa_d)})
 			if str(casa_d["id"]) != "":
@@ -1466,8 +1489,9 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 					mb.cono(Vector3(bx, y, bz), 3.0, 0.9, 12, Color(0.55, 0.55, 0.58), 2.6)
 					mb.caja(Vector3(bx, y + 0.8, bz), Vector3(1.6, 1.2, 1.6), Color(0.5, 0.5, 0.54))
 				for i in 6:
-					var tx: float = bx + (_f(sid, cid, 80 + i) - 0.5) * 28.0
-					var tz: float = bz + (_f(sid, cid, 90 + i) - 0.5) * 28.0
+					# Copas de hasta 3 m de radio: deben quedar a más de 6,5 m del eje de las calles (aceras).
+					var tx: float = bx + (_f(sid, cid, 80 + i) - 0.5) * 23.0
+					var tz: float = bz + (_f(sid, cid, 90 + i) - 0.5) * 23.0
 					if absf(tx - bx) < 4.5 and absf(tz - bz) < 4.5:
 						continue
 					var alt: float = 2.2 + 1.6 * _f(sid, cid, 100 + i)
@@ -1519,7 +1543,9 @@ static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> 
 				else:
 					# Junto a la casa, por el lado contrario a la calle: leña, barriles o un trozo de valla.
 					var cara: float = float(casa_d["puerta"])
-					var ex: float = float(casa_d["x"]) + float(casa_d["w"]) / 2.0 + 1.1
+					# Por el lado que da al solar vecino (nunca al de la calle: por ahí andan los peatones).
+					var lado_int: float = 1.0 if a == 0 else -1.0
+					var ex: float = float(casa_d["x"]) + lado_int * (float(casa_d["w"]) / 2.0 + 1.1)
 					var ez: float = float(casa_d["z"]) - cara * (float(casa_d["d"]) / 2.0 - 1.5)
 					if r < 0.35:
 						for i in 3:

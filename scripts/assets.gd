@@ -94,12 +94,33 @@ static func personaje(nombre: String, arma: String = "", animacion: String = "Id
 	return envoltorio
 
 
-static func poner_animacion(personaje_nodo: Node3D, nombre: String) -> void:
+# Velocidad a la que "avanza" el cuerpo de las animaciones Walk y Run de Quaternius (medida con
+# los pies en el suelo: ~1,08 m por paso en 0,5 s al andar y ~0,7 m en 0,13 s al correr).
+# Si el personaje va a otra velocidad, hay que acelerar o frenar la animación o "patina".
+const VEL_ANIM_ANDAR: float = 2.1
+const VEL_ANIM_CORRER: float = 4.5
+const VEL_CAMBIO_CARRERA: float = 3.3   # Por encima de esto se usa la animación de correr.
+const VEL_QUIETO: float = 0.2
+
+
+# Elige Idle / Walk / Run según la velocidad real (m/s) y ajusta el ritmo de la animación
+# para que los pies no patinen: a la mitad de velocidad, las piernas van a la mitad.
+static func animar_por_velocidad(personaje_nodo: Node3D, velocidad: float) -> void:
+	if velocidad < VEL_QUIETO:
+		poner_animacion(personaje_nodo, "Idle")
+	elif velocidad > VEL_CAMBIO_CARRERA:
+		poner_animacion(personaje_nodo, "Run", clampf(velocidad / VEL_ANIM_CORRER, 0.5, 2.0))
+	else:
+		poner_animacion(personaje_nodo, "Walk", clampf(velocidad / VEL_ANIM_ANDAR, 0.25, 2.0))
+
+
+static func poner_animacion(personaje_nodo: Node3D, nombre: String, ritmo: float = 1.0) -> void:
 	if personaje_nodo == null or not personaje_nodo.has_meta("animaciones"):
 		return
 	var r: AnimationPlayer = personaje_nodo.get_meta("animaciones") as AnimationPlayer
 	if r == null or not is_instance_valid(r):
 		return
+	r.speed_scale = ritmo
 	for candidato in [nombre, "CharacterArmature|" + nombre]:
 		if r.has_animation(candidato):
 			if r.current_animation != candidato:
