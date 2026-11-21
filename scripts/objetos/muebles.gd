@@ -15,21 +15,35 @@ extends RefCounted
 
 class Cama extends Interactuable:
 	const HORAS_DE_SUENO: float = 60.0   # Segundos de crecimiento que "pasan" al dormir.
+	const HORAS_RELOJ: float = 6.0       # Horas del reloj del juego que pasan al dormir.
 
 	func _ready() -> void:
 		distancia = 2.0
 		Construir.caja(self, Vector3(0, 0.25, 0), Vector3(1.1, 0.5, 2.1), Color(0.3, 0.2, 0.13))
 		Construir.caja(self, Vector3(0, 0.55, 0.1), Vector3(1.0, 0.12, 1.8), Color(0.45, 0.15, 0.15), false)
 		Construir.caja(self, Vector3(0, 0.62, -0.8), Vector3(0.7, 0.12, 0.35), Color(0.8, 0.78, 0.7), false)
+		if Assets.existe("quaternius/fantasy-props-megakit/Bed_Twin1"):
+			Construir.ocultar_mallas(self)
+			Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Bed_Twin1", Vector3.ZERO, 0.0,
+					Vector3.ONE * 0.8, false)
 
 	func texto_accion() -> String:
-		return "Dormir un rato (las plantas crecen)"
+		return "Dormir (pasan %d horas, las plantas crecen y recuperas la vida)" % int(HORAS_RELOJ)
 
 	func usar(jugador: Node) -> void:
 		jugador.hud.fundido(func() -> void:
 			for maceta in get_tree().get_nodes_in_group("macetas"):
 				maceta.adelantar(HORAS_DE_SUENO)
-			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido mientras tanto."), 1.2)
+			# El reloj avanza unas horas: dormir sirve también para que pase la noche.
+			Juego.hora += HORAS_RELOJ
+			if Juego.hora >= 24.0:
+				Juego.hora -= 24.0
+				Juego.dia += 1
+			# Dormir cura: vida completa y se te pasan los efectos malos de las pociones.
+			Juego.vida = Juego.vida_max()
+			Juego.quitar_efectos_malos()
+			Juego.cambio.emit()
+			Juego.avisar("Duermes con un ojo abierto. Las plantas han crecido y te sientes recuperado (vida completa)."), 1.2)
 
 
 class Grifo extends Interactuable:
@@ -44,17 +58,16 @@ class Grifo extends Interactuable:
 		Construir.cilindro(self, Vector3(0.6, 1.02, 0), 0.15, 0.16, Color(0.4, 0.25, 0.15))
 
 	func texto_accion() -> String:
-		if not Juego.tiene("jarra"):
+		if not Juego.tiene_recipiente():
 			return "Grifo (compra una jarra en la herboristería)"
-		return "Llenar la jarra (%d/%d)" % [Juego.agua_jarra, GameData.CARGAS_JARRA]
+		return "Llenar tus jarras y regaderas"
 
 	func usar(_jugador: Node) -> void:
-		if not Juego.tiene("jarra"):
+		if not Juego.tiene_recipiente():
 			Juego.avisar("Necesitas una jarra. La venden en la herboristería.")
 			return
-		Juego.agua_jarra = GameData.CARGAS_JARRA
-		Juego.cambio.emit()
-		Juego.avisar("Jarra llena. Te da para %d riegos." % GameData.CARGAS_JARRA)
+		Juego.rellenar_agua()
+		Juego.avisar("Recipientes llenos.")
 
 
 class Estanteria extends Interactuable:
@@ -66,12 +79,16 @@ class Estanteria extends Interactuable:
 		# Unas cajas y botes encima para que parezca usada.
 		Construir.caja(self, Vector3(-0.4, 0.9, 0.05), Vector3(0.4, 0.3, 0.3), Color(0.45, 0.35, 0.2), false)
 		Construir.cilindro(self, Vector3(0.4, 1.42, 0.05), 0.1, 0.25, Color(0.3, 0.5, 0.4), false, 0.4)
+		if Assets.existe("quaternius/fantasy-props-megakit/Bookcase_2"):
+			Construir.ocultar_mallas(self)
+			Assets.colocar_solido(self, "quaternius/fantasy-props-megakit/Bookcase_2", Vector3(0, 0, 0.1), 0.0,
+					Vector3.ONE * 0.95, false)
 
 	func texto_accion() -> String:
 		return "Estantería (guardar y sacar cosas)"
 
 	func usar(jugador: Node) -> void:
-		jugador.hud.abrir_almacen()
+		jugador.hud.abrir_estanteria()
 
 
 class HuecoMaceta extends Interactuable:
@@ -79,23 +96,26 @@ class HuecoMaceta extends Interactuable:
 
 	func _ready() -> void:
 		distancia = 1.8
+		add_to_group("huecos_maceta")
 		# Un platillo vacío: aquí cabe una maceta.
 		_marca = Construir.cilindro(self, Vector3(0, 0.02, 0), 0.24, 0.04, Color(0.35, 0.3, 0.25))
 
 	func texto_accion() -> String:
-		return "Colocar maceta (tienes %d)" % Juego.objetos["maceta"]
+		return "Colocar maceta (tienes %d)" % Juego.cuenta("maceta")
 
 	func usar(_jugador: Node) -> void:
 		if not Juego.tiene("maceta"):
 			Juego.avisar("No tienes macetas. Cómpralas en la herboristería.")
 			return
-		Juego.usar_objeto("maceta")
+		Juego.quitar("maceta")
 		poner_maceta()
 		Juego.avisar("Has colocado una maceta. Acércate y pulsa E para plantar.")
 
 	# Cambia el hueco por una maceta de verdad (también lo usa la casa al empezar).
-	func poner_maceta() -> void:
+	func poner_maceta() -> Maceta3D:
 		var maceta: Maceta3D = Maceta3D.new()
 		maceta.position = position
 		get_parent().add_child(maceta)
+		remove_from_group("huecos_maceta")
 		queue_free()
+		return maceta

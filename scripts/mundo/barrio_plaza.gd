@@ -4,16 +4,22 @@
 # rodeada de casas, con una fuente seca en el centro y farolas.
 #   - Norte: la herboristería, donde se compra todo (se entra andando).
 #   - Este:  la casa con el cartel SE ALQUILA, que puede ser tu escondite.
+#   - Oeste: la ferretería. Sur: la armería.
+#   - Tres calles salen de la plaza: norte (Mercado), este (Barrio Residencial)
+#     y sur (Zona Industrial).
 #
 # El centro de la plaza es el punto (0, 0, 0). El norte es -Z.
 # -----------------------------------------------------------------------------
 class_name BarrioPlaza
 extends Barrio
 
+const Propiedades = preload("res://scripts/datos/propiedades.gd")
+
 const MITAD: float = 20.0   # La plaza va de -20 a 20 en X y en Z.
 const FONDO_CASAS: float = 8.0
 const ANCHO_HERBORISTERIA: float = 10.0
 const ANCHO_VIVIENDA: float = 10.0
+const ANCHO_TIENDA: float = 10.0
 
 
 func construir() -> void:
@@ -27,16 +33,42 @@ func construir() -> void:
 	var e: float = MITAD + FONDO_CASAS
 	var h: float = ANCHO_HERBORISTERIA / 2.0
 	var v: float = ANCHO_VIVIENDA / 2.0
-	fila_edificios(Vector3(0, 0, -MITAD), 0.0, -e, -h, FONDO_CASAS, rng)
-	fila_edificios(Vector3(0, 0, -MITAD), 0.0, h, e, FONDO_CASAS, rng)
-	fila_edificios(Vector3(0, 0, MITAD), PI, -e, e, FONDO_CASAS, rng)
-	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, -MITAD, -v, FONDO_CASAS, rng)
-	fila_edificios(Vector3(MITAD, 0, 0), -PI / 2.0, v, MITAD, FONDO_CASAS, rng)
-	fila_edificios(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, MITAD, FONDO_CASAS, rng)
+	# Calles que salen de la plaza (de 8 m de ancho): al norte hacia el Mercado,
+	# al este hacia el barrio residencial y al sur hacia la zona industrial.
+	var calle_norte: Vector2 = Vector2(12.0, 20.0)      # En X (fila norte).
+	var calle_sur: Vector2 = Vector2(12.0, 20.0)        # En -X (la fila sur está girada).
+	var calle_este: Vector2 = Vector2(-20.0, -12.0)     # En Z (fila este).
+	fila_con_huecos(Vector3(0, 0, -MITAD), 0.0, -e, e,
+			[Vector2(-h, h), calle_norte], FONDO_CASAS, rng)
+	var t: float = ANCHO_TIENDA / 2.0
+	fila_con_huecos(Vector3(0, 0, MITAD), PI, -e, e,
+			[Vector2(-t, t), calle_sur], FONDO_CASAS, rng)
+	fila_con_huecos(Vector3(MITAD, 0, 0), -PI / 2.0, -MITAD, MITAD,
+			[Vector2(-v, v), calle_este], FONDO_CASAS, rng)
+	fila_con_huecos(Vector3(-MITAD, 0, 0), PI / 2.0, -MITAD, MITAD,
+			[Vector2(-t, t)], FONDO_CASAS, rng)
+	# Asfalto de las tres salidas.
+	calle(Vector3(16, 0, -MITAD - 4), 8.0, 8.0, false)
+	calle(Vector3(MITAD + 4, 0, -16), 8.0, 8.0, true)
+	calle(Vector3(-16, 0, MITAD + 4), 8.0, 8.0, false)
 
 	_herboristeria()
-	_vivienda()
+	vivienda("plaza", int(Propiedades.ficha("plaza")["alquiler"]), Vector3(MITAD, 0, 0), -PI / 2.0)
+	tienda_con_interior(Vector3(-MITAD, 0, 0), PI / 2.0, "FERRETERÍA  Clavo y Martillo", "ferreteria",
+			"Ferretería Clavo y Martillo", "Hablar con el ferretero (comprar)", Color(1.0, 0.8, 0.4))
+	tienda_con_interior(Vector3(0, 0, MITAD), PI, "ARMERÍA  El Último Recurso", "armeria",
+			"Armería El Último Recurso", "Hablar con el armero (comprar)", Color(1.0, 0.5, 0.4))
 	_fuente()
+	var inmo: InmobiliariaMostrador = InmobiliariaMostrador.new()
+	inmo.position = Vector3(-7.5, 0, -9)   # (A (-10,-10) tapaba el camino de patrulla de los guardias por la plaza.)
+	add_child(inmo)
+	registrar_poi(inmo, "Inmobiliaria", Color(0.5, 0.75, 1.0))
+	var bolsa: OficinaEmpleo = OficinaEmpleo.new()
+	bolsa.position = Vector3(7.5, 0, -9)   # (A (-6.5,-12.5) tapaba el camino de patrulla de los guardias.)
+	add_child(bolsa)
+	registrar_poi(bolsa, "Bolsa de trabajo", Color(1.0, 0.9, 0.5))
+	_decorar_plaza()
+	_guardia([Vector3(-12, 0, -12), Vector3(12, 0, -12), Vector3(12, 0, 12), Vector3(-12, 0, 12)])
 
 	farola(Vector3(-10, 0, -10))
 	farola(Vector3(10, 0, -10))
@@ -44,7 +76,7 @@ func construir() -> void:
 	farola(Vector3(10, 0, 12))
 
 	# Cartel del Prefecto en la pared oeste: la magia está prohibida.
-	var cartel: Label3D = Construir.texto(self, Vector3(-MITAD + 0.12, 2.2, 4),
+	var cartel: Label3D = Construir.texto(self, Vector3(-MITAD + 0.12, 2.2, 12),
 			"POR DECRETO DEL PREFECTO\nQueda prohibida toda magia,\nalquimia y brebaje.\nSe pagan 50 $ por cada bruja.",
 			80, Color(0.85, 0.8, 0.65))
 	cartel.rotation.y = PI / 2.0
@@ -73,9 +105,9 @@ func _herboristeria() -> void:
 	]
 	var tienda: Node3D = edificio_visitable(Vector3(0, 0, -MITAD), 0.0, ANCHO_HERBORISTERIA, FONDO_CASAS, 9.0,
 			Color(0.2, 0.24, 0.2), Color(0.35, 0.3, 0.22), huecos)
-	Construir.texto(tienda, Vector3(0, 3.05, 0.12), "HERBORISTERÍA  La Mandrágora Honrada", 90,
-			Color(0.6, 0.9, 0.6))
-	Construir.luz(tienda, Vector3(0, 2.9, 1.2), Color(0.5, 1.0, 0.6), 1.0, 6.0)
+	cartel_tienda(tienda, "HERBORISTERÍA  La Mandrágora Honrada", Color(0.6, 0.9, 0.6))
+	registrar_poi(tienda, "Herboristería", Color(0.6, 0.9, 0.6))
+	Construir.luz_noche(tienda, Vector3(0, 2.9, 1.2), Color(0.5, 1.0, 0.6), 1.0, 6.0)
 
 	# Dentro: luz cálida, mostrador con el herbolario y estanterías de frascos.
 	Construir.luz(tienda, Vector3(0, 3.0, -4.0), Color(1.0, 0.8, 0.5), 1.4, 8.0)
@@ -83,7 +115,7 @@ func _herboristeria() -> void:
 	var tendero: Tendero = Tendero.new()
 	tendero.position = Vector3(0, 1.0, -5.2)
 	tienda.add_child(tendero)
-	Construir.texto(tienda, Vector3(0, 1.25, -4.84), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
+	Construir.texto(tienda, Vector3(0, 1.25, -4.78), "Pulsa E para comprar", 32, Color(1, 0.92, 0.6))
 
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 7
@@ -99,79 +131,34 @@ func _herboristeria() -> void:
 		Construir.caja(tienda, Vector3(4.2, 0.3, -1.5 - i * 0.8), Vector3(0.7, 0.6, 0.5), Color(0.3, 0.25, 0.2))
 	# Ramos de hierbas colgando del techo.
 	for i in 5:
-		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 3.1, -3.0), 0.12, 0.5,
+		Construir.cilindro(tienda, Vector3(-3 + i * 1.5, 2.9, -3.0), 0.12, 0.5,
 				Color(0.3, 0.45, 0.25), false, 0.0, 0.02)
+	decorar_tienda(tienda)
 
 
-# ------------------------------- Tu casa --------------------------------------
+# Objetos sueltos por la plaza (del kit "Fantasy Props" y "Medieval Village"):
+# bancos junto a la fuente, un carro, barriles, cajas y un puesto de mercado.
+func _decorar_plaza() -> void:
+	for p in [Vector3(5, 0, 5), Vector3(-5, 0, 5), Vector3(5, 0, -5), Vector3(-5, 0, -5)]:
+		prop(self, "Bench", p, atan2(-p.x, -p.z), 1.0, true)
+	Assets.colocar_solido(self, PUEBLO + "Prop_Wagon", Vector3(-14, 0, 13), 0.5)
+	for i in 3:
+		prop(self, "Barrel", Vector3(14 + i * 0.8, 0, 15), i, 1.0, true)
+	prop(self, "Crate_Wooden", Vector3(-15, 0, -14), 0.2, 1.0, true)
+	prop(self, "Crate_Wooden", Vector3(-15, 0, -12.7), 0.6, 1.0, true)
+	prop(self, "Stall_Empty", Vector3(-14, 0, -3), PI / 2.0, 1.0, true)
+	prop(self, "Stall_Empty", Vector3(14, 0, 4), -PI / 2.0, 1.0, true)
+	prop(self, "Dummy", Vector3(10, 0, 8), -PI / 2.0, 1.0, true)
 
-func _vivienda() -> void:
-	# En el lado este (x = 20), con la fachada mirando al oeste (ángulo -PI/2).
-	# En coordenadas de la casa: x va de -5 a 5 a lo largo de la fachada, y el
-	# interior va de z = 0 (fachada) a z = -8 (pared del fondo).
-	var huecos: Array = [
-		{"x": -3.0, "ancho": PuertaCasa.ANCHO, "abajo": 0.0, "arriba": PuertaCasa.ALTO},
-		{"x": 1.5, "ancho": 2.0, "abajo": 1.0, "arriba": 2.3, "cristal": true},
-	]
-	var casa: Node3D = edificio_visitable(Vector3(MITAD, 0, 0), -PI / 2.0, ANCHO_VIVIENDA, FONDO_CASAS, 7.0,
-			Color(0.3, 0.26, 0.24), Color(0.42, 0.36, 0.3), huecos)
 
-	# Cartel de alquiler encima de la puerta.
-	var cartel: Label3D = Construir.texto(casa, Vector3(-3.0, 2.75, 0.12),
-			"SE ALQUILA  %d $" % GameData.PRECIO_ALQUILER, 56, Color(1.0, 0.85, 0.5))
-	# Farolillo junto a la puerta.
-	Construir.caja(casa, Vector3(-4.0, 2.4, 0.15), Vector3(0.2, 0.3, 0.2), Color(1.0, 0.75, 0.4), false, 3.0)
-	Construir.luz(casa, Vector3(-4.0, 2.4, 0.6), Color(1.0, 0.7, 0.4), 0.9, 5.0)
-	var puerta: PuertaCasa = PuertaCasa.new()
-	puerta.position = Vector3(-3.0, 1.0, -0.1)
-	puerta.cartel = cartel
-	casa.add_child(puerta)
-
-	# Luz de dentro (una lámpara de aceite) y una alfombra.
-	Construir.luz(casa, Vector3(0, 3.0, -4.0), Color(1.0, 0.75, 0.45), 1.2, 8.0)
-	Construir.caja(casa, Vector3(0, 0.035, -4.0), Vector3(3.0, 0.01, 2.0), Color(0.35, 0.12, 0.12), false)
-
-	# Ventanilla de venta: el mostrador está detrás del cristal y el cliente fuera.
-	Construir.caja(casa, Vector3(1.5, 0.5, -0.55), Vector3(2.0, 1.0, 0.6), Color(0.3, 0.2, 0.13))
-	var mostrador: Mostrador = Mostrador.new()
-	mostrador.position = Vector3(1.5, 1.0, -0.55)
-	mostrador.posicion_cliente = Vector3(0, -1.0, 1.5)
-	mostrador.giro_cliente = 0.0   # Mira hacia dentro de la casa.
-	casa.add_child(mostrador)
-
-	# Cocina con grifo (rellena la jarra) contra la pared del fondo.
-	var cocina: Muebles.Grifo = Muebles.Grifo.new()
-	cocina.position = Vector3(3.2, 0, -7.45)
-	casa.add_child(cocina)
-
-	# Estantería para guardar cosas.
-	var estanteria: Muebles.Estanteria = Muebles.Estanteria.new()
-	estanteria.position = Vector3(0.2, 0, -7.6)
-	casa.add_child(estanteria)
-
-	# Cama en la esquina.
-	var cama: Muebles.Cama = Muebles.Cama.new()
-	cama.position = Vector3(-4.1, 0, -6.6)
-	casa.add_child(cama)
-
-	# Caldero y recetario en la pared.
-	var caldero: Caldero3D = Caldero3D.new()
-	caldero.position = Vector3(3.3, 0, -4.2)
-	casa.add_child(caldero)
-	var recetas: PackedStringArray = ["RECETARIO (no enseñar a la guardia)"]
-	for id_pocion in GameData.POCIONES:
-		recetas.append("%s = %s" % [GameData.POCIONES[id_pocion]["nombre"], GameData.texto_receta(id_pocion)])
-	var recetario: Label3D = Construir.texto(casa, Vector3(4.88, 1.9, -4.2), "\n".join(recetas), 40,
-			Color(0.75, 0.9, 0.7))
-	recetario.rotation.y = -PI / 2.0
-
-	# Cinco huecos para macetas junto a la pared izquierda; las dos primeras ya vienen puestas.
-	for i in 5:
-		var hueco: Muebles.HuecoMaceta = Muebles.HuecoMaceta.new()
-		hueco.position = Vector3(-4.4, 0.03, -1.9 - i * 0.8)
-		casa.add_child(hueco)
-		if i < 2:
-			hueco.poner_maceta()
+# Un guardia del Prefecto que patrulla la plaza de noche (puntos en coordenadas de la plaza).
+func _guardia(puntos: Array) -> void:
+	var guardia: Guardia = Guardia.new()
+	var ruta: Array[Vector3] = []
+	for p in puntos:
+		ruta.append(to_global(p))
+	guardia.ruta = ruta
+	add_child(guardia)
 
 
 func _fuente() -> void:
@@ -181,5 +168,5 @@ func _fuente() -> void:
 	Construir.cilindro(self, Vector3(0, 1.5, 0), 0.35, 1.6, Color(0.32, 0.32, 0.34), true)
 	# Una estatua decapitada: el último alquimista de la ciudad.
 	Construir.caja(self, Vector3(0, 2.8, 0), Vector3(0.7, 1.0, 0.4), Color(0.36, 0.36, 0.38), false)
-	Construir.texto(self, Vector3(0, 0.45, 2.62), "Aquí ardió el último alquimista. Que sirva de lección.",
+	Construir.texto(self, Vector3(0, 0.45, 2.68), "Aquí ardió el último alquimista. Que sirva de lección.",
 			40, Color(0.7, 0.7, 0.7))
