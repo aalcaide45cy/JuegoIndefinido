@@ -702,6 +702,7 @@ class Admin extends Ventana:
 		var caja: VBoxContainer = panel_centrado(Vector2(640, 880))
 		cabecera(caja, "Panel de administrador (F1)")
 		caja.add_child(Hud.crear_boton("Teletransporte (mapa del mundo)…", _abrir_teletransporte))
+		caja.add_child(Hud.crear_boton("Aparecer cualquier cosa (armas, objetos, PNJ, dinero)…", _abrir_objetos))
 		caja.add_child(Hud.crear_boton("Asaltos a casas (ajustes y pruebas)…", _abrir_asaltos))
 		_construir_vehiculos(caja)
 		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
@@ -903,6 +904,11 @@ class Admin extends Ventana:
 
 		Juego.cambio.connect(_refrescar)
 		_refrescar()
+
+	func _abrir_objetos() -> void:
+		var v: VentanaObjetosAdmin = VentanaObjetosAdmin.new()
+		v.jugador = jugador
+		add_child(v)
 
 	func _abrir_asaltos() -> void:
 		var v: VentanaAsaltos = VentanaAsaltos.new()
