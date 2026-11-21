@@ -24,6 +24,7 @@ const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
 const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 const DatosEfectos = preload("res://scripts/datos/efectos.gd")
 const DatosOficios = preload("res://scripts/datos/oficios.gd")
+const DatosPeluqueria = preload("res://scripts/datos/peluqueria.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
 const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
 const Bandas = preload("res://scripts/datos/bandas.gd")
@@ -901,6 +902,9 @@ func descuento_servicio(servicio: String) -> float:
 		return float(DatosOficios.DESCUENTO_HOSPITAL[rango_oficio()])
 	if oficio == "mecanico" and servicio == "taller":
 		return float(DatosOficios.DESCUENTO_TALLER[rango_oficio()])
+	# Hostelería: quien trabaja de camarero, cocinero, barman o panadero come y bebe a mitad de precio.
+	if oficio != "" and oficio == DatosOficios.oficio_de_lugar(servicio) and ["restaurante", "taberna", "bar", "panaderia"].has(servicio):
+		return 0.5
 	return 0.0
 
 

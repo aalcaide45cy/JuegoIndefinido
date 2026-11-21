@@ -9,7 +9,8 @@
 #
 #   nombre, lugar (servicio donde se ficha), sueldo_hora ($ por hora de juego en
 #   servicio, multiplicado por el rango), rangos [[nombre, xp, multiplicador]],
-#   avisos [{texto, tipo (aspecto del marcador), pago, xp, golpes (pulsaciones de
+#   avisos [{texto, tipo (aspecto del marcador), local (opcional: pide un cliente de
+#   datos/peluqueria.gd), pago, xp, golpes (pulsaciones de
 #   E para resolverlo), riesgo (vida que pierdes al resolverlo)}], ventaja.
 # Para añadir un oficio nuevo copia una entrada (y, si hace falta, un lugar nuevo
 # en generador_mundo.gd).
@@ -54,6 +55,66 @@ const LISTA: Dictionary = {
 			{"texto": "Coche averiado en la calzada", "tipo": "averia", "pago": 36, "xp": 12, "golpes": 3, "riesgo": 0.0},
 		],
 		"ventaja": "Descuento en el taller: 20 % (Aprendiz) hasta 60 % (Jefe).",
+		"requisito": "",
+	},
+	"peluquero": {
+		"nombre": "Peluquero", "lugar": "peluqueria", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de tijeras", 0, 1.0], ["Peluquero", 120, 1.4], ["Estilista", 350, 1.9], ["Maestro del salón", 800, 2.6]],
+		"avisos": [
+			{"texto": "Cliente a domicilio", "tipo": "cliente", "local": "peluqueria", "pago": 34, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Novia con prisa", "tipo": "cliente", "local": "peluqueria", "pago": 52, "xp": 18, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Cortes y tintes a mitad de precio en las peluquerías.",
+		"requisito": "",
+	},
+	"barbero": {
+		"nombre": "Barbero", "lugar": "barberia", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de navaja", 0, 1.0], ["Barbero", 120, 1.4], ["Maestro barbero", 350, 1.9], ["Barbero real", 800, 2.6]],
+		"avisos": [
+			{"texto": "Cliente con barba", "tipo": "cliente", "local": "barberia", "pago": 32, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Afeitado de gala", "tipo": "cliente", "local": "barberia", "pago": 48, "xp": 16, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Cortes y barbas a mitad de precio en las barberías.",
+		"requisito": "",
+	},
+	"camarero": {
+		"nombre": "Camarero", "lugar": "restaurante", "sueldo_hora": 12.0,
+		"rangos": [["Pinche", 0, 1.0], ["Camarero", 120, 1.4], ["Jefe de sala", 350, 1.9], ["Maître", 800, 2.6]],
+		"avisos": [
+			{"texto": "Mesa esperando su pedido", "tipo": "pedido", "pago": 34, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Banquete que servir", "tipo": "pedido", "pago": 54, "xp": 18, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"cocinero": {
+		"nombre": "Cocinero", "lugar": "taberna", "sueldo_hora": 13.0,
+		"rangos": [["Pinche de cocina", 0, 1.0], ["Cocinero", 120, 1.4], ["Jefe de cocina", 350, 1.9], ["Chef de la bruma", 800, 2.6]],
+		"avisos": [
+			{"texto": "Encargo de estofado", "tipo": "pedido", "pago": 38, "xp": 13, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Plato especial para un cliente", "tipo": "pedido", "pago": 56, "xp": 19, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"barman": {
+		"nombre": "Barman", "lugar": "bar", "sueldo_hora": 12.0,
+		"rangos": [["Ayudante de barra", 0, 1.0], ["Barman", 120, 1.4], ["Coctelero", 350, 1.9], ["Maestro de la bruma", 800, 2.6]],
+		"avisos": [
+			{"texto": "Ronda para una mesa", "tipo": "pedido", "pago": 32, "xp": 11, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Cóctel de la casa", "tipo": "pedido", "pago": 50, "xp": 17, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Bebes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"panadero": {
+		"nombre": "Panadero", "lugar": "panaderia", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de horno", 0, 1.0], ["Panadero", 120, 1.4], ["Maestro panadero", 350, 1.9], ["Panadero real", 800, 2.6]],
+		"avisos": [
+			{"texto": "Reparto de pan a una casa", "tipo": "pedido", "pago": 30, "xp": 10, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Pedido de pasteles", "tipo": "pedido", "pago": 46, "xp": 16, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
 		"requisito": "",
 	},
 }
