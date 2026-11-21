@@ -3,7 +3,7 @@
 # El mapa de la ciudad a pantalla completa (tecla N). Norte siempre arriba.
 # Usa una cámara cenital propia (como el minimapa), pone los nombres de las
 # tiendas y casas (grupo "poi") y la flecha del jugador. Se cierra con N, M o Esc.
-# SIN PROBAR en Godot.
+# El jugador se ve con halo que late, flecha amarilla y etiqueta TÚ (también fuera de la ciudad).
 # -----------------------------------------------------------------------------
 class_name MapaGrande
 extends Ventana
@@ -83,6 +83,10 @@ func construir() -> void:
 	_marcas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_marcas.draw.connect(_dibujar.bind(vista))
 	vista.add_child(_marcas)
+	# Si el jugador está lejos de la ciudad no saldría en este mapa: se abre directamente
+	# el mapa del mundo entero, donde siempre se le ve.
+	if jugador != null and is_instance_valid(jugador) and not _dentro_vista(_a_pantalla(jugador.global_position)):
+		_cambiar_modo()
 
 
 func _process(_delta: float) -> void:
@@ -129,10 +133,7 @@ func _dibujar_mundo() -> void:
 	var ciudad: Vector2 = _a_pantalla(Vector3(100.0, 0.0, 0.0))
 	_marcas.draw_string_outline(fuente, ciudad + Vector2(-70, -12), "Ciudad original", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.9))
 	_marcas.draw_string(fuente, ciudad + Vector2(-70, -12), "Ciudad original", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.85, 0.4))
-	if jugador != null and is_instance_valid(jugador):
-		var c2: Vector2 = _a_pantalla(jugador.global_position)
-		_marcas.draw_circle(c2, 7.0, Color(0, 0, 0, 0.9))
-		_marcas.draw_circle(c2, 5.0, Color(0.3, 0.8, 1.0))
+	_dibujar_jugador()
 	_marcas.draw_string(fuente, Vector2(_px / 2.0 - 6.0, 18.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.45, 0.4))
 
 
@@ -157,14 +158,50 @@ func _dibujar(vista: Control) -> void:
 		var nombre: String = str(poi.get_meta("poi_nombre", ""))
 		_marcas.draw_string_outline(fuente, c + Vector2(9, 5), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.9))
 		_marcas.draw_string(fuente, c + Vector2(9, 5), nombre, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1))
-	if jugador != null and is_instance_valid(jugador):
-		var c: Vector2 = _a_pantalla(jugador.global_position)
-		var giro: float = jugador._giro
-		var avance: Vector2 = Vector2(-sin(giro), -cos(giro))
-		var lado: Vector2 = Vector2(-avance.y, avance.x)
-		var flecha: PackedVector2Array = PackedVector2Array([c + avance * 12.0,
-				c - avance * 8.0 + lado * 8.0, c - avance * 3.0, c - avance * 8.0 - lado * 8.0])
-		_marcas.draw_colored_polygon(flecha, Color(1, 1, 1))
-		_marcas.draw_polyline(PackedVector2Array([flecha[0], flecha[1], flecha[2], flecha[3], flecha[0]]),
-				Color(0, 0, 0, 0.9), 2.0, true)
+	_dibujar_jugador()
 	_marcas.draw_string(fuente, Vector2(_px / 2.0 - 6.0, 18.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.45, 0.4))
+
+
+func _dentro_vista(c: Vector2) -> bool:
+	return c.x >= 0.0 and c.y >= 0.0 and c.x <= _px and c.y <= _px
+
+
+# El jugador: un halo que late, una flecha grande amarilla que gira hacia donde mira
+# y la etiqueta "TÚ". Si cae fuera del mapa se pega al borde con la distancia.
+func _dibujar_jugador() -> void:
+	if jugador == null or not is_instance_valid(jugador):
+		return
+	var fuente: Font = ThemeDB.fallback_font
+	var c: Vector2 = _a_pantalla(jugador.global_position)
+	var giro: float = jugador._giro
+	var avance: Vector2 = Vector2(-sin(giro), -cos(giro))
+	var fuera: bool = not _dentro_vista(c)
+	var etiqueta: String = "TÚ"
+	if fuera:
+		var centro: Vector2 = Vector2(_px, _px) / 2.0
+		var dir: Vector2 = (c - centro).normalized()
+		var m: float = _px / 2.0 - 26.0
+		var k: float = m / maxf(absf(dir.x), absf(dir.y))
+		var dist: float = jugador.global_position.distance_to(_centro)
+		c = centro + dir * k
+		avance = dir
+		etiqueta = "TÚ (a %.1f km)" % (dist / 1000.0) if dist >= 1000.0 else "TÚ (a %d m)" % int(dist)
+	var pulso: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+	var tam: float = 1.0 if not _modo_mundo else 0.85
+	# Halo que late (así se ve aunque la flecha sea pequeña frente al mapa).
+	_marcas.draw_circle(c, (24.0 + 8.0 * pulso) * tam, Color(1.0, 0.9, 0.2, 0.18 + 0.12 * pulso))
+	_marcas.draw_arc(c, (24.0 + 8.0 * pulso) * tam, 0.0, TAU, 40, Color(0, 0, 0, 0.9), 4.0, true)
+	_marcas.draw_arc(c, (24.0 + 8.0 * pulso) * tam, 0.0, TAU, 40, Color(1.0, 0.9, 0.2), 2.0, true)
+	var lado: Vector2 = Vector2(-avance.y, avance.x)
+	var l: float = 22.0 * tam
+	var flecha: PackedVector2Array = PackedVector2Array([c + avance * l,
+			c - avance * l * 0.7 + lado * l * 0.7, c - avance * l * 0.25, c - avance * l * 0.7 - lado * l * 0.7])
+	_marcas.draw_colored_polygon(flecha, Color(1.0, 0.9, 0.2))
+	_marcas.draw_polyline(PackedVector2Array([flecha[0], flecha[1], flecha[2], flecha[3], flecha[0]]),
+			Color(0, 0, 0, 0.95), 3.0, true)
+	var ancho: float = fuente.get_string_size(etiqueta, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	var pos: Vector2 = c + Vector2(-ancho / 2.0, -34.0 * tam)
+	pos.x = clampf(pos.x, 4.0, _px - ancho - 4.0)
+	pos.y = maxf(pos.y, 20.0)
+	_marcas.draw_string_outline(fuente, pos, etiqueta, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 6, Color(0, 0, 0, 1))
+	_marcas.draw_string(fuente, pos, etiqueta, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.95, 0.4))
