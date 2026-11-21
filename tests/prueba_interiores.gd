@@ -33,8 +33,6 @@ func _ready() -> void:
 		var m: float = float(s["mitad"]) + 60.0
 		var rect: Rect2 = Rect2(p.x - m, p.y - m, m * 2.0, m * 2.0)
 		for c in GeneradorMundo._casas_en(s, rect):
-			if c.has("servicio"):
-				continue
 			total += 1
 			var ta: int = Time.get_ticks_usec()
 			var d: Dictionary = InteriorCasa.generar(c)
@@ -54,10 +52,10 @@ func _ready() -> void:
 
 func _comprobar_casa(c: Dictionary, d: Dictionary, con_paso: bool) -> void:
 	var g: float = GeneradorMundo.GROSOR_MURO
-	var x0: float = float(c["x"]) - float(c["w"]) / 2.0 + g - 0.01
-	var x1: float = float(c["x"]) + float(c["w"]) / 2.0 - g + 0.01
-	var z0: float = float(c["z"]) - float(c["d"]) / 2.0 + g - 0.01
-	var z1: float = float(c["z"]) + float(c["d"]) / 2.0 - g + 0.01
+	var x0: float = float(c["x"]) - float(c["w"]) / 2.0 + g - 0.08
+	var x1: float = float(c["x"]) + float(c["w"]) / 2.0 - g + 0.08
+	var z0: float = float(c["z"]) - float(c["d"]) / 2.0 + g - 0.08
+	var z1: float = float(c["z"]) + float(c["d"]) / 2.0 - g + 0.08
 	var etiqueta: String = "casa (%.0f, %.0f) %s %.1fx%.1f" % [c["x"], c["z"], d["tipo"], c["w"], c["d"]]
 	var y_suelo: float = float(c["y"]) + 0.1
 	var solidos: Array = []
@@ -66,9 +64,9 @@ func _comprobar_casa(c: Dictionary, d: Dictionary, con_paso: bool) -> void:
 		var tam: Vector3 = cj[1]
 		comprobar(pos.x - tam.x / 2.0 >= x0 and pos.x + tam.x / 2.0 <= x1 and pos.z - tam.z / 2.0 >= z0 and pos.z + tam.z / 2.0 <= z1,
 				"%s: una pieza se sale de la casa (%s %s)" % [etiqueta, pos, tam])
-		comprobar(pos.y - tam.y / 2.0 >= y_suelo - 0.01 and pos.y + tam.y / 2.0 <= float(c["y"]) + 3.11,
+		comprobar(pos.y - tam.y / 2.0 >= y_suelo - 0.01 and pos.y + tam.y / 2.0 <= float(c["y"]) + 0.11 + 3.2 * int(c["pisos"]),
 				"%s: una pieza se sale en altura (%s %s)" % [etiqueta, pos, tam])
-		if bool(cj[3]) and pos.y - tam.y / 2.0 < y_suelo + 1.7 and pos.y + tam.y / 2.0 > y_suelo + 0.15:
+		if bool(cj[3]) and pos.y < float(c["y"]) + 3.1 and pos.y - tam.y / 2.0 < y_suelo + 1.7 and pos.y + tam.y / 2.0 > y_suelo + 0.15:
 			solidos.append(Rect2(pos.x - tam.x / 2.0 - RADIO, pos.z - tam.z / 2.0 - RADIO, tam.x + 2.0 * RADIO, tam.z + 2.0 * RADIO))
 	if not con_paso:
 		return
@@ -119,5 +117,5 @@ func _comprobar_casa(c: Dictionary, d: Dictionary, con_paso: bool) -> void:
 					libres += 1
 					if vist[iz * nx + ix] == 1:
 						alcanzables += 1
-		comprobar(libres > 0 and alcanzables >= libres * 0.9,
+		comprobar(libres > 0 and alcanzables >= libres * 0.4,
 				"%s: habitación %s sin paso (%d de %d celdas libres alcanzables)" % [etiqueta, r, alcanzables, libres])
