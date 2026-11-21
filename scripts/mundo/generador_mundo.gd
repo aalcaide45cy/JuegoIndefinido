@@ -28,6 +28,12 @@ const CELDA_MAX: int = 6
 const SEPARACION_MIN: float = 260.0    # Hueco libre mínimo entre las zonas de dos asentamientos.
 const BLOQUE: float = 44.0             # Distancia entre calles de un pueblo.
 const CALLE_ANCHO: float = 8.0
+const ACERA: float = 2.5               # Ancho de la acera (bordillo incluido) en pueblos y ciudades.
+# Trazados de un asentamiento (clave "trazado"): cada pueblo o ciudad elige uno por semilla.
+const TRAZADO_CUADRICULA: int = 0      # Calles rectas cada 44 m (el de siempre, ahora con aceras).
+const TRAZADO_CASCO: int = 1           # Casco antiguo: casas pegadas con callejones de 3 m entre ellas.
+const TRAZADO_IRREGULAR: int = 2       # Cuadrícula irregular: calles sin salida y paseos peatonales.
+const TRAZADO_MIXTO: int = 3           # Ciudad con casco antiguo en el centro y cuadrícula fuera.
 const TROZO: float = 128.0             # Trozo de cerca (con choques y detalle).
 const CELDAS: int = 32                 # Cuadritos por lado en un trozo cercano (4 m).
 const TROZO_LEJOS: float = 512.0       # Trozo de lejos (solo vista).
@@ -254,7 +260,13 @@ static func _candidato(ci: int, cj: int) -> Dictionary:
 	elif r < 0.35:
 		tipo = 1
 		n = 2
-	return {"ci": ci, "cj": cj, "pos": centro, "tipo": tipo, "n": n, "mitad": n * BLOQUE,
+	var trazado: int = TRAZADO_CUADRICULA
+	var rt: float = _f(ci, cj, 60)
+	if tipo == 1:
+		trazado = TRAZADO_CASCO if rt < 0.4 else (TRAZADO_IRREGULAR if rt < 0.7 else TRAZADO_CUADRICULA)
+	elif tipo == 2:
+		trazado = TRAZADO_MIXTO if rt < 0.35 else (TRAZADO_IRREGULAR if rt < 0.6 else TRAZADO_CUADRICULA)
+	return {"ci": ci, "cj": cj, "pos": centro, "tipo": tipo, "n": n, "mitad": n * BLOQUE, "trazado": trazado,
 			"plano": n * BLOQUE + 150.0, "base": base,
 			"nombre": ("Alto " if montana else "") + _nombre(ci, cj), "montana": montana}
 
@@ -335,10 +347,59 @@ static func _calles_de(s: Dictionary) -> Array:
 	var p: Vector2 = s["pos"]
 	var n: int = s["n"]
 	var m: float = s["mitad"]
+	if int(s.get("trazado", 0)) != TRAZADO_IRREGULAR:
+		for k in range(-n, n + 1):
+			out.append([Vector2(p.x + k * BLOQUE, p.y - m), Vector2(p.x + k * BLOQUE, p.y + m), CALLE_ANCHO, 0])
+			out.append([Vector2(p.x - m, p.y + k * BLOQUE), Vector2(p.x + m, p.y + k * BLOQUE), CALLE_ANCHO, 0])
+		return out
+	# Irregular: cada línea se parte en tramos continuos entre las aristas que faltan.
 	for k in range(-n, n + 1):
-		out.append([Vector2(p.x + k * BLOQUE, p.y - m), Vector2(p.x + k * BLOQUE, p.y + m), CALLE_ANCHO, 0])
-		out.append([Vector2(p.x - m, p.y + k * BLOQUE), Vector2(p.x + m, p.y + k * BLOQUE), CALLE_ANCHO, 0])
+		for horizontal in [false, true]:
+			var inicio: int = -9999
+			for t in range(-n, n + 1):   # t = 0..2n-1 son aristas; t = n es el cierre.
+				var existe: bool = t < n and (arista_existe(s, t, k, true) if horizontal else arista_existe(s, k, t, false))
+				if existe and inicio == -9999:
+					inicio = t
+				if not existe and inicio != -9999:
+					var a: Vector2 = Vector2(p.x + inicio * BLOQUE, p.y + k * BLOQUE) if horizontal else Vector2(p.x + k * BLOQUE, p.y + inicio * BLOQUE)
+					var b: Vector2 = Vector2(p.x + t * BLOQUE, p.y + k * BLOQUE) if horizontal else Vector2(p.x + k * BLOQUE, p.y + t * BLOQUE)
+					out.append([a, b, CALLE_ANCHO, 0])
+					inicio = -9999
 	return out
+
+
+# ¿Existe la calle entre el cruce (k, l) y el siguiente (k+1, l) si "horizontal", o (k, l+1) si no?
+# Solo el trazado irregular quita calles: las interiores, alternando para que no queden cruces aislados.
+static func arista_existe(s: Dictionary, k: int, l: int, horizontal: bool) -> bool:
+	var n: int = int(s["n"])
+	if horizontal:
+		if k < -n or k >= n or l < -n or l > n:
+			return false
+	elif l < -n or l >= n or k < -n or k > n:
+		return false
+	if int(s.get("trazado", 0)) != TRAZADO_IRREGULAR:
+		return true
+	if horizontal and (absi(l) >= n or (k + l) % 2 != 0):
+		return true
+	if not horizontal and (absi(k) >= n or (k + l) % 2 == 0):
+		return true
+	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
+	return _f(sid, k * 101 + l, 140 if horizontal else 141) >= 0.3
+
+
+# Ancho de la acera de un asentamiento (las aldeas no tienen).
+static func acera_de(s: Dictionary) -> float:
+	return ACERA if int(s["tipo"]) >= 1 else 0.0
+
+
+# ¿El bloque (k, l) es casco antiguo (casas pegadas con callejones)?
+static func bloque_casco(s: Dictionary, k: int, l: int) -> bool:
+	var tz: int = int(s.get("trazado", 0))
+	if tz == TRAZADO_CASCO:
+		return true
+	if tz == TRAZADO_MIXTO:
+		return maxf(absf(k + 0.5), absf(l + 0.5)) < 2.0
+	return false
 
 
 # Punto de la entrada de un asentamiento en la dirección "hacia" (más allá de los huertos).
@@ -879,6 +940,9 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	if es_parque(s, k, l):
 		return {}
 	var vacio: float = float(est["vacio"]) * (1.0 if tipo == 0 else 0.7)
+	var casco: bool = bloque_casco(s, k, l)
+	if casco:
+		vacio *= 0.3
 	if _f(sid, clave + 7919, sub * 16) < vacio:
 		return {}
 	var p: Vector2 = s["pos"]
@@ -886,32 +950,43 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	var b: int = sub / 2
 	var r1: float = _f(sid, clave, sub * 16 + 1)
 	var r2: float = _f(sid, clave, sub * 16 + 2)
-	var ancho: float = clampf((7.0 + 8.5 * pow(r1, 1.4)) * float(est["ancho"]), 6.0, 15.5)
-	var fondo: float = clampf(7.0 + 8.0 * pow(r2, 1.2), 6.5, 15.5)
+	var acera: float = acera_de(s)
+	var solar: float = 18.0 - acera   # Lado del solar: 18 m en aldeas, 15,5 m con aceras de 2,5 m.
+	var maximo: float = minf(15.5, solar - 0.5)
+	var ancho: float = clampf((7.0 + 8.5 * pow(r1, 1.4)) * float(est["ancho"]), 6.0, maximo)
+	var fondo: float = clampf(7.0 + 8.0 * pow(r2, 1.2), 6.5, maximo)
 	var r: float = _f(sid, clave, sub * 16 + 5)
 	var pisos: int = 1 + int(r * 2.0)
+	if casco:
+		# Casco antiguo: casas iguales de ancho, pegadas a la acera, con 3 m de callejón entre ellas.
+		ancho = solar - 3.0
+		fondo = solar - 3.0
+		pisos = 2 + int(r * 2.0)
 	if tipo == 2:
 		var cerca: float = maxf(absf(k + 0.5), absf(l + 0.5))
 		pisos = 1 + int(r * 3.0) + (2 if cerca < 2.0 else 0)
 	var distrito: String = distrito_de(s, k, l)
-	if distrito == "rico":
-		ancho = minf(ancho + 2.0, 15.5)
-		fondo = minf(fondo + 1.0, 15.5)
+	if casco:
+		pass   # Mismo tamaño en todo el casco antiguo.
+	elif distrito == "rico":
+		ancho = minf(ancho + 2.0, maximo)
+		fondo = minf(fondo + 1.0, maximo)
 		pisos = maxi(2, pisos)
 	elif distrito == "industrial":
 		pisos = 1
-		ancho = minf(ancho + 2.0, 15.5)
-	# La casa se mueve dentro de su solar de 18 m (más holgura cuanto más pequeña).
-	var holgura_x: float = maxf(0.0, (18.0 - ancho) / 2.0 - 0.4)
-	var holgura_z: float = maxf(0.0, (18.0 - fondo) / 2.0 - 0.4)
-	var cx: float = p.x + k * BLOQUE + CALLE_ANCHO / 2.0 + a * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 3) * 2.0 - 1.0) * holgura_x
-	var cz: float = p.y + l * BLOQUE + CALLE_ANCHO / 2.0 + b * 18.0 + 9.0 + (_f(sid, clave, sub * 16 + 4) * 2.0 - 1.0) * holgura_z
+		ancho = minf(ancho + 2.0, maximo)
+	# La casa se mueve dentro de su solar (más holgura cuanto más pequeña); en el casco no se mueve.
+	var holgura_x: float = 0.0 if casco else maxf(0.0, (solar - ancho) / 2.0 - 0.4)
+	var holgura_z: float = 0.0 if casco else maxf(0.0, (solar - fondo) / 2.0 - 0.4)
+	var origen: float = CALLE_ANCHO / 2.0 + acera
+	var cx: float = p.x + k * BLOQUE + origen + a * solar + solar / 2.0 + (_f(sid, clave, sub * 16 + 3) * 2.0 - 1.0) * holgura_x
+	var cz: float = p.y + l * BLOQUE + origen + b * solar + solar / 2.0 + (_f(sid, clave, sub * 16 + 4) * 2.0 - 1.0) * holgura_z
 	var v: int = _h(sid, clave, sub * 16 + 9)
 	var paredes: Array = est["paredes"]
 	var techos: Array = est["techos"]
 	var pared: Color = _variar(paredes[_h(sid, clave, sub * 16 + 6) % paredes.size()], sid, clave, sub * 16 + 10)
 	var techo: Color = _variar(techos[_h(sid, clave, sub * 16 + 7) % techos.size()], sid, clave, sub * 16 + 11)
-	var plano: bool = pisos > 3 or _f(sid, clave, sub * 16 + 12) < float(est["plano"])
+	var plano: bool = (pisos > 3 or _f(sid, clave, sub * 16 + 12) < float(est["plano"])) and not casco
 	var c: Dictionary = {"x": cx, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
 			"alto": pisos * (3.0 + _f(sid, clave, sub * 16 + 13) * 0.5), "puerta": -1 if b == 0 else 1, "plano": plano,
 			"color": pared, "techo": techo, "id": "", "pitch": float(est["pitch"]) * (0.8 + _f(sid, clave, sub * 16 + 14) * 0.5),
@@ -1490,6 +1565,7 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 	var y: float = s["base"]
 	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
 	var poste: Color = Color(0.14, 0.14, 0.16)
+	_aceras(mb, s, rect)
 	for k in range(-n, n + 1):
 		for l in range(-n, n + 1):
 			var cx: float = p.x + k * BLOQUE
@@ -1505,7 +1581,8 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 				if not rect.has_point(Vector2(bx, bz)):
 					continue
 				var cid: int = k * 101 + l
-				mb.caja(Vector3(bx, y + 0.06, bz), Vector3(34.0, 0.14, 34.0), Color(0.22, 0.42, 0.18))
+				var lado_parque: float = 36.0 - 2.0 * acera_de(s) - 1.0
+				mb.caja(Vector3(bx, y + 0.06, bz), Vector3(lado_parque, 0.14, lado_parque), Color(0.22, 0.42, 0.18))
 				if _f(sid, cid, 78) < 0.5:   # Con fuente.
 					mb.cono(Vector3(bx, y, bz), 3.0, 0.9, 12, Color(0.55, 0.55, 0.58), 2.6)
 					mb.caja(Vector3(bx, y + 0.8, bz), Vector3(1.6, 1.2, 1.6), Color(0.5, 0.5, 0.54))
@@ -1521,6 +1598,103 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 				for i in 4:
 					var ang: float = TAU * float(i) / 4.0 + 0.4
 					mb.caja(Vector3(bx + cos(ang) * 7.5, y + 0.5, bz + sin(ang) * 7.5), Vector3(2.0, 0.5, 0.6), Color(0.4, 0.28, 0.18))
+
+
+# Aceras de pueblos y ciudades: bordillo claro + baldosa de 2,2 m de ancho alrededor de cada manzana, con
+# un árbol cada pocos metros pegado al bordillo (la franja del peatón, a 6 m del eje, queda libre).
+# Además: los callejones empedrados del casco antiguo y los paseos peatonales donde falta una calle.
+static func _aceras(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+	var n: int = s["n"]
+	var p: Vector2 = s["pos"]
+	var y: float = s["base"]
+	var ac: float = acera_de(s)
+	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
+	var alto: float = 0.3                       # La acera sube 15 cm sobre la calzada (que va a +0,15).
+	var col_bordillo: Color = Color(0.72, 0.71, 0.68)
+	var tonos: Array = [Color(0.56, 0.55, 0.52), Color(0.6, 0.58, 0.54), Color(0.52, 0.52, 0.5)]
+	var adoquin: Color = Color(0.46, 0.42, 0.37)
+	for k in range(-n, n):
+		for l in range(-n, n):
+			var o: Vector2 = Vector2(p.x + k * BLOQUE + CALLE_ANCHO / 2.0, p.y + l * BLOQUE + CALLE_ANCHO / 2.0)
+			if not rect.has_point(o + Vector2(18.0, 18.0)):
+				continue
+			var cid: int = k * 101 + l
+			# Cuatro lados: (inicio, largo, vertical?, lado de la calzada).
+			for lado in 4:
+				var vertical: bool = lado >= 2
+				var lejos: bool = lado % 2 == 1
+				for tramo in 3:
+					var t0: float = tramo * 12.0
+					var cx: float
+					var cz: float
+					var sx: float
+					var sz: float
+					var tono: Color = tonos[_h(sid, cid * 8 + lado, 150 + tramo) % 3]
+					if not vertical:
+						cx = o.x + t0 + 6.0
+						cz = o.y + (36.0 - ac / 2.0 if lejos else ac / 2.0)
+						sx = 12.0
+						sz = ac - 0.3
+						mb.caja(Vector3(cx, y + alto / 2.0, cz + (-0.15 if lejos else 0.15)), Vector3(sx, alto, sz), tono)
+						mb.caja(Vector3(cx, y + alto / 2.0 + 0.005, o.y + (36.0 - 0.15 if lejos else 0.15)), Vector3(sx, alto + 0.01, 0.3), col_bordillo)
+					else:
+						cz = o.y + t0 + 6.0
+						cx = o.x + (36.0 - ac / 2.0 if lejos else ac / 2.0)
+						sz = 12.0
+						sx = ac - 0.3
+						mb.caja(Vector3(cx + (-0.15 if lejos else 0.15), y + alto / 2.0, cz), Vector3(sx, alto, sz), tono)
+						mb.caja(Vector3(o.x + (36.0 - 0.15 if lejos else 0.15), y + alto / 2.0 + 0.005, cz), Vector3(0.3, alto + 0.01, sz), col_bordillo)
+				# Árboles junto al bordillo (a 0,9 m de él), salvo cerca de las esquinas.
+				for i in 3:
+					if _f(sid, cid * 8 + lado, 160 + i) > 0.6:
+						continue
+					var t: float = 8.0 + i * 10.0 + (_f(sid, cid * 8 + lado, 170 + i) - 0.5) * 3.0
+					var tx: float
+					var tz: float
+					if not vertical:
+						tx = o.x + t
+						tz = o.y + (36.0 - 0.9 if lejos else 0.9)
+					else:
+						tx = o.x + (36.0 - 0.9 if lejos else 0.9)
+						tz = o.y + t
+					var alt: float = 2.4 + 1.2 * _f(sid, cid * 8 + lado, 180 + i)
+					mb.caja(Vector3(tx, y + alto + alt / 2.0, tz), Vector3(0.28, alt, 0.28), Color(0.3, 0.2, 0.12))
+					mb.cono(Vector3(tx, y + alto + alt - 0.5, tz), 1.5 + 0.4 * _f(sid, cid * 8 + lado, 190 + i), 3.0, 8,
+							Color(0.2, 0.42, 0.16).lerp(Color(0.45, 0.45, 0.15), _f(sid, cid * 8 + lado, 200 + i)))
+			# Casco antiguo: callejones empedrados en cruz por el medio de la manzana, con un farol en el cruce.
+			if bloque_casco(s, k, l) and not es_parque(s, k, l) and servicio_de(s, k, l) == "":
+				var c: Vector2 = o + Vector2(18.0, 18.0)
+				var largo: float = 36.0 - 2.0 * ac
+				mb.caja(Vector3(c.x, y + 0.05, c.y), Vector3(largo, 0.1, 3.0), adoquin)
+				mb.caja(Vector3(c.x, y + 0.05, c.y), Vector3(3.0, 0.1, largo), adoquin)
+				mb.caja(Vector3(c.x + 1.4, y + 1.9, c.y + 1.4), Vector3(0.16, 3.8, 0.16), Color(0.14, 0.14, 0.16))
+				mb.caja(Vector3(c.x + 1.0, y + 3.8, c.y + 1.4), Vector3(0.8, 0.16, 0.3), Color(1.0, 0.9, 0.6))
+	# Paseos peatonales: donde falta una calle (trazado irregular) queda un paseo empedrado con árboles.
+	if int(s.get("trazado", 0)) != TRAZADO_IRREGULAR:
+		return
+	for k in range(-n, n + 1):
+		for l in range(-n, n + 1):
+			for horizontal in [true, false]:
+				if arista_existe(s, k, l, horizontal) or (horizontal and (k >= n or l > n)) or (not horizontal and (l >= n or k > n)):
+					continue
+				var a: Vector2 = Vector2(p.x + k * BLOQUE, p.y + l * BLOQUE)
+				var centro: Vector2 = a + (Vector2(BLOQUE / 2.0, 0.0) if horizontal else Vector2(0.0, BLOQUE / 2.0))
+				if not rect.has_point(centro):
+					continue
+				var tam: Vector3 = Vector3(BLOQUE - CALLE_ANCHO, 0.04, CALLE_ANCHO) if horizontal else Vector3(CALLE_ANCHO, 0.04, BLOQUE - CALLE_ANCHO)
+				mb.caja(Vector3(centro.x, y + 0.17, centro.y), tam, adoquin.lightened(0.12))
+				var cid2: int = (k * 101 + l) * 2 + (1 if horizontal else 0)
+				for i in 3:
+					var off: float = (i - 1) * 11.0
+					var tp: Vector2 = centro + (Vector2(off, 0.0) if horizontal else Vector2(0.0, off))
+					mb.caja(Vector3(tp.x, y + 1.3, tp.y), Vector3(0.26, 2.2, 0.26), Color(0.3, 0.2, 0.12))
+					mb.cono(Vector3(tp.x, y + 2.7, tp.y), 1.7, 3.0, 8, Color(0.2, 0.42, 0.16).lerp(Color(0.5, 0.4, 0.15), _f(sid, cid2, 210 + i)))
+				# Banco central.
+				mb.caja(Vector3(centro.x, y + 0.5, centro.y + (2.2 if horizontal else 0.0)), Vector3(1.8 if horizontal else 0.6, 0.45, 0.6 if horizontal else 1.8), Color(0.4, 0.28, 0.18))
+				# Nodos de la esquina: plaza empedrada para que el paseo no acabe en tierra.
+			var nodo: Vector2 = Vector2(p.x + k * BLOQUE, p.y + l * BLOQUE)
+			if rect.has_point(nodo) and absi(k) < n and absi(l) < n and (not arista_existe(s, k, l, true) or not arista_existe(s, k - 1, l, true) 					or not arista_existe(s, k, l, false) or not arista_existe(s, k, l - 1, false)):
+				mb.caja(Vector3(nodo.x, y + 0.165, nodo.y), Vector3(CALLE_ANCHO, 0.03, CALLE_ANCHO), adoquin.lightened(0.12))
 
 
 # Aldeas: pozo en el cruce, farolillos, y en cada solar algo de vida de pueblo (huertecillo, pajar,

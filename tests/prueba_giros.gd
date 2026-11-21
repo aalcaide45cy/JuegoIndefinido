@@ -63,7 +63,7 @@ func _ready() -> void:
 				if salto > maxpaso:
 					saltos += 1
 					if saltos < 6:
-						print("  SALTO de %.2f m (limite %.2f) en %s tramo %s->%s giro %s" % [salto, maxpaso, str(pos), c.desde, c.hacia, c.en_giro])
+						print("  SALTO de %.2f m (limite %.2f) de %s a %s tramo %s->%s giro %s t=%.3f vel=%.2f d=%.2f sig=%s" % [salto, maxpaso, str(pr[0]), str(pos), c.desde, c.hacia, c.en_giro, c.curva_t, c.vel, c.d, c.sig])
 				var dy: float = absf(angle_difference(yaw, pr[1])) / dt
 				if dy > giro_max:
 					giro_max = dy

@@ -96,7 +96,10 @@ func _red_asentamiento(s: Dictionary) -> Dictionary:
 			var vecinos: Array = []
 			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var o: Vector2i = c + d
-				if absi(o.x) <= n and absi(o.y) <= n:
+				if absi(o.x) > n or absi(o.y) > n:
+					continue
+				# ¿Existe la calle entre c y o? (el trazado irregular quita algunas).
+				if GeneradorMundo.arista_existe(s, mini(c.x, o.x), mini(c.y, o.y), d.y == 0):
 					vecinos.append(o)
 			red["vec"][c] = vecinos
 			var con_luz: bool = tipo == 2 or (tipo == 1 and absi(k) <= 1 and absi(l) <= 1)
@@ -594,9 +597,9 @@ func _siguiente_nodo(a: Agente) -> void:
 
 
 # Entra en la curva: el coche deja de seguir el tramo recto y sigue la Bézier.
-func _empezar_giro(a: Agente) -> void:
+func _empezar_giro(a: Agente, pasado: float = 0.0) -> void:
 	a.en_giro = true
-	a.curva_t = 0.0
+	a.curva_t = clampf(pasado / a.curva_largo, 0.0, 0.5)   # Si ya se pasó del inicio, entra por donde toca.
 	a.corr = Vector2.ZERO
 
 
@@ -815,8 +818,10 @@ func _mover_coche(a: Agente, delta: float) -> void:
 		if a.d >= largo_tramo - radio and a.curva.size() == 4 and a.sig_ok and parar == 0:
 			if (a.red["vec"][a.hacia] as Array).size() == 1 and dist_j > 45.0:
 				a.set_meta("muerto", true)   # Fin de calle sin salida y fuera de la vista.
+				a.d = largo_tramo - radio    # (se queda quieto hasta que lo borre _gestionar)
+				a.vel = 0.0
 			else:
-				_empezar_giro(a)
+				_empezar_giro(a, minf(a.d - (largo_tramo - radio), 0.6))
 		elif a.d >= largo_tramo and parar == 0:
 			var sobra: float = a.d - largo_tramo
 			if (a.red["vec"][a.hacia] as Array).size() == 1 and dist_j > 45.0:
