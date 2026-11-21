@@ -109,6 +109,10 @@ func _rellenar() -> void:
 	_deslizador("Campo de visión (FOV)", "fov", 50.0, 110.0, 1.0, "%d°", 1.0)
 	_deslizador("Brillo", "brillo", 0.5, 1.6, 0.05, "%d %%", 100.0)
 	_casilla("Contador de FPS (también con F3)", "contador_fps")
+	# --- Violencia
+	_titulo("Violencia")
+	_opcion("Sangre y desmembramientos", G.NOM_GORE, int(G.v["gore"]), func(i: int) -> void: G.poner("gore", i, false))
+	_casilla("Gritos de la gente", "gritos")
 	_scroll.set_deferred("scroll_vertical", pos)
 
 

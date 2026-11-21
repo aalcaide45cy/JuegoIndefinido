@@ -187,20 +187,104 @@ class Agente extends AnimatableBody3D:
 	var cuidadoso: bool = true
 	var t_espera: float = 0.0
 	var herido_t: float = 0.0
+	var t_reaccion: float = 0.0        # Mientras es > 0 está en una animación de golpe (no se pisa con andar).
+	var dir_golpe: Vector3 = Vector3.UP
 
+	# Golpe, disparo o explosión del jugador: sangre, grito, reacción y, si es fuerte, derribo.
 	func recibir_dano(cantidad: float) -> void:
-		if es_coche:
+		if es_coche or has_meta("muerto"):
 			return
 		vida -= cantidad
 		huyendo = true
-		BarraVida.de(self, 2.1, "neutral").mostrar(vida / vida_max)
+		BarraVida.de(self, 2.1, "neutral").mostrar(maxf(vida, 0.0) / vida_max)
+		var centro: Vector3 = global_position + Vector3(0, 1.1, 0)
+		Gore.salpicar(self, centro, dir_golpe, clampf(cantidad / 12.0, 0.5, 2.0))
+		Gore.grito(self, centro)
+		Sonido.tocar(self, "golpe", -4.0)
+		asustar_testigos(16.0, true)
 		if vida <= 0.0:
 			Juego.sospecha = minf(100.0, Juego.sospecha + 10.0)
 			Juego.avisar("Has herido a un ciudadano. La policía lo sabrá.")
-			remove_from_group("danable")
-			set_meta("muerto", true)
-			visible = false
-			collision_layer = 0
+			morir(dir_golpe, cantidad / 12.0, true)
+		elif cantidad >= 14.0:
+			estado = VidaUrbana.P_HERIDO   # Golpe fuerte: lo tira al suelo un rato.
+			herido_t = 4.0
+			vel = 0.0
+			tumbar()
+		else:
+			t_reaccion = AnimCombate.una_vez(modelo, "HitReact", "Walk")
+
+	# Atropello: daño según la velocidad, salpicadura y salir despedido.
+	func derribar(dir3: Vector3, v: float, culpa_jugador: bool) -> void:
+		if has_meta("muerto"):
+			return
+		dir_golpe = dir3
+		vida -= v * 3.5
+		huyendo = false
+		BarraVida.de(self, 2.1, "neutral").mostrar(maxf(vida, 0.0) / vida_max)
+		var centro: Vector3 = global_position + Vector3(0, 1.0, 0)
+		Gore.salpicar(self, centro, dir3 + Vector3.UP * 0.3, clampf(v / 5.0, 0.6, 2.5))
+		Gore.grito(self, centro)
+		Sonido.tocar(self, "golpe", 0.0)
+		asustar_testigos(22.0, culpa_jugador)
+		lanzar(dir3, v)
+		if vida <= 0.0:
+			morir(dir3, v / 5.0, culpa_jugador, false)
+		else:
+			estado = VidaUrbana.P_HERIDO
+			herido_t = 14.0
+			vel = 0.0
+			tumbar()
+			Gore.charco(self, global_position + dir3 * clampf(v * 0.5, 1.0, 6.0), 0.5)
+
+	func tumbar() -> void:
+		if modelo != null:
+			modelo.rotation.x = -PI / 2.0
+			modelo.position.y = 0.25
+			Assets.poner_animacion(modelo, "Idle")
+
+	# Sale despedido en la dirección del golpe (el cuerpo vuela en arco y se queda tumbado).
+	func lanzar(dir3: Vector3, v: float) -> void:
+		if modelo == null:
+			return
+		var dist: float = clampf(v * 0.5, 1.0, 6.0)
+		var fin: Vector3 = global_basis.inverse() * (dir3 * dist)
+		var altura: float = clampf(v * 0.12, 0.4, 1.6)
+		var anim: Tween = create_tween()
+		anim.tween_method(func(t: float) -> void:
+			if is_instance_valid(modelo):
+				modelo.position = fin * t + Vector3.UP * (sin(PI * t) * altura + 0.25 * t), 0.0, 1.0, 0.5)
+
+	func morir(dir3: Vector3, fuerza: float, culpa_jugador: bool, con_animacion: bool = true) -> void:
+		remove_from_group("danable")
+		remove_from_group("peatones")
+		set_meta("muerto", true)
+		set_meta("muerto_ms", Time.get_ticks_msec())
+		collision_layer = 0
+		if con_animacion and modelo != null and AnimCombate.una_vez(modelo, "Death") > 0.0:
+			pass   # Se desploma con la animación de muerte y se queda en el suelo.
+		else:
+			tumbar()
+		Gore.muerte(self, global_position + dir3 * (clampf(fuerza, 0.0, 3.0) if not con_animacion else 0.0), dir3, fuerza)
+
+	# La gente de alrededor huye gritando; con culpa del jugador, alguno llama a la policía.
+	func asustar_testigos(radio: float, culpa_jugador: bool) -> void:
+		var llamo: bool = false
+		for n in get_tree().get_nodes_in_group("peatones"):
+			if n == self or not is_instance_valid(n) or n.has_meta("muerto"):
+				continue
+			if n.global_position.distance_to(global_position) > radio:
+				continue
+			n.huyendo = true
+			if randf() < 0.5:
+				Gore.grito(n, n.global_position + Vector3.UP * 1.5)
+			if culpa_jugador and not llamo and randf() < 0.3:
+				llamo = true
+				var ahora: int = Time.get_ticks_msec()
+				if ahora - int(get_tree().root.get_meta("llamada_ms", -100000)) > 20000:
+					get_tree().root.set_meta("llamada_ms", ahora)
+					get_tree().create_timer(5.0).timeout.connect(func() -> void:
+						Juego.exigir_estrellas(1, "Un testigo ha llamado a la policía"))
 
 
 class Semaforo extends Node3D:
@@ -284,8 +368,8 @@ func _gestionar() -> void:
 	for lista in [_coches, _peatones]:
 		for a in lista.duplicate():
 			var lejos: bool = not is_instance_valid(a) or a.global_position.distance_to(yo3) > RADIO_BORRAR
-			if not lejos and a.has_meta("muerto"):
-				lejos = true
+			if not lejos and a.has_meta("muerto") and Time.get_ticks_msec() - int(a.get_meta("muerto_ms", 0)) > 20000:
+				lejos = true   # El cadáver se queda 20 s en el suelo.
 			if lejos:
 				lista.erase(a)
 				if is_instance_valid(a):
@@ -742,26 +826,15 @@ func _comprobar_atropello(a: Agente, dir: Vector2) -> void:
 
 func _atropellar_peaton(a: Agente, p: Agente) -> void:
 	a.t_golpe = 2.0
-	p.vida -= a.vel * 3.5
-	BarraVida.de(p, 2.1, "neutral").mostrar(p.vida / p.vida_max)
+	var v: float = a.vel
+	var dir3: Vector3 = p.global_position - a.global_position
+	dir3.y = 0.0
+	dir3 = dir3.normalized() if dir3.length() > 0.01 else Vector3.FORWARD
 	a.vel = 0.0
 	a.frenazo = 2.5
-	p.huyendo = false
-	if p.vida <= 0.0:
-		p.remove_from_group("danable")
-		p.set_meta("muerto", true)
-		p.visible = false
-		p.collision_layer = 0
-	else:
-		p.estado = P_HERIDO
-		p.herido_t = 14.0
-		p.vel = 0.0
-		if p.modelo != null:
-			p.modelo.rotation.x = -PI / 2.0
-			p.modelo.position.y = 0.25
-			Assets.poner_animacion(p.modelo, "Idle")
-		if _jugador.global_position.distance_to(p.global_position) < 30.0:
-			Juego.avisar("Un coche ha atropellado a un peatón.")
+	p.derribar(dir3, v, false)
+	if not p.has_meta("muerto") and _jugador.global_position.distance_to(p.global_position) < 30.0:
+		Juego.avisar("Un coche ha atropellado a un peatón.")
 
 
 # ------------------------------- Peatones: ruta --------------------------------
@@ -873,8 +946,9 @@ func _puede_cruzar(a: Agente) -> bool:
 
 
 func _mover_peaton(a: Agente, delta: float) -> void:
-	if not is_instance_valid(a):
+	if not is_instance_valid(a) or a.has_meta("muerto"):
 		return
+	a.t_reaccion -= delta
 	var yo: Vector3 = _jugador.global_position
 	var cerca: float = a.global_position.distance_to(yo)
 	if a.estado == P_HERIDO:
@@ -950,7 +1024,7 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 				else:
 					a.p2 += falta.normalized() * paso
 	_colocar(a, false, delta)
-	if a.modelo != null and a.estado != P_HERIDO:
+	if a.modelo != null and a.estado != P_HERIDO and a.t_reaccion <= 0.0:
 		var plano: float = a.vel
 		Assets.poner_animacion(a.modelo, "Idle" if plano < 0.2 else ("Run" if plano > 3.0 else "Walk"))
 
