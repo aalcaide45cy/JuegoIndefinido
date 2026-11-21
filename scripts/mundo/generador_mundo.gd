@@ -704,35 +704,202 @@ static func _distancia_a_carreteras(p: Vector2, segs: Array, margen: float) -> b
 	return false
 
 
-# Dibuja las carreteras que caen en "rect" como tiras que siguen el terreno.
-static func _dibujar_carreteras(mb: ConstructorMalla, segs: Array, rect: Rect2, paso: float,
-		lista: Array, subir: float, ensanchar: float) -> void:
+# ---- Dibujo de carreteras --------------------------------------------------------------
+# Cada carretera es una cinta continua (sin huecos en las curvas ni en los cruces de trozo):
+#  - los tramos que se encadenan (el final de uno es el inicio del siguiente) forman una "cadena",
+#    que se suaviza (curvas de montaña) y se reparte en filas a distancias iguales contadas desde
+#    el inicio de la cadena, así TODOS los trozos que la tocan calculan las mismas filas;
+#  - cada fila pertenece al trozo que contiene su punto inicial (sin solaparse ni dejar huecos);
+#  - la altura de cada vértice sigue la malla REAL del terreno (los mismos triángulos que
+#    _terreno) más "subir", de modo que la hierba no asoma por el asfalto;
+#  - las líneas pintadas (bordes y eje a rayas) son columnas de la misma malla con otro color,
+#    así no hay parpadeo entre capas.
+const COLOR_ASFALTO: Color = Color(0.2, 0.2, 0.22)
+const COLOR_LINEA_BORDE: Color = Color(0.82, 0.82, 0.78)
+const COLOR_LINEA_EJE: Color = Color(0.9, 0.78, 0.25)
+const COLOR_LINEA_CALLE: Color = Color(0.62, 0.62, 0.6)
+const RAYA_PERIODO: float = 9.0   # Metros entre el inicio de una raya y la siguiente.
+const RAYA_LARGO: float = 3.0
+
+
+# Agrupa los tramos que se siguen en cadenas: [{"pts": Array[Vector2], "ancho", "tipo"}].
+static func _cadenas_de(segs: Array) -> Array:
+	var out: Array = []
+	var cur: Dictionary = {}
 	for sg in segs:
 		var a: Vector2 = sg[0]
 		var b: Vector2 = sg[1]
-		var ancho: float = float(sg[2]) + ensanchar
-		var tr: Vector2 = _recortar(a, b, rect)
-		if tr.x < 0.0 or tr.y - tr.x < 0.0001:
+		if not cur.is_empty() and (cur["pts"][cur["pts"].size() - 1] as Vector2).is_equal_approx(a) \
+				and is_equal_approx(float(cur["ancho"]), float(sg[2])) and int(cur["tipo"]) == int(sg[3]):
+			cur["pts"].append(b)
+		else:
+			if not cur.is_empty():
+				out.append(cur)
+			cur = {"pts": [a, b], "ancho": float(sg[2]), "tipo": int(sg[3])}
+	if not cur.is_empty():
+		out.append(cur)
+	return out
+
+
+# Curva de Catmull-Rom por los puntos (suaviza las esquinas de las carreteras de montaña).
+static func _suavizar(pts: Array) -> Array:
+	var out: Array = []
+	var n: int = pts.size()
+	for i in n - 1:
+		var p0: Vector2 = pts[maxi(i - 1, 0)]
+		var p1: Vector2 = pts[i]
+		var p2: Vector2 = pts[i + 1]
+		var p3: Vector2 = pts[mini(i + 2, n - 1)]
+		for k in 6:
+			var t: float = float(k) / 6.0
+			var t2: float = t * t
+			var t3: float = t2 * t
+			out.append(0.5 * ((2.0 * p1) + (p2 - p0) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+					+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t3))
+	out.append(pts[n - 1])
+	return out
+
+
+# Reparte la línea en puntos a "paso" metros de distancia medida a lo largo de ella.
+static func _remuestrear(pts: Array, paso: float) -> Array:
+	var out: Array = [pts[0]]
+	var falta: float = paso
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var largo: float = a.distance_to(b)
+		if largo < 0.0001:
 			continue
-		var largo: float = (b - a).length() * (tr.y - tr.x)
-		var pasos: int = maxi(1, ceili(largo / paso))
-		var dir: Vector2 = (b - a).normalized()
-		var lado: Vector2 = Vector2(-dir.y, dir.x) * ancho * 0.5
-		var col: Color = Color(0.17, 0.17, 0.19) if int(sg[3]) == 0 else Color(0.26, 0.24, 0.21)
-		if int(sg[3]) == 2:
-			col = Color(0.2, 0.2, 0.23)   # Carretera de montaña asfaltada.
-		var prev_i: Vector3 = Vector3.ZERO
-		var prev_d: Vector3 = Vector3.ZERO
-		for j in range(pasos + 1):
-			var pt: Vector2 = a.lerp(b, lerpf(tr.x, tr.y, float(j) / float(pasos)))
-			var pi: Vector2 = pt - lado
-			var pd: Vector2 = pt + lado
-			var vi: Vector3 = Vector3(pi.x, altura_lista(pi.x, pi.y, lista) + subir, pi.y)
-			var vd: Vector3 = Vector3(pd.x, altura_lista(pd.x, pd.y, lista) + subir, pd.y)
-			if j > 0:
-				mb.tira(prev_i, prev_d, vi, vd, col)
-			prev_i = vi
-			prev_d = vd
+		var dir: Vector2 = (b - a) / largo
+		var recorrido: float = 0.0
+		while largo - recorrido >= falta:
+			recorrido += falta
+			out.append(a + dir * recorrido)
+			falta = paso
+		falta -= largo - recorrido
+	return out
+
+
+# Altura de la malla del terreno en (x, z): los mismos triángulos que _terreno (rejilla global "paso").
+static func _altura_malla(x: float, z: float, paso: float, lista: Array, cache: Dictionary) -> float:
+	var fi: float = x / paso
+	var fj: float = z / paso
+	var i0: int = floori(fi)
+	var j0: int = floori(fj)
+	var fx: float = fi - float(i0)
+	var fz: float = fj - float(j0)
+	var ha: float = _nodo(i0, j0, paso, lista, cache)
+	var hd: float = _nodo(i0 + 1, j0 + 1, paso, lista, cache)
+	if fx >= fz:
+		var hb: float = _nodo(i0 + 1, j0, paso, lista, cache)
+		return ha + fx * (hb - ha) + fz * (hd - hb)
+	var hc: float = _nodo(i0, j0 + 1, paso, lista, cache)
+	return ha + fx * (hd - hc) + fz * (hc - ha)
+
+
+static func _nodo(i: int, j: int, paso: float, lista: Array, cache: Dictionary) -> float:
+	var k: Vector2i = Vector2i(i, j)
+	if cache.has(k):
+		return cache[k]
+	var h: float = altura_lista(float(i) * paso, float(j) * paso, lista)
+	cache[k] = h
+	return h
+
+
+# Fronteras laterales de la cinta (distancias al eje); ninguna columna pasa de 2 m de ancho.
+static func _columnas(ancho: float, lineas: bool, tipo: int) -> Array:
+	var mitad: float = ancho * 0.5
+	var base: Array = [-mitad, mitad]
+	if lineas:
+		base = [-mitad, -mitad + 0.45, -mitad + 0.6, -0.08, 0.08, mitad - 0.6, mitad - 0.45, mitad]
+		if tipo == 0:
+			base = [-mitad, -0.06, 0.06, mitad]
+	var out: Array = [base[0]]
+	for i in range(1, base.size()):
+		var a: float = base[i - 1]
+		var b: float = base[i]
+		var partes: int = maxi(1, ceili((b - a) / 2.0))
+		for k in range(1, partes + 1):
+			out.append(lerpf(a, b, float(k) / float(partes)))
+	return out
+
+
+static func _hash01(a: int, b: int) -> float:
+	var h: int = (a * 73856093) ^ (b * 19349663)
+	h = (h ^ (h >> 13)) * 1274126177
+	return float(absi(h) % 1000) / 1000.0
+
+
+# Dibuja las carreteras como cintas continuas que siguen el terreno. "rect": trozo propietario de las
+# filas (intervalo semiabierto). "paso_red": paso de la rejilla del terreno (4 cerca, 16 lejos).
+static func _dibujar_carreteras(mb: ConstructorMalla, segs: Array, rect: Rect2, paso_red: float,
+		lista: Array, subir: float, ensanchar: float, paso_fila: float = 1.5, lineas: bool = true) -> void:
+	var cache: Dictionary = {}
+	for cadena in _cadenas_de(segs):
+		var ancho: float = float(cadena["ancho"]) + ensanchar
+		var tipo: int = int(cadena["tipo"])
+		var pts: Array = cadena["pts"]
+		var caja: Rect2 = Rect2(pts[0], Vector2.ZERO)
+		for q in pts:
+			caja = caja.expand(q)
+		if not caja.grow(ancho + 4.0).intersects(rect):
+			continue
+		if tipo == 2:
+			pts = _suavizar(pts)
+		if tipo != 0:
+			# Alarga los extremos media anchura para que los cruces y las puertas queden cerrados.
+			var d0: Vector2 = ((pts[0] as Vector2) - (pts[1] as Vector2)).normalized()
+			var d1: Vector2 = ((pts[pts.size() - 1] as Vector2) - (pts[pts.size() - 2] as Vector2)).normalized()
+			pts = pts.duplicate()
+			pts.insert(0, (pts[0] as Vector2) + d0 * ancho * 0.5)
+			pts.append((pts[pts.size() - 1] as Vector2) + d1 * ancho * 0.5)
+		var filas: Array = _remuestrear(pts, paso_fila)
+		var cols: Array = _columnas(ancho, lineas, tipo)
+		var nc: int = cols.size()
+		var prev: Array = []
+		var prev_k: int = -10
+		for k in filas.size() - 1:
+			var p: Vector2 = filas[k]
+			if p.x < rect.position.x or p.x >= rect.end.x or p.y < rect.position.y or p.y >= rect.end.y:
+				continue
+			var fila_a: Array = prev if prev_k == k - 1 else _fila_vertices(filas, k, cols, paso_red, lista, subir, cache)
+			var fila_b: Array = _fila_vertices(filas, k + 1, cols, paso_red, lista, subir, cache)
+			var raya: bool = fmod(float(k) * paso_fila, RAYA_PERIODO) < RAYA_LARGO
+			for c in nc - 1:
+				var centro: float = (float(cols[c]) + float(cols[c + 1])) * 0.5
+				var col: Color = COLOR_ASFALTO
+				if lineas:
+					var mitad: float = ancho * 0.5
+					if tipo != 0 and (absf(centro) > mitad - 0.62 and absf(centro) < mitad - 0.43):
+						col = COLOR_LINEA_BORDE
+					elif absf(centro) < 0.09 and raya:
+						col = COLOR_LINEA_EJE if tipo != 0 else COLOR_LINEA_CALLE
+					else:
+						var v: float = (_hash01(k, c) - 0.5) * 0.035
+						col = Color(COLOR_ASFALTO.r + v, COLOR_ASFALTO.g + v, COLOR_ASFALTO.b + v)
+				mb.tira(fila_a[c], fila_a[c + 1], fila_b[c], fila_b[c + 1], col)
+			prev = fila_b
+			prev_k = k
+
+
+# Vértices de una fila de la cinta (de un borde al otro) pegados a la malla del terreno.
+static func _fila_vertices(filas: Array, k: int, cols: Array, paso_red: float, lista: Array,
+		subir: float, cache: Dictionary) -> Array:
+	var p: Vector2 = filas[k]
+	var dir: Vector2
+	if k == 0:
+		dir = (filas[1] as Vector2) - p
+	elif k == filas.size() - 1:
+		dir = p - (filas[k - 1] as Vector2)
+	else:
+		dir = (filas[k + 1] as Vector2) - (filas[k - 1] as Vector2)
+	dir = dir.normalized()
+	var nor: Vector2 = Vector2(-dir.y, dir.x)
+	var out: Array = []
+	for o in cols:
+		var q: Vector2 = p + nor * float(o)
+		out.append(Vector3(q.x, _altura_malla(q.x, q.y, paso_red, lista, cache) + subir, q.y))
+	return out
 
 
 # --------------------------------- distritos ----------------------------------
@@ -1423,7 +1590,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 	var caras: PackedVector3Array = ter["caras"]
 
 	var vias: ConstructorMalla = ConstructorMalla.new()
-	_dibujar_carreteras(vias, segs, rect.grow(2.0), 4.0, lista_t, 0.15, 0.0)
+	_dibujar_carreteras(vias, segs, rect, 4.0, lista_t, 0.15, 0.0)
 	if not vias.esta_vacio():
 		superficies.append(vias.superficie())
 
@@ -1752,7 +1919,7 @@ static func generar_lejano(c: Vector2i) -> Dictionary:
 	var ter: Dictionary = _terreno(x0, z0, CELDAS_LEJOS, paso, g)
 	var superficies: Array = [ter["arrays"]]
 	var vias: ConstructorMalla = ConstructorMalla.new()
-	_dibujar_carreteras(vias, segs, rect.grow(4.0), 16.0, lista_t, 0.9, 4.0)
+	_dibujar_carreteras(vias, segs, rect, 16.0, lista_t, 0.9, 4.0, 12.0, false)
 	if not vias.esta_vacio():
 		superficies.append(vias.superficie())
 	var objetos: ConstructorMalla = ConstructorMalla.new()
