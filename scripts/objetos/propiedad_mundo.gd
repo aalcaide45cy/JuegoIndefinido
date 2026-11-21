@@ -26,7 +26,7 @@ func texto_accion() -> String:
 	if _ficha.is_empty():
 		return ""
 	if Juego.viviendas.has(id_prop):
-		return "Descansar en tu casa (%s)" % _ficha["lugar"]
+		return "Abrir o cerrar la puerta de tu casa (%s)  ·  Mayús+E descansar" % _ficha["lugar"]
 	return "%s: alquilar %d $  ·  Mayús+E comprar %d $" % [_ficha["nombre"], _ficha["alquiler"],
 			Propiedades.precio_compra(_ficha)]
 
@@ -35,6 +35,12 @@ func usar(_jugador: Node) -> void:
 	if _ficha.is_empty():
 		return
 	if Juego.viviendas.has(id_prop):
+		if not Input.is_action_pressed("correr"):
+			for nodo in get_tree().get_nodes_in_group("puertas_casa"):
+				var puerta: PuertaMundo = nodo as PuertaMundo
+				if puerta != null and puerta.id_casa == id_prop:
+					puerta.alternar()
+					return
 		Juego.cambiar_vida(30.0)
 		Juego.avisar("Descansas un rato en tu casa. Te sientes mejor.")
 		return

@@ -44,6 +44,7 @@ func _ready() -> void:
 	var gestor: GestorTrozos = GestorTrozos.new()
 	gestor.nucleo = nucleo
 	add_child(gestor)
+	add_child(GestorInteriores.new())   # Puertas, muebles y luces de las casas del mundo grande, bajo demanda.
 	add_child(VidaUrbana.new())   # Peatones, coches y semáforos cerca del jugador (vida_urbana.gd).
 	add_child(GestorMatones.new())   # Matones de las zonas chungas, de noche (gestor_matones.gd).
 	add_child(GestorOficio.new())   # Turnos y avisos de tu oficio (gestor_oficio.gd).
