@@ -57,6 +57,11 @@ var _brazo: SpringArm3D
 var _camara: Camera3D
 var _mano: Node3D = null       # El objeto que llevas en la mano (lo dibuja ModeloMano).
 var _id_mano: String = "~"     # Qué objeto se está dibujando ("~" = todavía ninguno).
+var _esquiva_t: float = 0.0       # Segundos que quedan de esquiva.
+var _esquiva_dir: Vector3 = Vector3.ZERO
+var _esquiva_espera: float = 0.0
+const VELOCIDAD_ESQUIVA: float = 13.0
+const COSTE_ESQUIVA: float = 25.0
 var _enfriamiento: float = 0.0   # Segundos hasta poder atacar otra vez.
 var _zoom: bool = false          # Mira del francotirador.
 var _muerto: bool = false
@@ -206,6 +211,13 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed("saltar") and is_on_floor():
 			velocity.y = FUERZA_SALTO * (1.0 + Juego.mod("salto"))
 	var direccion: Vector3 = Basis(Vector3.UP, _giro) * Vector3(teclas.x, 0.0, teclas.y)
+	_esquiva_espera -= delta
+	if not _bloqueado and not Juego.menu_abierto and vehiculo == null and _esquiva_t <= 0.0 and _esquiva_espera <= 0.0 \
+			and Input.is_action_just_pressed("esquivar") and Juego.gastar_resistencia(COSTE_ESQUIVA):
+		_esquiva_dir = direccion.normalized() if direccion.length() > 0.1 else Basis(Vector3.UP, _giro) * Vector3.BACK
+		_esquiva_t = 0.25
+		_esquiva_espera = 1.0
+		Juego.invulnerable = 0.4
 
 	agachado = Input.is_action_pressed("agacharse") and not Juego.menu_abierto
 	_t_sombra -= delta
@@ -221,7 +233,9 @@ func _physics_process(delta: float) -> void:
 			_excluir_en_camara()
 	_pivote.position.y = lerpf(_pivote.position.y, altura_ojos, minf(1.0, delta * 10.0))
 	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7 if agachado else 1.0, minf(1.0, delta * 10.0))
-	var velocidad: float = VELOCIDAD_CORRER if (Input.is_action_pressed("correr") and Juego.sin_correr <= 0.0) else VELOCIDAD_ANDAR
+	var corriendo: bool = Input.is_action_pressed("correr") and Juego.puede_correr() and velocity.length() > 1.0
+	Juego.avanzar_resistencia(delta, corriendo)
+	var velocidad: float = VELOCIDAD_CORRER if corriendo else VELOCIDAD_ANDAR
 	if agachado:
 		velocidad = VELOCIDAD_ANDAR * 0.5
 	velocidad *= clampf(1.0 + Juego.mod("velocidad"), 0.3, 2.5)   # Efectos de velocidad / lentitud.
@@ -230,6 +244,10 @@ func _physics_process(delta: float) -> void:
 	# "lerp" suaviza: no frenas ni arrancas de golpe.
 	velocity.x = lerpf(velocity.x, deseada.x, minf(1.0, delta * 12.0))
 	velocity.z = lerpf(velocity.z, deseada.z, minf(1.0, delta * 12.0))
+	if _esquiva_t > 0.0:
+		_esquiva_t -= delta
+		velocity.x = _esquiva_dir.x * VELOCIDAD_ESQUIVA
+		velocity.z = _esquiva_dir.z * VELOCIDAD_ESQUIVA
 	move_and_slide()
 
 	# El muñeco mira hacia donde caminas (o hacia la cámara en primera persona).
@@ -325,6 +343,7 @@ func _atacar() -> void:
 		return
 	var casilla = Juego.en_mano()
 	if casilla == null:
+		_golpear({"dano": PUNO_DANO})   # Sin nada en la mano: puñetazo.
 		return
 	var datos: Dictionary = Juego.DatosObjetos.datos(casilla["id"])
 	match datos["tipo"]:
@@ -381,15 +400,33 @@ func _mult_dano() -> float:
 	return clampf(1.0 + Juego.mod("dano_hecho"), 0.2, 3.0)
 
 
+# Daño cuerpo a cuerpo: la fuerza suma un 5 % por punto sobre 5.
+func _mult_fuerza() -> float:
+	return 1.0 + 0.05 * float(Juego.atributo("fuerza") - 5)
+
+
+const PUNO_DANO: float = 8.0
+
+
 func _golpear(datos: Dictionary) -> void:
 	_enfriamiento = 0.45
 	_animar_mano(-0.25)
+	# Mayús = golpe fuerte (más daño y más lento, gasta más aliento). Sin aliento golpeas flojo.
+	var mult: float = 1.0
+	if Input.is_action_pressed("correr") and Juego.gastar_resistencia(20.0):
+		mult = 1.8
+		_enfriamiento = 0.85
+	elif Juego.gastar_resistencia(4.0):
+		mult = 1.0
+	else:
+		mult = 0.6
+		_enfriamiento = 0.9
 	var choque: Dictionary = Combate.rayo(get_world_3d(), _origen(), _adelante(), 2.4, [get_rid()])
 	if choque.is_empty():
 		return
 	var cosa = choque["collider"]
 	if cosa != null and cosa.has_method("recibir_dano"):
-		cosa.recibir_dano(float(datos["dano"]) * _mult_dano())
+		cosa.recibir_dano(float(datos["dano"]) * _mult_dano() * _mult_fuerza() * mult)
 
 
 func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
@@ -547,7 +584,7 @@ func _morir() -> void:
 		get_tree().call_group("policia_refuerzo", "queue_free")
 		var multa: int = mini(Juego.dinero, maxi(Economia.MULTA_MUERTE_MINIMA, int(Juego.dinero * Economia.MULTA_MUERTE_PORCENTAJE)))
 		Juego.dinero -= multa
-		Juego.vida = Juego.VIDA_MAX * 0.6
+		Juego.vida = Juego.vida_max() * 0.6
 		Juego.efectos_activos.clear()
 		Juego.efectos_cambiados.emit()
 		global_position = Vector3(0, 0.2, 8)

@@ -25,6 +25,9 @@ const DatosAspecto = preload("res://scripts/jugador/aspecto.gd")
 const DatosEfectos = preload("res://scripts/datos/efectos.gd")
 const DatosOficios = preload("res://scripts/datos/oficios.gd")
 const Mezclas = preload("res://scripts/datos/mezclas.gd")
+const Estadisticas = preload("res://scripts/datos/estadisticas.gd")
+const Bandas = preload("res://scripts/datos/bandas.gd")
+const Casino = preload("res://scripts/datos/casino.gd")
 
 signal cambio                     # Dinero, vida o inventario han cambiado.
 signal mensaje(texto: String)     # Mostrar un mensaje en pantalla.
@@ -40,6 +43,13 @@ const DURACION_DIA_POR_DEFECTO: float = 60.0
 
 var dinero: int = 0
 var vida: float = VIDA_MAX
+# Estadísticas (ver datos/estadisticas.gd): vitales y atributos.
+var resistencia: float = Estadisticas.RESISTENCIA_MAX
+var agotado: bool = false
+var invulnerable: float = 0.0         # Segundos sin recibir daño (esquiva).             # true tras vaciar la resistencia: no corres hasta recuperar un poco.
+var hambre: float = 0.0               # 0 bien, 100 fatal.
+var sed: float = 0.0
+var atributos: Dictionary = Estadisticas.nuevos_atributos()
 var hora: float = 20.0               # De 0 a 24. Empieza al anochecer.
 var dia: int = 1
 var impagos: Dictionary = {}          # id de propiedad alquilada -> días seguidos sin pagar.
@@ -53,6 +63,7 @@ var texto_aviso_oficio: String = ""  # Lo escribe gestor_oficio.gd para el HUD.
 var sin_correr: float = 0.0           # Segundos de convalecencia: tras curarte no puedes correr.
 var _t_metas: float = 0.0
 var _t_aviso_regen: float = 0.0
+var _t_atraco: float = 12.0
 var reloj: float = 0.0               # Segundos de juego acumulados (reloj absoluto para granja y macetas).
 var duracion_dia_min: float = DURACION_DIA_POR_DEFECTO   # Minutos reales por día.
 var velocidad_tiempo: float = 1.0    # 0 = pausa, 1 = normal, 10 = rápido...
@@ -85,6 +96,13 @@ var interiores: int = 0              # Cuántos edificios con interior pisas aho
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
 var xp: int = 0                      # Experiencia hacia el siguiente nivel.
+var rep_hampa: int = 0              # -100..100: respeto en el hampa (ver datos/bandas.gd).
+var rep_ley: int = 0                # -100..100: bien o mal visto por la ley.
+var territorios: Dictionary = {}    # "ci,cj" -> "jugador": barrios que controlas (ver datos/bandas.gd).
+var reclutas: int = 0               # Matones a tu servicio (te acompañan y pelean).
+var deuda: int = 0                  # Lo que debes al prestamista.
+var dias_deuda: int = 0
+var proteccion_hasta_dia: int = 0   # Hasta qué día (incluido) estás protegido por la banda del barrio.
 var reputacion: int = 0              # -50..100: sube al entregar encargos, baja si dejas plantado.
 var encargos: Array = []             # Encargos del móvil (ver scripts/encargos.gd).
 var pedidos_material: Array = []     # Pedidos de materiales en camino.
@@ -113,6 +131,7 @@ var menu_abierto: bool = false
 
 func _ready() -> void:
 	dia_nuevo.connect(_interes_banco)
+	dia_nuevo.connect(_vida_de_banda)
 	randomize()
 	_crear_controles()
 	reiniciar()
@@ -121,6 +140,18 @@ func _ready() -> void:
 func reiniciar() -> void:
 	dinero = GameData.DINERO_INICIAL
 	vida = VIDA_MAX
+	rep_hampa = 0
+	rep_ley = 0
+	territorios = {}
+	reclutas = 0
+	deuda = 0
+	dias_deuda = 0
+	proteccion_hasta_dia = 0
+	resistencia = Estadisticas.RESISTENCIA_MAX
+	agotado = false
+	hambre = 0.0
+	sed = 0.0
+	atributos = Estadisticas.nuevos_atributos()
 	hora = 20.0
 	dia = 1
 	reloj = 0.0
@@ -198,6 +229,13 @@ func _process(delta: float) -> void:
 	multa_trafico_enfriamiento = maxf(0.0, multa_trafico_enfriamiento - delta)
 	enfriamiento_cacheo = maxf(0.0, enfriamiento_cacheo - delta)
 	_avanzar_estrellas(delta)
+	invulnerable = maxf(0.0, invulnerable - delta)
+	_t_atraco -= delta
+	if _t_atraco <= 0.0:
+		_t_atraco = 12.0
+		_posible_atraco()
+	hambre = minf(100.0, hambre + Estadisticas.HAMBRE_POR_MIN * delta / 60.0 * velocidad_tiempo)
+	sed = minf(100.0, sed + Estadisticas.SED_POR_MIN * delta / 60.0 * velocidad_tiempo)
 	if alerta > 0.0:
 		var bajada: float = 30.0 if interiores > 0 else 6.0
 		alerta = maxf(0.0, alerta - delta * bajada / (1.0 + mod("alerta")))   # Paranoia: baja más despacio.
@@ -415,10 +453,110 @@ func cobrar(cantidad: int) -> void:
 
 
 func cambiar_vida(cantidad: float) -> void:
+	if cantidad < 0.0 and invulnerable > 0.0:
+		return   # Estás esquivando.
 	if cantidad < 0.0:
 		# Los efectos de resistencia (o debilidad) cambian el daño que recibes.
 		cantidad *= clampf(1.0 + mod("dano_recibido"), 0.1, 2.0)
-	vida = clampf(vida + cantidad, 0.0, VIDA_MAX)
+	vida = clampf(vida + cantidad, 0.0, vida_max())
+	cambio.emit()
+
+
+# ------------------------------- Estadísticas ----------------------------------
+
+func atributo(id: String) -> int:
+	return int(atributos.get(id, Estadisticas.ATRIBUTO_INICIAL))
+
+
+func subir_atributo(id: String, cantidad: int = 1) -> void:
+	if not Estadisticas.ATRIBUTOS.has(id):
+		return
+	atributos[id] = clampi(atributo(id) + cantidad, 1, Estadisticas.ATRIBUTO_MAX)
+	cambio.emit()
+
+
+func vida_max() -> float:
+	return Estadisticas.vida_maxima(atributo("constitucion"))
+
+
+# Resistencia máxima: baja si tienes mucha hambre o sed.
+func resistencia_max() -> float:
+	var peor: float = maxf(hambre, sed)
+	if peor <= Estadisticas.MAL_ESTADO:
+		return Estadisticas.RESISTENCIA_MAX
+	return lerpf(Estadisticas.RESISTENCIA_MAX, 40.0,
+			(peor - Estadisticas.MAL_ESTADO) / (100.0 - Estadisticas.MAL_ESTADO))
+
+
+func puede_correr() -> bool:
+	return sin_correr <= 0.0 and not agotado and resistencia > 0.0
+
+
+# Lo llama el jugador cada fotograma: gasta resistencia si corre, la recupera si no.
+func avanzar_resistencia(delta: float, corriendo: bool) -> void:
+	var tope: float = resistencia_max()
+	if corriendo:
+		var gasto: float = Estadisticas.GASTO_CORRER * (1.0 - 0.025 * float(atributo("agilidad") - Estadisticas.ATRIBUTO_INICIAL))
+		resistencia = maxf(0.0, resistencia - gasto * delta)
+		if resistencia <= 0.0:
+			agotado = true
+	else:
+		var recupera: float = Estadisticas.RECUPERA * (1.0 + 0.05 * float(atributo("agilidad") - Estadisticas.ATRIBUTO_INICIAL))
+		resistencia = minf(tope, resistencia + recupera * delta)
+		if agotado and resistencia >= Estadisticas.UMBRAL_RECUPERAR:
+			agotado = false
+	resistencia = minf(resistencia, tope)
+
+
+# Gasta resistencia de golpe (golpes, esquiva). Devuelve false si no hay suficiente.
+func gastar_resistencia(cantidad: float) -> bool:
+	if resistencia < cantidad:
+		return false
+	resistencia -= cantidad
+	return true
+
+
+# Cambia la reputación de un bando: "gente" (la de siempre), "hampa" o "ley".
+func cambiar_rep(bando: String, cantidad: int) -> void:
+	match bando:
+		"gente": reputacion = clampi(reputacion + cantidad, -50, 100)
+		"hampa": rep_hampa = clampi(rep_hampa + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
+		"ley": rep_ley = clampi(rep_ley + cantidad, Bandas.REP_MIN, Bandas.REP_MAX)
+	cambio.emit()
+
+
+# Cada día: cobras las cuotas de tus barrios, pagas a tus reclutas y el prestamista cobra interés.
+func _vida_de_banda() -> void:
+	if not territorios.is_empty():
+		var cuota: int = territorios.size() * Bandas.CUOTA_TERRITORIO
+		dinero += cuota
+		avisar("Tus barrios te pagan %d $ de cuota." % cuota)
+	if reclutas > 0:
+		var sueldo: int = reclutas * Bandas.SUELDO_RECLUTA
+		if dinero >= sueldo:
+			dinero -= sueldo
+		else:
+			reclutas -= 1
+			avisar("No puedes pagar a todos tus hombres: uno se marcha.")
+	if deuda > 0:
+		deuda = Casino.deuda_tras_dia(deuda)
+		dias_deuda += 1
+		if dias_deuda >= Casino.DIAS_ANTES_COBRADOR:
+			GestorMatones.enviar_cobrador(get_tree(), "Un cobrador del prestamista te busca por tu deuda de %d $." % deuda)
+	cambio.emit()
+
+
+func protegido() -> bool:
+	return dia <= proteccion_hasta_dia or rep_hampa >= Bandas.REP_RESPETO
+
+
+func comer(cantidad: float) -> void:
+	hambre = clampf(hambre - cantidad, 0.0, 100.0)
+	cambio.emit()
+
+
+func beber(cantidad: float) -> void:
+	sed = clampf(sed - cantidad, 0.0, 100.0)
 	cambio.emit()
 
 
@@ -664,7 +802,7 @@ func usar_en_mano() -> void:
 		efectos = datos.get("efectos", [])
 	if cura <= 0.0 and efectos.is_empty() and quita.is_empty():
 		return   # No se puede usar (armas, semillas...).
-	var cura_util: bool = cura > 0.0 and vida < VIDA_MAX
+	var cura_util: bool = cura > 0.0 and vida < vida_max()
 	var quita_util: bool = false
 	for q in quita:
 		if efectos_activos.has(q):
@@ -855,8 +993,8 @@ func _avanzar_efectos(delta: float) -> void:
 	var avisar_ui: bool = _t_aviso_regen >= 0.25
 	if avisar_ui:
 		_t_aviso_regen = 0.0
-	if regen > 0.0 and vida < VIDA_MAX:
-		vida = minf(VIDA_MAX, vida + regen * delta)
+	if regen > 0.0 and vida < vida_max():
+		vida = minf(vida_max(), vida + regen * delta)
 		if avisar_ui:
 			cambio.emit()
 	elif regen < 0.0 and vida > 1.0:
@@ -868,6 +1006,30 @@ func _avanzar_efectos(delta: float) -> void:
 		avisar("Se acaba el efecto: %s." % DatosEfectos.nombre(id))
 	if not caducados.is_empty():
 		efectos_cambiados.emit()
+
+
+# Zonas chungas: de noche, en la zona industrial de una ciudad, alguien puede atracarte.
+# Con más sigilo y sin ir llamando la atención (sospecha baja) hay menos riesgo.
+func probabilidad_atraco() -> float:
+	if distrito_actual.get("id", "") != "industrial" or interiores > 0 or dinero < 100:
+		return 0.0
+	if not (hora >= 21.0 or hora < 5.0):
+		return 0.0
+	var p: float = 0.12 + clampf(float(dinero) / 5000.0, 0.0, 0.2)
+	p *= clampf(1.0 - 0.05 * float(atributo("sigilo") - Estadisticas.ATRIBUTO_INICIAL), 0.3, 1.5)
+	return clampf(p, 0.0, 0.5)
+
+
+func _posible_atraco() -> void:
+	if randf() >= probabilidad_atraco():
+		return
+	var robado: int = clampi(int(dinero * 0.2), 20, 400)
+	robado = mini(robado, dinero)
+	dinero -= robado
+	cambio.emit()
+	cambiar_vida(-8.0)
+	sospecha = minf(100.0, sospecha + 5.0)
+	avisar("¡Un tipo sale de un callejón! Te quita %d $ y te da un empujón." % robado)
 
 
 # Apunta una receta nueva en el recetario. Devuelve true si es la primera vez.
@@ -968,6 +1130,7 @@ func _crear_controles() -> void:
 	_accion("aspecto", [KEY_O])   # Cambiar de ropa y peinado.
 	_accion("colocar", [KEY_G])   # Montar el objeto que llevas en la mano.
 	_accion("agacharse", [KEY_C, KEY_CTRL])
+	_accion("esquivar", [KEY_X])   # Voltereta corta: esquiva golpes un instante.
 	_accion("liberar_raton", [KEY_ESCAPE])
 	for i in TAM_BARRA:
 		_accion("barra_%d" % (i + 1), [KEY_1 + i])

@@ -25,7 +25,7 @@ const CATEGORIAS: Dictionary = {
 # Muestra un resumen: dinero, nivel y vida.
 static func texto_estado() -> String:
 	return "%d $    ·    Nivel %d (%d/%d XP)    ·    Vida %d/%d" % [Juego.dinero, Juego.nivel,
-			Juego.xp, Juego.xp_necesaria(), int(Juego.vida), int(Juego.VIDA_MAX)]
+			Juego.xp, Juego.xp_necesaria(), int(Juego.vida), int(Juego.vida_max())]
 
 
 # Las casillas del inventario del jugador: mochila arriba y barra rápida abajo.
@@ -818,13 +818,13 @@ class Admin extends Ventana:
 		caja.add_child(fila_vida)
 		_vida = HSlider.new()
 		_vida.min_value = 0
-		_vida.max_value = Juego.VIDA_MAX
+		_vida.max_value = Juego.vida_max()
 		_vida.value = Juego.vida
 		_vida.custom_minimum_size = Vector2(380, 0)
 		_vida.value_changed.connect(func(v: float) -> void: Juego.cambiar_vida(v - Juego.vida))
 		fila_vida.add_child(_vida)
 		fila_vida.add_child(Hud.crear_boton("Curar", func() -> void:
-			Juego.cambiar_vida(Juego.VIDA_MAX)
+			Juego.cambiar_vida(Juego.vida_max())
 			_vida.set_value_no_signal(Juego.vida)))
 
 		# Nivel y habilidades.

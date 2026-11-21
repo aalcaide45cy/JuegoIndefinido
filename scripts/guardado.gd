@@ -121,6 +121,17 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"meta": {"fecha": Time.get_datetime_string_from_system(false, true)},
 		"dinero": Juego.dinero,
 		"vida": Juego.vida,
+		"resistencia": Juego.resistencia,
+		"rep_hampa": Juego.rep_hampa,
+		"territorios": Juego.territorios,
+		"reclutas": Juego.reclutas,
+		"deuda": Juego.deuda,
+		"dias_deuda": Juego.dias_deuda,
+		"rep_ley": Juego.rep_ley,
+		"proteccion_hasta_dia": Juego.proteccion_hasta_dia,
+		"hambre": Juego.hambre,
+		"sed": Juego.sed,
+		"atributos": Juego.atributos,
 		"hora": Juego.hora,
 		"dia": Juego.dia,
 		"duracion_dia_min": Juego.duracion_dia_min,
@@ -236,7 +247,24 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	# dinero negativo, vida a cero o montones más grandes de lo permitido.
 	Juego.dinero = maxi(0, int(datos.get("dinero", Juego.dinero)))
 	Juego.banco = maxi(0, int(datos.get("banco", 0)))
-	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.VIDA_MAX)
+	var attrs = datos.get("atributos")
+	if attrs is Dictionary:
+		for id in Juego.Estadisticas.ORDEN:
+			Juego.atributos[id] = clampi(int(attrs.get(id, Juego.Estadisticas.ATRIBUTO_INICIAL)), 1, Juego.Estadisticas.ATRIBUTO_MAX)
+	var terr = datos.get("territorios")
+	if terr is Dictionary:
+		for k in terr:
+			Juego.territorios[str(k)] = "jugador"
+	Juego.reclutas = clampi(int(datos.get("reclutas", 0)), 0, 4)
+	Juego.deuda = maxi(0, int(datos.get("deuda", 0)))
+	Juego.dias_deuda = maxi(0, int(datos.get("dias_deuda", 0)))
+	Juego.rep_hampa = clampi(int(datos.get("rep_hampa", 0)), -100, 100)
+	Juego.rep_ley = clampi(int(datos.get("rep_ley", 0)), -100, 100)
+	Juego.proteccion_hasta_dia = maxi(0, int(datos.get("proteccion_hasta_dia", 0)))
+	Juego.hambre = clampf(float(datos.get("hambre", 0.0)), 0.0, 100.0)
+	Juego.sed = clampf(float(datos.get("sed", 0.0)), 0.0, 100.0)
+	Juego.resistencia = clampf(float(datos.get("resistencia", 100.0)), 0.0, 100.0)
+	Juego.vida = clampf(float(datos.get("vida", Juego.vida)), 1.0, Juego.vida_max())
 	Juego.hora = fposmod(float(datos.get("hora", Juego.hora)), 24.0)
 	Clima.importar(datos.get("clima"))
 	Juego.dia = maxi(1, int(datos.get("dia", 1)))
