@@ -109,6 +109,9 @@ func _montar_puerta(k: Vector2i, c: Dictionary) -> void:
 	add_child(pu)
 	pu.montar(PUERTAS[(int(c.get("var", 0)) / 7) % 4])
 	_puertas[k] = pu
+	# Asaltos (casa_asaltable.gd): las casas normales vienen con la puerta cerrada con llave.
+	if Asaltos.es_asaltable(c) and not Asaltos.forzada_reciente(Asaltos.id_de_casa(c)):
+		pu.bloquear_asalto(true)
 
 
 func _quitar_puerta(k: Vector2i) -> void:
@@ -146,6 +149,9 @@ func _montar_interior(k: Vector2i, c: Dictionary) -> void:
 		var l: OmniLight3D = Construir.luz(raiz, lp, Color(1.0, 0.86, 0.6), 0.9, 7.0)
 		l.shadow_enabled = false
 	raiz.set_meta("tipo", datos["tipo"])
+	# Asaltos: gente durmiendo, botín y entradas que se fuerzan (usa las camas y muebles de este reparto).
+	if datos["tipo"] == "vivienda" and Asaltos.es_asaltable(c):
+		raiz.add_child(CasaAsaltable.desde_interior(c, datos, _puertas.get(k) as PuertaMundo))
 	_interiores[k] = raiz
 	if _puertas.has(k):
 		(_puertas[k] as PuertaMundo).con_choque(true)

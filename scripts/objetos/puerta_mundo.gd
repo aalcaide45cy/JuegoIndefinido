@@ -83,6 +83,15 @@ func con_choque(si: bool) -> void:
 		_cuerpo = null
 
 
+# Asaltos (ver casa_asaltable.gd): mientras la casa esté cerrada con llave, la puerta no se usa
+# con E; lo hace EntradaForzable (forzar con ganzúa, palanca o a patadas).
+func bloquear_asalto(si: bool) -> void:
+	if si:
+		remove_from_group("interactuable")
+	elif not is_in_group("interactuable"):
+		add_to_group("interactuable")
+
+
 func _bloqueada() -> bool:
 	return id_casa != "" and not Juego.viviendas.has(id_casa)
 
