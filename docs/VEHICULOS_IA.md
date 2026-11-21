@@ -29,9 +29,16 @@ Coste en créditos de Higgsfield: unos 38 por modelo 3D + 0,25 por imagen
 - Helicóptero y avioneta: carrocería nueva y hélices como nodos que giran.
 - Si falta un GLB, el juego usa los modelos de Kenney o cajas como antes.
 
-## Pendiente de probar en Godot
-Esto se preparó en la nube sin poder abrir Godot. Se validó con vistas de prueba fuera
-del juego (three.js) y el analizador `gdparse`. Falta comprobar en el PC:
-orientación (si un coche sale girado, revisar `giro.rotation.y` en `modelo_vehiculo.gd`),
-altura del suelo y que las ruedas giren en el sentido correcto (si van al revés, cambiar el
-signo de `rotation.x`).
+## Probado en Godot (2026-11-21)
+Se probó en el PC con `tests/captura_vehiculos.tscn` (ventana fuera de pantalla) y con
+`tests/captura_trafico.tscn`:
+- Orientación: los 15 vehículos miran a -Z (frente) y ningún modelo sale girado.
+- Altura: la parte baja de las ruedas queda en y = 0 (no flotan) en todos los vehículos con ruedas.
+- Largo: la carrocería mide justo lo pedido en `Vehiculo.TIPOS` (helicóptero y avioneta son más
+  largos por las hélices).
+- Ruedas: giran con `rotation.x -= v*dt/radio`, el signo correcto para avanzar hacia -Z; al virar
+  a la izquierda (`direccion > 0`) las delanteras giran con `rotation.y > 0`, también correcto.
+- Hélices: se mueven con `rotate(eje, ...)` en `vehiculo.gd` (aire); se ven en su sitio.
+- Tráfico: los coches de la ciudad usan los modelos nuevos.
+No hizo falta cambiar `modelo_vehiculo.gd`.
+Detalle menor: la excavadora hunde 14 cm la carrocería bajo el suelo (`suelo` 0.057).
