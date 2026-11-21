@@ -402,48 +402,36 @@ func fila_con_huecos(origen: Vector3, angulo: float, desde: float, hasta: float,
 		fila_edificios(origen, angulo, cursor, hasta, fondo, rng)
 
 
-# Un edificio grande que cierra el final de una calle.
-# "calle_en_x" = true si la calle va a lo largo de X (el tapón se gira para
-# cruzarla entera; si no, quedaban dos pasillos a los lados por donde colarse).
+# Entrada de la ciudad al final de una calle: dos torres de piedra con un dintel por
+# encima, pero ABIERTA (antes era un muro con portón cerrado, de cuando el mapa era
+# pequeño y la ciudad estaba cercada). "calle_en_x" = true si la calle va a lo largo de X.
 func tapon_de_calle(centro: Vector3, ancho: float, color: Color = Color(0.2, 0.2, 0.23),
 		calle_en_x: bool = false) -> void:
-	var tam: Vector3 = Vector3(4.0, 10.0, ancho) if calle_en_x else Vector3(ancho, 10.0, 4.0)
 	var piedra: Material = material_textura("T_UnevenBrick_BaseColor", 0.5) if hay_kit_pueblo() else null
-	Construir.caja(self, Vector3(centro.x, 5.0, centro.z), tam, color.lightened(0.1), true, 0.0, piedra)
-	# Hacia dónde mira la calle (hacia el centro de la ciudad, donde está la plaza).
+	var eje: Vector3 = Vector3(0, 0, 1) if calle_en_x else Vector3(1, 0, 0)   # A lo ancho de la calle.
+	var hueco: float = minf(ancho, 12.0)   # Paso libre central.
+	var lado_t: float = hueco / 2.0 + 1.5
+	for s in [-1.0, 1.0]:
+		var c: Vector3 = centro + eje * lado_t * s
+		var tam: Vector3 = Vector3(4.0, 10.0, 3.0) if calle_en_x else Vector3(3.0, 10.0, 4.0)
+		Construir.caja(self, Vector3(c.x, 5.0, c.z), tam, color.lightened(0.1), true, 0.0, piedra)
+		Construir.caja(self, Vector3(c.x, 10.5, c.z), Vector3(tam.x + 0.4, 1.0, tam.z + 0.4), color.darkened(0.15), false)
+	# Dintel alto (se pasa por debajo, también los camiones).
+	var dintel: Vector3 = Vector3(3.0, 1.5, hueco + 6.0) if calle_en_x else Vector3(hueco + 6.0, 1.5, 3.0)
+	Construir.caja(self, Vector3(centro.x, 9.0, centro.z), dintel, color.darkened(0.1), false)
+	# Antorchas en las torres (encendidas de noche), hacia el centro de la ciudad.
 	var cara: Vector3
 	if calle_en_x:
 		cara = Vector3(-1, 0, 0) if centro.x > 0.0 else Vector3(1, 0, 0)
 	else:
 		cara = Vector3(0, 0, -1) if centro.z > 0.0 else Vector3(0, 0, 1)
-	var lado: Vector3 = Vector3(-cara.z, 0, cara.x)   # A lo ancho del muro.
-	var frente: Vector3 = centro + cara * 2.06
-	var giro: float = atan2(cara.x, cara.z)
-	# Almenas por encima del muro, a lo ancho.
-	var n: int = int(ancho / 1.6)
-	for k in n:
-		var t: float = (k - (n - 1) / 2.0) * (ancho / n)
-		Construir.caja(self, centro + lado * t + Vector3(0, 10.5, 0),
-				Vector3(0.9, 1.0, 0.9) if not calle_en_x else Vector3(0.9, 1.0, 0.9), color.darkened(0.15), false)
-	# Portón de madera con arco de piedra y herrajes, cerrado.
-	var portal: Node3D = Node3D.new()
-	portal.position = Vector3(frente.x, 0.0, frente.z)
-	portal.rotation.y = giro
-	add_child(portal)
-	Construir.caja(portal, Vector3(0, 2.2, 0), Vector3(4.4, 4.4, 0.2), Color(0.28, 0.17, 0.09), false)
-	Construir.caja(portal, Vector3(0, 4.6, 0), Vector3(5.2, 0.5, 0.3), color.darkened(0.3), false)
-	Construir.caja(portal, Vector3(-2.5, 2.4, 0), Vector3(0.5, 4.8, 0.3), color.darkened(0.3), false)
-	Construir.caja(portal, Vector3(2.5, 2.4, 0), Vector3(0.5, 4.8, 0.3), color.darkened(0.3), false)
-	for y in [1.0, 2.2, 3.4]:
-		Construir.caja(portal, Vector3(0, y, 0.12), Vector3(4.2, 0.18, 0.06), Color(0.1, 0.1, 0.11), false)
-	Construir.caja(portal, Vector3(0, 2.2, 0.12), Vector3(0.12, 4.2, 0.06), Color(0.1, 0.1, 0.11), false)
-	# Antorchas a los lados (encendidas de noche).
-	for lado_t in [-3.6, 3.6]:
-		Construir.cilindro(portal, Vector3(lado_t, 2.6, 0.2), 0.06, 0.8, Color(0.15, 0.1, 0.07), false)
-		var llama: Node3D = Construir.caja(portal, Vector3(lado_t, 3.1, 0.2), Vector3(0.18, 0.25, 0.18), Color(1.0, 0.65, 0.25), false, 3.0)
+	for s in [-1.0, 1.0]:
+		var p: Vector3 = centro + eje * (lado_t - 1.6) * s + cara * 2.1
+		Construir.cilindro(self, Vector3(p.x, 3.0, p.z), 0.06, 0.8, Color(0.15, 0.1, 0.07), false)
+		var llama: Node3D = Construir.caja(self, Vector3(p.x, 3.5, p.z), Vector3(0.18, 0.25, 0.18), Color(1.0, 0.65, 0.25), false, 3.0)
 		llama.visible = false
 		llama.add_to_group("ventanas_noche")
-		Construir.luz_noche(portal, Vector3(lado_t, 3.2, 0.6), Color(1.0, 0.65, 0.3), 1.4, 8.0)
+		Construir.luz_noche(self, Vector3(p.x, 3.7, p.z) + cara * 0.4, Color(1.0, 0.65, 0.3), 1.4, 8.0)
 
 
 # ---------------------------------- Tiendas -----------------------------------

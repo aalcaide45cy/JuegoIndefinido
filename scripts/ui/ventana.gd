@@ -31,14 +31,32 @@ func cerrar() -> void:
 	queue_free()
 
 
+# El espacio que hay en pantalla para esta ventana, en unidades de la interfaz
+# (el HUD escala su raíz según la altura de la pantalla).
+func espacio_visible() -> Vector2:
+	if size.x > 0.0 and size.y > 0.0:
+		return size
+	var padre: Control = get_parent() as Control
+	if padre != null and padre.size.y > 0.0:
+		return padre.size
+	return get_viewport_rect().size
+
+
 # Un panel centrado en la pantalla, con su caja vertical dentro.
+# Si el contenido no cabe en el tamaño pedido (o en la pantalla), el panel se queda del tamaño
+# que cabe y el contenido se desplaza con la rueda del ratón (antes se salía por abajo y se cortaba).
 func panel_centrado(tam: Vector2) -> VBoxContainer:
 	var panel: PanelContainer = Hud.crear_panel()
-	Hud.centrar(panel, tam)
+	Hud.centrar(panel, tam, espacio_visible())
 	add_child(panel)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	panel.add_child(scroll)
 	var caja: VBoxContainer = VBoxContainer.new()
 	caja.add_theme_constant_override("separation", 10)
-	panel.add_child(caja)
+	caja.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(caja)
 	return caja
 
 

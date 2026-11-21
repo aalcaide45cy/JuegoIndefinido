@@ -33,8 +33,11 @@ const P_LIBRE: int = 4   # Cruza por donde no debe (sin paso de cebra).
 const CICLO_SEMAFORO: float = 24.0
 const VERDE: float = 10.0
 const AMBAR: float = 12.0
-const COCHES: Array = [["sedan", 4.4], ["taxi", 4.4], ["hatchback-sports", 3.9], ["suv", 4.6], ["van", 4.8],
-		["sedan-sports", 4.4], ["delivery", 4.6]]
+# [modelo, largo]. Los nombres sin guion son los modelos nuevos (assets/vehiculos/, con
+# ruedas que giran); los que llevan guion son los de Kenney, de reserva si faltan.
+const COCHES: Array = [["sedan", 4.4], ["taxi", 4.4], ["hatchback", 3.9], ["suv", 4.6], ["furgoneta", 4.8],
+		["deportivo", 4.2], ["sedan", 4.4]]
+const COCHES_KENNEY: Dictionary = {"hatchback": "hatchback-sports", "furgoneta": "van", "deportivo": "sedan-sports"}
 const PERSONAJES: Array = ["Character_Hazmat", "Character_Enemy", "Character_Soldier"]
 const COLORES_COCHE: Array = [Color(0.7, 0.2, 0.15), Color(0.2, 0.3, 0.5), Color(0.8, 0.75, 0.2),
 		Color(0.25, 0.4, 0.3), Color(0.8, 0.8, 0.8)]
@@ -169,6 +172,8 @@ class Agente extends AnimatableBody3D:
 	var desvio: float = 0.0            # Metros que se aparta a la izquierda para rodear algo aparcado.
 	var bloqueo: String = ""          # Qué lo frena (para depurar).
 	var atento: bool = true            # El 12 % va despistado y ve tarde a los imprudentes.
+	var giros: Array = []              # Ruedas del modelo (ModeloVehiculo): ruedan con la velocidad.
+	var radios: Array = []
 	# --- Peatones ---
 	var estado: int = 0
 	var s: int = 1                     # Lado de la acera respecto al sentido del tramo.
@@ -404,7 +409,14 @@ func _vestir_coche(a: Agente) -> void:
 	forma.shape = caja
 	forma.position.y = 0.75
 	a.add_child(forma)
-	var nombre: String = "kenney/car-kit/" + str(elegido[0])
+	var nuevo: Dictionary = ModeloVehiculo.crear(str(elegido[0]), a.largo, false)
+	if not nuevo.is_empty():
+		a.add_child(nuevo["nodo"])
+		a.modelo = nuevo["nodo"]
+		a.giros = nuevo["giros"]
+		a.radios = nuevo["radios"]
+		return
+	var nombre: String = "kenney/car-kit/" + str(COCHES_KENNEY.get(str(elegido[0]), str(elegido[0])))
 	var m: Node3D = Assets.modelo(nombre) if Assets.existe(nombre) else null
 	if m != null:
 		var ab: AABB = Assets.caja_de(m)
@@ -692,6 +704,8 @@ func _mover_coche(a: Agente, delta: float) -> void:
 		a.espera = maxf(0.0, a.espera - delta * 2.0)
 	a.vel = move_toward(a.vel, objetivo, (7.0 if objetivo < a.vel else 3.0) * delta)
 	a.d += a.vel * delta
+	for i in a.giros.size():
+		(a.giros[i] as Node3D).rotation.x -= a.vel * delta / maxf(0.05, float(a.radios[i]))
 	if a.d >= largo_tramo:
 		var sobra: float = a.d - largo_tramo
 		var dist_j: float = (a.global_position - _jugador.global_position).length()

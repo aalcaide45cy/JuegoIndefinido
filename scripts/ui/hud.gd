@@ -240,7 +240,9 @@ func _input(evento: InputEvent) -> void:
 		if _menu is Ventanas.Admin:
 			_menu.cerrar()
 		elif _menu == null:
-			_abrir_menu(Ventanas.Admin.new())
+			var admin: Ventanas.Admin = Ventanas.Admin.new()
+			admin.jugador = jugador
+			_abrir_menu(admin)
 		get_viewport().set_input_as_handled()
 	elif evento.is_action_pressed("liberar_raton"):
 		if _menu == null:
@@ -558,13 +560,21 @@ func _colocar_abajo(label: Label, alto: float) -> void:
 	_raiz.add_child(label)
 
 
-# Centra un panel en la pantalla con el tamaño indicado.
-static func centrar(panel: Control, tam: Vector2) -> void:
-	panel.custom_minimum_size = tam
+# Centra un panel en la pantalla con el tamaño indicado. Nunca lo hace más grande que el espacio
+# visible "vis" (en unidades de la interfaz; si no se da, el de la ventana) menos un margen.
+static func centrar(panel: Control, tam: Vector2, vis: Vector2 = Vector2.ZERO) -> void:
+	if vis.x <= 0.0 or vis.y <= 0.0:
+		vis = Vector2(1920, 1080)
+		var bucle: MainLoop = Engine.get_main_loop()
+		if bucle is SceneTree:
+			vis = (bucle as SceneTree).root.get_visible_rect().size
+	var libre: Vector2 = (vis - Vector2(40, 40)).max(Vector2(300, 300))
+	var tam_ok: Vector2 = Vector2(minf(tam.x, libre.x), minf(tam.y, libre.y))
+	panel.custom_minimum_size = tam_ok
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -tam.x / 2.0
-	panel.offset_right = tam.x / 2.0
-	panel.offset_top = -tam.y / 2.0
-	panel.offset_bottom = tam.y / 2.0
+	panel.offset_left = -tam_ok.x / 2.0
+	panel.offset_right = tam_ok.x / 2.0
+	panel.offset_top = -tam_ok.y / 2.0
+	panel.offset_bottom = tam_ok.y / 2.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH

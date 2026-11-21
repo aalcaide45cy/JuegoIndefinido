@@ -66,7 +66,7 @@ func construir() -> void:
 		tam = padre.size
 	_px = minf(tam.x - 80.0, tam.y - 110.0)
 	var marco: PanelContainer = Hud.crear_panel()
-	Hud.centrar(marco, Vector2(_px + 40.0, _px + 80.0))
+	Hud.centrar(marco, Vector2(_px + 40.0, _px + 80.0), espacio_visible())
 	add_child(marco)
 	var caja: VBoxContainer = VBoxContainer.new()
 	marco.add_child(caja)
