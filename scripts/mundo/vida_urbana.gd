@@ -67,7 +67,10 @@ var _t_sin_jugador: float = 0.0
 func _red_ciudad() -> Dictionary:
 	if _redes.has("ciudad"):
 		return _redes["ciudad"]
-	var red: Dictionary = {"id": "ciudad", "pos": {}, "vec": {}, "luz": {}, "y": 0.0, "ancho": 8.0, "coches": true, "tipo": 3}
+	# Sin peatones: las avenidas de la ciudad original tienen los edificios pegados a la calzada (a 4 m
+	# del eje) y no hay acera por donde andar sin atravesar una fachada o un puesto.
+	var red: Dictionary = {"id": "ciudad", "pos": {}, "vec": {}, "luz": {}, "y": 0.0, "ancho": 8.0, "coches": true, "tipo": 3,
+			"peatones": false}
 	for i in CIUDAD_NODOS.size():
 		red["pos"][Vector2i(i, 0)] = CIUDAD_NODOS[i]
 		red["vec"][Vector2i(i, 0)] = []
@@ -264,7 +267,8 @@ func _objetivo_peatones() -> int:
 	# Según el mayor asentamiento cercano: aldea (0), pueblo (1), ciudad (2) o ciudad original (3).
 	var tipo: int = 0
 	for red in _cerca:
-		tipo = maxi(tipo, int(red.get("tipo", 0)))
+		if bool(red.get("peatones", true)):
+			tipo = maxi(tipo, int(red.get("tipo", 0)))
 	var dia: Array = [9, 13, 16, 16]
 	var tarde: Array = [5, 8, 10, 10]
 	var noche: Array = [2, 3, 5, 5]
@@ -338,6 +342,8 @@ func _eje_de(v: Vector2) -> int:
 
 # Elige un tramo y un punto a 35-110 m del jugador, libre de otros agentes.
 func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
+	if not coche and not bool(red.get("peatones", true)):
+		return null
 	var claves: Array = red["pos"].keys()
 	var yo3: Vector3 = _jugador.global_position
 	var hs: float = _hs(red)
@@ -951,8 +957,7 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 					a.p2 += falta.normalized() * paso
 	_colocar(a, false, delta)
 	if a.modelo != null and a.estado != P_HERIDO:
-		var plano: float = a.vel
-		Assets.poner_animacion(a.modelo, "Idle" if plano < 0.2 else ("Run" if plano > 3.0 else "Walk"))
+		Assets.animar_por_velocidad(a.modelo, a.vel)
 
 
 func _empezar_cruce_libre(a: Agente) -> void:

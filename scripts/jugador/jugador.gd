@@ -259,7 +259,7 @@ func _physics_process(delta: float) -> void:
 
 	if _modelo_anim != null:
 		var plano: float = Vector2(velocity.x, velocity.z).length()
-		Assets.poner_animacion(_modelo_anim, "Idle" if plano < 0.3 else ("Run" if plano > 5.0 else "Walk"))
+		Assets.animar_por_velocidad(_modelo_anim, plano)
 	_buscar_objetivo()
 
 

@@ -110,7 +110,7 @@ func _caminar(delta: float, destino: Vector3) -> bool:
 	_cliente.position += paso
 	# El muñeco mira hacia -Z: para andar de frente hay que girarlo así (antes andaba de espaldas).
 	_cliente.rotation.y = lerp_angle(_cliente.rotation.y, atan2(-paso.x, -paso.z), minf(1.0, delta * 8.0))
-	Assets.poner_animacion(_persona, "Walk")
+	Assets.animar_por_velocidad(_persona, VELOCIDAD_CLIENTE)
 	return false
 
 
