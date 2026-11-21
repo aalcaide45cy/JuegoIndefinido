@@ -859,7 +859,9 @@ static func _servicio_edificio(s: Dictionary, k: int, l: int, serv: String) -> D
 			cz = bz + 8.0
 	return {"x": bx + 18.0, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
 			"alto": pisos * 3.2 + (0.8 if serv == "gasolinera" else 0.0), "puerta": 1, "plano": true,
-			"color": COLOR_SERVICIO[serv], "techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": serv}
+			"color": COLOR_SERVICIO[serv], "techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": serv,
+			"var": _h(int(s["ci"]), k * 101 + l, 88), "distrito": "servicio", "tipo_asent": int(s["tipo"]),
+			"estilo": str(estilo_de(int(s["ci"]) * 1009 + int(s["cj"]))["nombre"]), "asent": str(s.get("nombre", ""))}
 
 
 # ---------------------------------- casas -------------------------------------
@@ -901,6 +903,8 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	elif distrito == "industrial":
 		pisos = 1
 		ancho = minf(ancho + 2.0, 15.5)
+	if ancho < 6.7:
+		pisos = 1   # Demasiado estrecha para una escalera.
 	# La casa se mueve dentro de su solar de 18 m (más holgura cuanto más pequeña).
 	var holgura_x: float = maxf(0.0, (18.0 - ancho) / 2.0 - 0.4)
 	var holgura_z: float = maxf(0.0, (18.0 - fondo) / 2.0 - 0.4)
@@ -913,7 +917,7 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	var techo: Color = _variar(techos[_h(sid, clave, sub * 16 + 7) % techos.size()], sid, clave, sub * 16 + 11)
 	var plano: bool = pisos > 3 or _f(sid, clave, sub * 16 + 12) < float(est["plano"])
 	var c: Dictionary = {"x": cx, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
-			"alto": pisos * (3.0 + _f(sid, clave, sub * 16 + 13) * 0.5), "puerta": -1 if b == 0 else 1, "plano": plano,
+			"alto": pisos * (3.25 + _f(sid, clave, sub * 16 + 13) * 0.4), "puerta": -1 if b == 0 else 1, "plano": plano,
 			"color": pared, "techo": techo, "id": "", "pitch": float(est["pitch"]) * (0.8 + _f(sid, clave, sub * 16 + 14) * 0.5),
 			"var": v}
 	if distrito == "industrial":
@@ -921,6 +925,9 @@ static func casa(s: Dictionary, k: int, l: int, sub: int) -> Dictionary:
 	elif distrito == "rico":
 		c["color"] = (c["color"] as Color).lightened(0.18)
 	c["distrito"] = distrito
+	c["tipo_asent"] = tipo
+	c["estilo"] = str(est["nombre"])
+	c["asent"] = str(s.get("nombre", ""))
 	var prob_alquiler: float = [0.14, 0.1, 0.07][tipo]
 	if _f(sid, clave + 31, sub * 16 + 8) < prob_alquiler:
 		c["id"] = "w_c_%d_%d_%d_%d_%d" % [s["ci"], s["cj"], k, l, sub]
@@ -1165,9 +1172,9 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 	var d: float = c["d"]
 	var alto: float = c["alto"]
 	var centro: Vector3 = Vector3(c["x"], y + alto / 2.0 - 0.2, c["z"])
-	var hueca: bool = detalle and not c.has("servicio")   # Todas las casas son huecas (los servicios tienen su interior aparte).
+	var hueca: bool = detalle   # Todos los edificios son huecos y visitables, con escalera y pisos (ver CascaraEdificio).
 	if hueca:
-		_paredes_con_interior(mb, c)
+		CascaraEdificio.generar(mb, c)
 	else:
 		mb.caja(centro, Vector3(w, alto + 0.4, d), c["color"])
 	if bool(c["plano"]):
@@ -1184,8 +1191,8 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 		mb.caja(Vector3(c["x"], y + 1.05, zf), Vector3(1.1, 2.1, 0.1), puertas[(int(c.get("var", 0)) / 7) % 4])
 	var vent: Color = [Color(0.12, 0.17, 0.26), Color(0.16, 0.2, 0.2), Color(0.2, 0.17, 0.12)][int(c.get("var", 0)) % 3]
 	for piso in int(c["pisos"]):
-		if hueca and piso == 0:
-			continue   # La planta baja tiene ventanas de verdad (ver _paredes_con_interior).
+		if hueca:
+			break   # Todos los pisos tienen ventanas de verdad (ver CascaraEdificio).
 		for lado in [-1.0, 1.0]:
 			for pared in [1.0, -1.0]:
 				var vx: float = c["x"] + lado * w * 0.27
@@ -1283,74 +1290,13 @@ const VENT_ALTO: float = 2.2
 const GROSOR_MURO: float = 0.3
 
 
-# Posiciones (x relativa al centro) de las ventanas de la planta baja de una casa de ancho w.
+# Casa hueca: muros con puerta y ventanas, suelos, escalera y pisos (todo en CascaraEdificio).
+# Los muebles, las paredes de dentro y las luces los pone GestorInteriores al acercarte.
+
+
+# Posiciones (x relativa al centro) de las ventanas de cada piso de un edificio de ancho w.
 static func ventanas_x(w: float) -> Array:
-	return [-w * 0.3, w * 0.3]
-
-
-# Muro recto a lo largo de X con huecos [centro_x, ancho, y_bajo, y_alto]; el resto va macizo.
-static func _muro_x(mb: ConstructorMalla, cx: float, z: float, largo: float, y0: float, y1: float,
-		grosor: float, col: Color, huecos: Array) -> void:
-	var cursor: float = cx - largo / 2.0
-	for h in huecos:
-		var hc: float = h[0]
-		var hw: float = h[1]
-		var izq: float = hc - hw / 2.0
-		if izq - cursor > 0.01:
-			mb.caja(Vector3((cursor + izq) / 2.0, (y0 + y1) / 2.0, z), Vector3(izq - cursor, y1 - y0, grosor), col)
-		if float(h[2]) - y0 > 0.12:
-			mb.caja(Vector3(hc, (y0 + float(h[2])) / 2.0, z), Vector3(hw, float(h[2]) - y0, grosor), col)
-		if y1 - float(h[3]) > 0.01:
-			mb.caja(Vector3(hc, (float(h[3]) + y1) / 2.0, z), Vector3(hw, y1 - float(h[3]), grosor), col)
-		cursor = hc + hw / 2.0
-	var fin: float = cx + largo / 2.0
-	if fin - cursor > 0.01:
-		mb.caja(Vector3((cursor + fin) / 2.0, (y0 + y1) / 2.0, z), Vector3(fin - cursor, y1 - y0, grosor), col)
-
-
-static func _paredes_con_interior(mb: ConstructorMalla, c: Dictionary) -> void:
-	var x: float = c["x"]
-	var z: float = c["z"]
-	var y: float = c["y"]
-	var w: float = c["w"]
-	var d: float = c["d"]
-	var alto: float = c["alto"]
-	var cara: float = float(c["puerta"])
-	var col: Color = c["color"]
-	var g: float = GROSOR_MURO
-	var y0: float = y - 0.1
-	var y1: float = y + alto + 0.1
-	var vent: Color = [Color(0.12, 0.17, 0.26), Color(0.16, 0.2, 0.2), Color(0.2, 0.17, 0.12)][int(c.get("var", 0)) % 3]
-	var marco: Color = col.lightened(0.25)
-	# Muros laterales (macizos).
-	for lado in [-1.0, 1.0]:
-		mb.caja(Vector3(x + lado * (w / 2.0 - g / 2.0), (y0 + y1) / 2.0, z), Vector3(g, y1 - y0, d), col)
-	# Muro del frente (puerta + ventanas) y del fondo (ventanas).
-	var vent_huecos: Array = []
-	for vx in ventanas_x(w):
-		vent_huecos.append([x + vx, VENT_ANCHO, y + VENT_BAJO, y + VENT_ALTO])
-	var zf: float = z + cara * (d / 2.0 - g / 2.0)
-	var zb: float = z - cara * (d / 2.0 - g / 2.0)
-	var huecos_f: Array = vent_huecos.duplicate()
-	huecos_f.append([x, PUERTA_ANCHO, y - 0.05, y + PUERTA_ALTO])
-	huecos_f.sort_custom(func(a, b): return a[0] < b[0])
-	_muro_x(mb, x, zf, w - 2.0 * g, y0, y1, g, col, huecos_f)
-	_muro_x(mb, x, zb, w - 2.0 * g, y0, y1, g, col, vent_huecos)
-	# Cristales (los de dentro se ven igual de oscuros) y alféizares; el marco de la puerta.
-	for zz in [zf, zb]:
-		var fuera: float = 1.0 if zz == zf else -1.0
-		fuera *= cara
-		for vx in ventanas_x(w):
-			mb.caja(Vector3(x + vx, y + (VENT_BAJO + VENT_ALTO) / 2.0, zz), Vector3(VENT_ANCHO, VENT_ALTO - VENT_BAJO, 0.06), vent)
-			mb.caja(Vector3(x + vx, y + (VENT_BAJO + VENT_ALTO) / 2.0, zz), Vector3(0.06, VENT_ALTO - VENT_BAJO, 0.08), marco)
-			mb.caja(Vector3(x + vx, y + VENT_BAJO - 0.04, zz + fuera * 0.1), Vector3(VENT_ANCHO + 0.3, 0.08, g + 0.2), marco)
-	for lado in [-1.0, 1.0]:
-		mb.caja(Vector3(x + lado * (PUERTA_ANCHO / 2.0 + 0.04), y + PUERTA_ALTO / 2.0, zf), Vector3(0.08, PUERTA_ALTO, g + 0.04), marco.darkened(0.4))
-	# Suelo y techo de la planta baja; pisos de arriba macizos.
-	mb.caja(Vector3(x, y + 0.05, z), Vector3(w - 2.0 * g, 0.1, d - 2.0 * g), Color(0.42, 0.3, 0.19))
-	mb.caja(Vector3(x, y + 3.2, z), Vector3(w - 2.0 * g, 0.2, d - 2.0 * g), col.lightened(0.1))
-	if int(c["pisos"]) > 1:
-		mb.caja(Vector3(x, y + (3.3 + alto) / 2.0, z), Vector3(w, alto - 3.3, d), col)
+	return CascaraEdificio.ventanas_x(w)
 
 
 # Un huerto: tierra, surcos, valla con entrada hacia el pueblo.

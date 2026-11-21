@@ -53,6 +53,32 @@ func caja(c: Vector3, t: Vector3, col: Color) -> void:
 	cuadro(Vector3(x0, y0, z0), Vector3(x0, y0, z1), Vector3(x0, y1, z1), Vector3(x0, y1, z0), oscuro)
 
 
+# Cuadrilátero cuyo lado visible es el que mira hacia fuera del punto "dentro" (así no importa el orden de los vértices).
+func cuadro_fuera(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, dentro: Vector3, col: Color) -> void:
+	var n: Vector3 = (p1 - p0).cross(p3 - p0)
+	if n.length_squared() < 1.0e-8:
+		n = (p2 - p1).cross(p3 - p1)
+	var centro: Vector3 = (p0 + p1 + p2 + p3) / 4.0
+	if n.dot(centro - dentro) >= 0.0:
+		cuadro(p0, p1, p2, p3, col)
+	else:
+		cuadro(p0, p3, p2, p1, col)
+
+
+# Sólido de 8 vértices (4 de abajo y 4 de arriba en el mismo orden): una rampa, un escalón torcido...
+func hexaedro(v: Array, col: Color) -> void:
+	var c: Vector3 = Vector3.ZERO
+	for p in v:
+		c += p
+	c /= 8.0
+	cuadro_fuera(v[0], v[1], v[2], v[3], c, col.darkened(0.12))
+	cuadro_fuera(v[4], v[5], v[6], v[7], c, col.lightened(0.08))
+	cuadro_fuera(v[0], v[1], v[5], v[4], c, col)
+	cuadro_fuera(v[1], v[2], v[6], v[5], c, col.darkened(0.06))
+	cuadro_fuera(v[2], v[3], v[7], v[6], c, col)
+	cuadro_fuera(v[3], v[0], v[4], v[7], c, col.darkened(0.06))
+
+
 # Techo a cuatro aguas: base rectangular centrada en "c" (a altura de la base)
 # y una cumbrera más estrecha a "alto" metros.
 func techo(c: Vector3, ancho: float, fondo: float, alto: float, col: Color) -> void:

@@ -96,8 +96,9 @@ func _recalcular_lista(p2: Vector2) -> void:
 	var rect: Rect2 = Rect2(p2.x - RADIO_LISTA, p2.y - RADIO_LISTA, RADIO_LISTA * 2.0, RADIO_LISTA * 2.0)
 	for s in GeneradorMundo.asentamientos_cerca(rect):
 		for c in GeneradorMundo._casas_en(s, rect):
-			if not c.has("servicio"):
-				_lista.append(c)
+			_lista.append(c)   # También los servicios (banco, hospital, taberna...): todo edificio se visita.
+	for g in GeneradorMundo._gasolineras_de_carretera(rect, GeneradorMundo.segmentos_para(rect)):
+		_lista.append(g)
 
 
 func _montar_puerta(k: Vector2i, c: Dictionary) -> void:
