@@ -76,7 +76,7 @@ func _ready() -> void:
 				en_curva.erase(id)
 				curvas += 1
 	print("Curvas completadas: %d, saltos: %d, giro maximo: %.2f rad/s (%.0f grados/s), velocidad en curva %.1f - %.1f m/s" % [curvas, saltos, giro_max, rad_to_deg(giro_max), vel_curva_min, vel_curva_max])
-	if curvas < 3:
+	if curvas < 3 and tipo < 3:   # En la ciudad original casi no hay giros (solo vueltas en U al final de calle).
 		fallos.append("pocas curvas completadas (%d)" % curvas)
 	if saltos > 0:
 		fallos.append("%d saltos de posicion" % saltos)
