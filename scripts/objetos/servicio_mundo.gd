@@ -199,8 +199,15 @@ func usar(_jugador: Node) -> void:
 				v.local = servicio
 				_jugador.hud.abrir_ventana(v)
 		"restaurante", "bar", "cafeteria", "panaderia":
-			Juego.avisar("Pasa dentro y pide en el mostrador.")
-		"taberna": _usar_taberna()
+			if mayus and Juego.DatosOficios.oficio_de_lugar(servicio) != "":
+				_usar_oficio()
+			else:
+				Juego.avisar("Pasa dentro y pide en el mostrador.")
+		"taberna":
+			if mayus:
+				_usar_oficio()
+			else:
+				_usar_taberna()
 		"banco": _usar_banco(mayus)
 		"discoteca": _usar_discoteca(mayus)
 		"tragaperras": _usar_tragaperras(mayus)
@@ -229,7 +236,10 @@ func _texto_local() -> String:
 	var nom: String = _local.nombre if _local != null else str(NOMBRES.get(servicio, servicio))
 	if not Locales.abierto(servicio, Juego.hora):
 		return "%s: cerrado (abre %s)" % [nom, Locales.texto_horario(servicio)]
-	return "%s: entra y pide en el mostrador" % nom
+	var extra: String = ""
+	if Juego.DatosOficios.oficio_de_lugar(servicio) != "":
+		extra = "  ·  Mayús+E: " + _texto_oficio()
+	return "%s: entra y pide en el mostrador%s" % [nom, extra]
 
 
 # Lo que hace Mayús+E (o E) aquí con el oficio de este lugar.

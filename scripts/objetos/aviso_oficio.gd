@@ -30,7 +30,7 @@ func _ready() -> void:
 	var tipo: String = str(datos.get("tipo", "altercado"))
 	var col: Color = {"altercado": Color(0.3, 0.45, 1.0), "herido": Color(1.0, 0.3, 0.3),
 			"fuego": Color(1.0, 0.55, 0.1), "averia": Color(1.0, 0.85, 0.2),
-			"cliente": Color(0.85, 0.4, 0.9)}.get(tipo, Color(1, 1, 1))
+			"cliente": Color(0.85, 0.4, 0.9), "pedido": Color(1.0, 0.75, 0.3)}.get(tipo, Color(1, 1, 1))
 	# Columna de luz translúcida.
 	var haz: MeshInstance3D = MeshInstance3D.new()
 	var cil: CylinderMesh = CylinderMesh.new()
@@ -84,6 +84,11 @@ func _ready() -> void:
 			cliente.position = Vector3(0, 0.45, 0.1)
 			add_child(cliente)
 			Aspecto.vestir(cliente, datos.get("aspecto_cliente", {}))
+		"pedido":
+			# Una mesa con un plato humeante (camarero, cocinero, barman, panadero).
+			Construir.caja(self, Vector3(0, 0.4, 0), Vector3(1.0, 0.8, 1.0), Color(0.5, 0.33, 0.2), false)
+			Construir.caja(self, Vector3(0, 0.85, 0), Vector3(0.5, 0.1, 0.5), Color(0.95, 0.95, 0.9), false)
+			Construir.caja(self, Vector3(0, 1.05, 0), Vector3(0.3, 0.3, 0.3), Color(0.8, 0.5, 0.2), false)
 		"averia":
 			Construir.caja(self, Vector3(0, 0.6, 0), Vector3(1.9, 0.8, 4.2), Color(0.55, 0.55, 0.6), false)
 			Construir.caja(self, Vector3(0, 1.2, -0.3), Vector3(1.7, 0.6, 2.2), Color(0.6, 0.7, 0.8), false)

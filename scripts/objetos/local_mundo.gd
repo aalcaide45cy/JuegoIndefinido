@@ -189,6 +189,7 @@ func _planta() -> void:
 		"panaderia": _panaderia()
 		"taberna": _taberna()
 		"taller": _taller()
+		"salon", "barberia": _salon(estilo == "barberia")
 
 
 # Posiciones de mesa libres de pasillos y mostrador.
@@ -422,6 +423,49 @@ func _taller() -> void:
 	luz(-W * 0.2, D * 0.8, 2.8)
 
 
+# Peluquería y barbería: sillones frente a espejos, lavacabezas y sala de espera.
+func _salon(barberia: bool) -> void:
+	mostrador(clampf(W * 0.3, 3.5, 5.0), W * 0.2)
+	var cuero: Color = Color(0.55, 0.12, 0.15) if barberia else Color(0.85, 0.45, 0.65)
+	# Tres puestos en la pared izquierda: sillón giratorio y espejo con balda.
+	for iv in [2.6, 5.0, 7.4]:
+		var ivf: float = float(iv)
+		if ivf > D - 2.0:
+			continue
+		var u: float = -W / 2.0 + 1.4
+		c(u, ivf, 0.0, 0.25, 0.5, 0.25, Color(0.7, 0.7, 0.75), true)
+		c(u, ivf, 0.5, 0.9, 0.2, 0.9, cuero, true)
+		c(u - 0.4, ivf, 0.7, 0.15, 0.9, 0.9, cuero, false)
+		c(u + 0.0, ivf + 0.0, 0.0, 0.9, 0.12, 0.9, Color(0.75, 0.75, 0.78), false)
+		c(-W / 2.0 + 0.08, ivf, 1.0, 0.06, 1.2, 1.1, Color(0.7, 0.85, 0.95), false)
+		c(-W / 2.0 + 0.1, ivf, 0.85, 0.2, 0.06, 1.2, Color(0.35, 0.35, 0.38), false)
+		for k in 3:
+			c(-W / 2.0 + 0.14, ivf - 0.4 + k * 0.4, 0.91, 0.1, 0.18, 0.1, Color.from_hsv(_rng.randf(), 0.6, 0.9), false)
+	# Lavacabezas y sala de espera.
+	c(W / 2.0 - 1.0, 2.8, 0.0, 0.9, 1.0, 0.9, Color(0.9, 0.9, 0.92), true)
+	c(W / 2.0 - 1.0, 2.8, 1.0, 0.6, 0.2, 0.6, Color(0.5, 0.6, 0.75), false)
+	c(W / 2.0 - 1.0, 5.2, 0.0, 0.9, 0.45, 2.4, tela, true)
+	c(W / 2.0 - 0.45, 5.2, 0.45, 0.2, 0.5, 2.4, tela, false)
+	c(W / 2.0 - 1.9, 5.2, 0.0, 0.7, 0.4, 0.7, madera, true)
+	plantas([Vector2(W / 2.0 - 0.6, D - 1.0)])
+	if barberia:
+		# Poste de barbero con rayas rojas y blancas junto a la puerta: brilla.
+		for i in 6:
+			var col: Color = Color(0.85, 0.12, 0.12) if i % 2 == 0 else Color(0.95, 0.95, 0.95)
+			c(W / 2.0 - 0.7, 1.2, 0.2 + i * 0.35, 0.3, 0.35, 0.3, col, i == 0)
+		c(W / 2.0 - 0.7, 1.2, 2.3, 0.36, 0.1, 0.36, Color(0.9, 0.8, 0.3), false)
+		var navaja: Node3D = Construir.caja(self, p(0.0, D - 0.3, 2.1), Vector3(1.4, 0.08, 0.06), Color(0.8, 0.9, 1.0), false, 2.5)
+		if navaja != null:
+			_decor_vivo.append(navaja)
+	else:
+		var tinte: Node3D = Construir.caja(self, p(W / 2.0 - 0.5, D - 0.6, 1.5), Vector3(0.3, 0.5, 0.3), VERDE_BRUMA, false, 2.0)
+		if tinte != null:
+			_decor_vivo.append(tinte)
+	cuadro(0.0, 0.0, 1.7, "fondo")
+	luz(-W * 0.2, D * 0.35, 2.7)
+	luz(W * 0.15, D * 0.6, 2.7)
+
+
 # Una pizarra con el menú (negra con letras claras en un Label3D).
 func _pizarra(u: float, iv: float, lado: String) -> void:
 	var texto: String = "MENÚ DEL DÍA\n"
@@ -615,8 +659,8 @@ static func precio_taller(item: Dictionary, v) -> int:
 
 # Pide un producto. Devuelve {"ok": bool, "msg": String}. "precio" es el que se enseña en la carta
 # (en el taller se calcula aquí con el vehículo).
-static func pedir(item: Dictionary, v = null) -> Dictionary:
-	var precio: int = int(item["precio"])
+static func pedir(item: Dictionary, v = null, id_local: String = "") -> Dictionary:
+	var precio: int = precio_final(item, id_local)
 	var clase: String = str(item.get("vehiculo", ""))
 	if clase != "":
 		precio = precio_taller(item, v)
@@ -644,6 +688,14 @@ static func pedir(item: Dictionary, v = null) -> Dictionary:
 		Juego.anadir(objeto, 1)
 		return {"ok": true, "msg": "Te llevas %s (%d $)." % [str(item["nombre"]).to_lower(), precio]}
 	return {"ok": true, "msg": _aplicar_consumo(item, precio)}
+
+
+# Precio de un producto de comida o bebida con el descuento de hostelería (el que trabaja ahí paga la mitad).
+static func precio_final(item: Dictionary, id_local: String) -> int:
+	var p: int = int(item["precio"])
+	if id_local != "" and not item.has("vehiculo"):
+		p = maxi(1, int(round(p * (1.0 - Juego.descuento_servicio(id_local)))))
+	return p
 
 
 static func _aplicar_taller(clase: String, v, precio: int) -> String:
@@ -728,6 +780,8 @@ class MostradorLocal extends Interactuable:
 			return "%s: cerrado (abre %s)" % [nom, Locales.texto_horario(local_mundo.local)]
 		if Locales.es_taller(local_mundo.local):
 			return "%s: servicios del taller" % nom
+		if Locales.es_aspecto(local_mundo.local):
+			return "%s: cambiar de aspecto" % nom
 		return "%s: ver la carta y pedir" % nom
 
 	func usar(jugador: Node) -> void:
@@ -735,6 +789,12 @@ class MostradorLocal extends Interactuable:
 			return
 		if not local_mundo.esta_abierto():
 			Juego.avisar("%s está cerrado. Abre de %s." % [local_mundo.nombre, Locales.texto_horario(local_mundo.local)])
+			return
+		if Locales.es_aspecto(local_mundo.local):
+			if jugador != null and "hud" in jugador and jugador.hud != null:
+				var vp: VentanaPeluqueria = VentanaPeluqueria.new()
+				vp.local = local_mundo.local
+				jugador.hud.abrir_ventana(vp)
 			return
 		if jugador != null and "hud" in jugador and jugador.hud != null:
 			var v: VentanaLocal = VentanaLocal.new()

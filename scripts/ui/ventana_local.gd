@@ -75,7 +75,7 @@ func _vehiculo():
 
 
 func _pedir(item: Dictionary) -> void:
-	var r: Dictionary = LocalMundo.pedir(item, _vehiculo())
+	var r: Dictionary = LocalMundo.pedir(item, _vehiculo(), local_mundo.local)
 	_mensaje.text = str(r["msg"])
 	_mensaje.add_theme_color_override("font_color", Color(0.7, 0.95, 0.7) if bool(r["ok"]) else Color(1.0, 0.6, 0.5))
 	if bool(r["ok"]):
@@ -96,7 +96,7 @@ func _refrescar() -> void:
 	_estado.text = linea
 	for f in _filas:
 		var item: Dictionary = f["item"]
-		var p: int = int(item["precio"])
+		var p: int = LocalMundo.precio_final(item, local_mundo.local)
 		var ok: bool = true
 		if item.has("vehiculo"):
 			p = LocalMundo.precio_taller(item, v)

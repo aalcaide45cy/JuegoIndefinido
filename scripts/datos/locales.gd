@@ -67,6 +67,20 @@ const LOCALES: Dictionary = {
 		"nombres": ["Taberna del Jabalí", "Taberna La Jarra Rota", "Posada del Cuervo", "Taberna El Tonel", "Taberna Los Ocho Barriles"],
 		"fantasia": "La hidromiel de bruma sube la fama y ayuda a escuchar rumores.",
 	},
+	"peluqueria": {
+		"nombre": "Peluquería", "npc": "Peluquera", "estilo": "salon", "tipo": "aspecto",
+		"ancho": 18.0, "fondo": 12.0, "color": Color(0.85, 0.6, 0.7), "franja": Color(0.95, 0.45, 0.7),
+		"abre": 9.0, "cierra": 21.0, "carta": [],
+		"nombres": ["Peluquería Tijeras de Luna", "Salón Mechón Dorado", "Peluquería La Madeja", "Estilismo Bruma", "Peluquería Rizos"],
+		"fantasia": "Tintes mágicos de hoja de bruma: verde bruma y violeta de luna.",
+	},
+	"barberia": {
+		"nombre": "Barbería", "npc": "Barbero", "estilo": "barberia", "tipo": "aspecto",
+		"ancho": 18.0, "fondo": 12.0, "color": Color(0.55, 0.32, 0.25), "franja": Color(0.85, 0.15, 0.15),
+		"abre": 9.0, "cierra": 21.0, "carta": [],
+		"nombres": ["Barbería Navaja de Plata", "Barbería El Bigote", "Barbería Don Isidro", "Barbería La Perilla", "Barbería Luna Nueva"],
+		"fantasia": "La navaja de plata deja un afeitado «de luna».",
+	},
 	"taller": {
 		"nombre": "Taller", "npc": "Mecánico", "estilo": "taller", "tipo": "taller",
 		"ancho": 20.0, "fondo": 14.0, "color": Color(0.3, 0.32, 0.36), "franja": Color(0.95, 0.7, 0.1),
@@ -157,6 +171,10 @@ static func existe(local: String) -> bool:
 
 static func es_taller(local: String) -> bool:
 	return str((LOCALES.get(local, {}) as Dictionary).get("tipo", "")) == "taller"
+
+
+static func es_aspecto(local: String) -> bool:
+	return str((LOCALES.get(local, {}) as Dictionary).get("tipo", "")) == "aspecto"
 
 
 static func abierto(local: String, hora: float) -> bool:
