@@ -96,7 +96,10 @@ func _red_asentamiento(s: Dictionary) -> Dictionary:
 			var vecinos: Array = []
 			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var o: Vector2i = c + d
-				if absi(o.x) <= n and absi(o.y) <= n:
+				if absi(o.x) > n or absi(o.y) > n:
+					continue
+				# ¿Existe la calle entre c y o? (el trazado irregular quita algunas).
+				if GeneradorMundo.arista_existe(s, mini(c.x, o.x), mini(c.y, o.y), d.y == 0):
 					vecinos.append(o)
 			red["vec"][c] = vecinos
 			var con_luz: bool = tipo == 2 or (tipo == 1 and absi(k) <= 1 and absi(l) <= 1)
@@ -173,6 +176,16 @@ class Agente extends AnimatableBody3D:
 	var bloqueo: String = ""          # Qué lo frena (para depurar).
 	var atento: bool = true            # El 12 % va despistado y ve tarde a los imprudentes.
 	var giros: Array = []              # Ruedas del modelo (ModeloVehiculo): ruedan con la velocidad.
+	# --- Giros en cruces (curva Bézier de cuatro puntos entre el carril de entrada y el de salida) ---
+	var sig: Vector2i = Vector2i(-9999, -9999)   # Nodo al que irá tras el cruce (elegido con tiempo).
+	var sig_ok: bool = false
+	var en_giro: bool = false
+	var curva: Array = []              # [P0, P1, P2, P3] (Vector2)
+	var curva_largo: float = 1.0
+	var curva_t: float = 0.0
+	var curva_vel: float = 99.0        # Velocidad con la que conviene tomar la curva.
+	var curva_dir_in: Vector2 = Vector2.RIGHT
+	var curva_dir_out: Vector2 = Vector2.RIGHT
 	var radios: Array = []
 	# --- Peatones ---
 	var estado: int = 0
@@ -480,7 +493,12 @@ func _colocar(a: Agente, ya: bool = false, delta: float = 0.0) -> void:
 	var dir: Vector2 = (pb - pa).normalized()
 	var punto: Vector2
 	var yaw: float
-	if a.es_coche:
+	if a.es_coche and a.en_giro:
+		punto = _bezier(a.curva, a.curva_t)
+		var tg: Vector2 = _tangente(a.curva, a.curva_t)
+		a.dir2 = a.curva_dir_in if a.curva_t < 0.5 else a.curva_dir_out
+		yaw = atan2(-tg.x, -tg.y)
+	elif a.es_coche:
 		a.dir2 = dir
 		a.corr = a.corr * exp(-5.0 * delta)
 		punto = _punto_tramo(a) + a.corr
@@ -506,24 +524,94 @@ func _colocar(a: Agente, ya: bool = false, delta: float = 0.0) -> void:
 	if ya:
 		a.rotation.y = yaw
 	else:
-		a.rotation.y = lerp_angle(a.rotation.y, yaw, 1.0 - exp(-9.0 * delta))
+		var rapidez: float = 22.0 if (a.es_coche and a.en_giro) else 9.0
+		a.rotation.y = lerp_angle(a.rotation.y, yaw, 1.0 - exp(-rapidez * delta))
 
 
 # --------------------------------- Movimiento ----------------------------------
 
-func _siguiente_nodo(a: Agente) -> void:
-	var llegado: Vector2i = a.hacia
-	var vecinos: Array = (a.red["vec"][llegado] as Array).duplicate()
-	var previo: Vector2i = a.desde
+# Metros antes del nodo donde empieza la curva (y después donde acaba): coincide con la línea de detención.
+func _radio_giro(a: Agente) -> float:
+	return _hs(a.red) + 2.0
+
+
+# Elige con tiempo el nodo al que irá tras el cruce y calcula la curva si hay que girar.
+func _elegir_siguiente(a: Agente) -> void:
+	var vecinos: Array = (a.red["vec"][a.hacia] as Array).duplicate()
 	if vecinos.size() > 1:
-		vecinos.erase(previo)   # No se da la vuelta salvo en un fondo de saco.
-	var elegido: Vector2i = vecinos[randi() % vecinos.size()]
+		vecinos.erase(a.desde)   # No se da la vuelta salvo en un fondo de saco.
+	a.sig = vecinos[randi() % vecinos.size()]
+	a.sig_ok = true
+	var pa: Vector2 = a.red["pos"][a.desde]
+	var pb: Vector2 = a.red["pos"][a.hacia]
+	var pc: Vector2 = a.red["pos"][a.sig]
+	var dir_in: Vector2 = (pb - pa).normalized()
+	var dir_out: Vector2 = (pc - pb).normalized()
+	a.curva_dir_in = dir_in
+	a.curva_dir_out = dir_out
+	var angulo: float = absf(dir_in.angle_to(dir_out))
+	a.curva = []
+	a.curva_vel = 99.0
+	if angulo < 0.2:
+		return   # Recto: no hace falta curva.
+	var r: float = _radio_giro(a)
+	var p_ent: Vector2 = pb - dir_in * r + Vector2(-dir_in.y, dir_in.x) * a.lado
+	var p_sal: Vector2 = pb + dir_out * r + Vector2(-dir_out.y, dir_out.x) * a.lado
+	var cuerda: float = p_ent.distance_to(p_sal)
+	var h: float = maxf(cuerda * 0.4, 2.5) if angulo > 2.6 else cuerda * 0.4
+	a.curva = [p_ent, p_ent + dir_in * h, p_sal - dir_out * h, p_sal]
+	var largo: float = 0.0
+	var prev: Vector2 = p_ent
+	for i in range(1, 9):
+		var q: Vector2 = _bezier(a.curva, float(i) / 8.0)
+		largo += prev.distance_to(q)
+		prev = q
+	a.curva_largo = maxf(largo, 1.0)
+	# Cuanto más cerrada la curva, más despacio: ~15 km/h en un giro de 90 grados, ~10 en una vuelta en U.
+	a.curva_vel = lerpf(a.vmax, 4.2, clampf(angulo / 1.2, 0.0, 1.0))
+	if angulo > 2.6:
+		a.curva_vel = 3.0
+
+
+static func _bezier(c: Array, t: float) -> Vector2:
+	var u: float = 1.0 - t
+	return (c[0] as Vector2) * (u * u * u) + (c[1] as Vector2) * (3.0 * u * u * t) 			+ (c[2] as Vector2) * (3.0 * u * t * t) + (c[3] as Vector2) * (t * t * t)
+
+
+static func _tangente(c: Array, t: float) -> Vector2:
+	var u: float = 1.0 - t
+	var v: Vector2 = ((c[1] as Vector2) - (c[0] as Vector2)) * (3.0 * u * u) 			+ ((c[2] as Vector2) - (c[1] as Vector2)) * (6.0 * u * t) 			+ ((c[3] as Vector2) - (c[2] as Vector2)) * (3.0 * t * t)
+	return v.normalized() if v.length() > 0.001 else Vector2.RIGHT
+
+
+# Pasa al tramo siguiente sin curva (cruce recto o fondo de saco con salto de carril).
+func _siguiente_nodo(a: Agente) -> void:
+	if not a.sig_ok:
+		_elegir_siguiente(a)
 	var antes: Vector2 = _punto_tramo(a)
-	a.desde = llegado
-	a.hacia = elegido
+	a.desde = a.hacia
+	a.hacia = a.sig
+	a.sig_ok = false
 	a.d = 0.0
-	# Tras girar, el coche se desliza al carril nuevo en vez de dar un salto.
 	a.corr = antes - _punto_tramo(a)
+
+
+# Entra en la curva: el coche deja de seguir el tramo recto y sigue la Bézier.
+func _empezar_giro(a: Agente, pasado: float = 0.0) -> void:
+	a.en_giro = true
+	a.curva_t = clampf(pasado / a.curva_largo, 0.0, 0.5)   # Si ya se pasó del inicio, entra por donde toca.
+	a.corr = Vector2.ZERO
+
+
+# Acaba la curva: ya está en el carril del tramo nuevo, a "radio" metros del cruce.
+func _terminar_giro(a: Agente, sobra: float) -> void:
+	a.en_giro = false
+	a.desde = a.hacia
+	a.hacia = a.sig
+	a.sig_ok = false
+	a.d = _radio_giro(a) + sobra
+	a.corr = Vector2.ZERO
+	a.dir2 = a.curva_dir_out
 
 
 func _frenar_para(libre: float, margen: float = 2.0, decel: float = 5.0) -> float:
@@ -603,7 +691,7 @@ func _cruce_ocupado(a: Agente, pb: Vector2, dir: Vector2, hs: float) -> bool:
 		if absf(o.dir2.dot(dir)) > 0.5:
 			continue   # Misma calle (delante, detrás o de frente): no cruza mi paso.
 		var qo: Vector2 = Vector2(o.global_position.x, o.global_position.z)
-		if qo.distance_to(pb) < hs:
+		if qo.distance_to(pb) < hs + 1.0:
 			return true   # Ya está dentro del cruce.
 		if not con_luz and o.hacia == a.hacia:
 			var t_o: float = _prioridad(o)
@@ -648,8 +736,12 @@ func _mover_coche(a: Agente, delta: float) -> void:
 	var largo_tramo: float = pa.distance_to(pb)
 	var dir: Vector2 = (pb - pa).normalized()
 	var hs: float = _hs(a.red)
+	var radio: float = _radio_giro(a)
+	if a.en_giro:
+		dir = _tangente(a.curva, a.curva_t)   # Dentro del cruce, "delante" es hacia donde apunta la curva.
 	var objetivo: float = a.vmax
 	var motivo: int = 0   # 0 libre, 1 parada legítima (rojo, paso de peatones), 2 atasco.
+	var parar: int = 0    # Debe esperar en la línea de detención: 0 no, 1 semáforo, 2 tráfico.
 	a.t_golpe = maxf(0.0, a.t_golpe - delta)
 	a.fantasma = maxf(0.0, a.fantasma - delta)
 	if a.frenazo > 0.0:
@@ -657,30 +749,39 @@ func _mover_coche(a: Agente, delta: float) -> void:
 		objetivo = 0.0
 		motivo = 1
 	var restante: float = largo_tramo - a.d
-	# --- Línea de detención ante el cruce al que llegamos ---
-	var linea: float = restante - (hs + 2.0)
-	if linea > -0.5 and linea < 30.0 and not (linea <= 0.0 and a.vel > 0.8):
-		var parar: int = 0   # 0 no, 1 semáforo, 2 tráfico
-		if a.red["luz"].has(a.hacia):
-			var e: int = estado_semaforo(_eje_de(dir), a.hacia)
-			if e == 2:
+	if not a.en_giro:
+		if not a.sig_ok and restante < 45.0:
+			_elegir_siguiente(a)
+		# --- Línea de detención ante el cruce al que llegamos ---
+		var linea: float = restante - radio
+		if linea > -0.5 and linea < 30.0 and not (linea <= 0.0 and a.vel > 0.8):
+			if a.red["luz"].has(a.hacia):
+				var e: int = estado_semaforo(_eje_de(dir), a.hacia)
+				if e == 2:
+					parar = 1
+				elif e == 1 and a.vel * a.vel / 9.0 < linea:
+					parar = 1
+			if parar == 0 and linea < 14.0 and _cruce_ocupado(a, pb, dir, hs):
+				parar = 2
+			if parar == 0 and _peaton_en_paso(a.red, a.hacia, a.desde):
 				parar = 1
-			elif e == 1 and a.vel * a.vel / 9.0 < linea:
-				parar = 1
-		if parar == 0 and linea < 14.0 and _cruce_ocupado(a, pb, dir, hs):
-			parar = 2
-		if parar == 0 and _peaton_en_paso(a.red, a.hacia, a.desde):
-			parar = 1
-		if parar > 0:
-			objetivo = minf(objetivo, _frenar_para(linea, 0.0))
-			motivo = maxi(motivo, parar)
-			a.bloqueo = "semaforo" if parar == 1 else "cruce"
-	# --- Paso de peatones justo después de salir de un cruce ---
-	if a.d < hs - 2.0 and _peaton_en_paso(a.red, a.desde, a.hacia):
-		objetivo = minf(objetivo, _frenar_para(hs - 2.0 - a.d, 0.0))
-		motivo = maxi(motivo, 1)
+			if parar == 0 and a.sig_ok and _peaton_en_paso(a.red, a.hacia, a.sig):
+				parar = 1   # Gente cruzando justo en la calle por la que voy a salir.
+			if parar > 0:
+				objetivo = minf(objetivo, _frenar_para(linea, 0.0))
+				motivo = maxi(motivo, parar)
+				a.bloqueo = "semaforo" if parar == 1 else "cruce"
+		# --- Frenar antes de una curva cerrada ---
+		if a.sig_ok and a.curva_vel < a.vmax and linea < 30.0:
+			objetivo = minf(objetivo, sqrt(a.curva_vel * a.curva_vel + 2.0 * 4.5 * maxf(0.0, linea)))
+		# --- Paso de peatones justo después de salir de un cruce ---
+		if a.d < hs - 2.0 and _peaton_en_paso(a.red, a.desde, a.hacia):
+			objetivo = minf(objetivo, _frenar_para(hs - 2.0 - a.d, 0.0))
+			motivo = maxi(motivo, 1)
+	else:
+		objetivo = minf(objetivo, a.curva_vel)
 	# --- Algo aparcado en mi carril: lo rodeo por el otro carril si no viene nadie de frente ---
-	var quiere_rodear: bool = _estorbo_estatico(a, dir) and (a.desvio > 0.5 or _carril_contrario_libre(a))
+	var quiere_rodear: bool = not a.en_giro and restante > radio + 14.0 and a.d > radio + 2.0 			and _estorbo_estatico(a, dir) and (a.desvio > 0.5 or _carril_contrario_libre(a))
 	a.desvio = move_toward(a.desvio, 3.6 if quiere_rodear else 0.0, 3.0 * delta)
 	# --- Obstáculos por delante ---
 	var libre: Array = _distancia_libre(a, dir)
@@ -703,17 +804,31 @@ func _mover_coche(a: Agente, delta: float) -> void:
 	elif a.vel >= 0.3 or motivo != 2:
 		a.espera = maxf(0.0, a.espera - delta * 2.0)
 	a.vel = move_toward(a.vel, objetivo, (7.0 if objetivo < a.vel else 3.0) * delta)
-	a.d += a.vel * delta
 	for i in a.giros.size():
 		(a.giros[i] as Node3D).rotation.x -= a.vel * delta / maxf(0.05, float(a.radios[i]))
-	if a.d >= largo_tramo:
-		var sobra: float = a.d - largo_tramo
-		var dist_j: float = (a.global_position - _jugador.global_position).length()
-		if (a.red["vec"][a.hacia] as Array).size() == 1 and dist_j > 45.0:
-			a.set_meta("muerto", true)   # Fin de calle sin salida y fuera de la vista.
-		else:
-			_siguiente_nodo(a)
-			a.d = sobra
+	var dist_j: float = (a.global_position - _jugador.global_position).length()
+	if a.en_giro:
+		a.curva_t += a.vel * delta / a.curva_largo
+		if a.curva_t >= 1.0:
+			_terminar_giro(a, (a.curva_t - 1.0) * a.curva_largo)
+	else:
+		a.d += a.vel * delta
+		if parar > 0:
+			a.d = minf(a.d, largo_tramo - radio + 0.3)   # Ni un palmo más allá de la línea con rojo.
+		if a.d >= largo_tramo - radio and a.curva.size() == 4 and a.sig_ok and parar == 0:
+			if (a.red["vec"][a.hacia] as Array).size() == 1 and dist_j > 45.0:
+				a.set_meta("muerto", true)   # Fin de calle sin salida y fuera de la vista.
+				a.d = largo_tramo - radio    # (se queda quieto hasta que lo borre _gestionar)
+				a.vel = 0.0
+			else:
+				_empezar_giro(a, minf(a.d - (largo_tramo - radio), 0.6))
+		elif a.d >= largo_tramo and parar == 0:
+			var sobra: float = a.d - largo_tramo
+			if (a.red["vec"][a.hacia] as Array).size() == 1 and dist_j > 45.0:
+				a.set_meta("muerto", true)   # Fin de calle sin salida y fuera de la vista.
+			else:
+				_siguiente_nodo(a)
+				a.d = sobra
 	_colocar(a, false, delta)
 	_comprobar_atropello(a, dir)
 
