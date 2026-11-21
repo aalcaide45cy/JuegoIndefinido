@@ -1,13 +1,15 @@
 # aviso_oficio.gd
 # -----------------------------------------------------------------------------
 # Un AVISO de tu oficio por la calle: policía (altercado), médico (herido),
-# bombero (fuego) o mecánico (coche averiado). Tiene una columna de luz para
+# bombero (fuego), mecánico (coche averiado) o peluquero/barbero (cliente). Tiene una columna de luz para
 # verlo de lejos. Acércate y pulsa E varias veces ("golpes") para resolverlo;
 # cobras el pago (por el rango) y ganas experiencia de oficio. Si tarda demasiado
 # en atenderse, desaparece sin pago. Lo crea y borra gestor_oficio.gd.
 # -----------------------------------------------------------------------------
 class_name AvisoOficio
 extends Interactuable
+
+const Aspecto = preload("res://scripts/jugador/aspecto.gd")
 
 signal resuelto
 signal caducado
@@ -27,7 +29,8 @@ func _ready() -> void:
 	golpes = int(datos.get("golpes", 1))
 	var tipo: String = str(datos.get("tipo", "altercado"))
 	var col: Color = {"altercado": Color(0.3, 0.45, 1.0), "herido": Color(1.0, 0.3, 0.3),
-			"fuego": Color(1.0, 0.55, 0.1), "averia": Color(1.0, 0.85, 0.2)}.get(tipo, Color(1, 1, 1))
+			"fuego": Color(1.0, 0.55, 0.1), "averia": Color(1.0, 0.85, 0.2),
+			"cliente": Color(0.85, 0.4, 0.9)}.get(tipo, Color(1, 1, 1))
 	# Columna de luz translúcida.
 	var haz: MeshInstance3D = MeshInstance3D.new()
 	var cil: CylinderMesh = CylinderMesh.new()
@@ -73,6 +76,14 @@ func _ready() -> void:
 			_llama.light_energy = 3.0
 			_llama.position.y = 1.5
 			add_child(_llama)
+		"cliente":
+			# Un cliente sentado en un sillón con el peinado que pide (ver datos/peluqueria.gd).
+			Construir.caja(self, Vector3(0, 0.35, 0.2), Vector3(0.9, 0.5, 0.9), Color(0.55, 0.15, 0.2), false)
+			Construir.caja(self, Vector3(0, 1.0, 0.6), Vector3(0.9, 1.1, 0.15), Color(0.55, 0.15, 0.2), false)
+			var cliente: Node3D = Node3D.new()
+			cliente.position = Vector3(0, 0.45, 0.1)
+			add_child(cliente)
+			Aspecto.vestir(cliente, datos.get("aspecto_cliente", {}))
 		"averia":
 			Construir.caja(self, Vector3(0, 0.6, 0), Vector3(1.9, 0.8, 4.2), Color(0.55, 0.55, 0.6), false)
 			Construir.caja(self, Vector3(0, 1.2, -0.3), Vector3(1.7, 0.6, 2.2), Color(0.6, 0.7, 0.8), false)

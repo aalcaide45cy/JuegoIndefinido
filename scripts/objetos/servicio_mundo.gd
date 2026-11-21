@@ -23,7 +23,8 @@ const Casino = preload("res://scripts/datos/casino.gd")
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
 		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos",
 		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino", "club": "Club de Copas", "timba": "Timba",
-		"prestamista": "Préstamos", "mercado_negro": "Mercado negro"}
+		"prestamista": "Préstamos", "mercado_negro": "Mercado negro",
+		"peluqueria": "Peluquería", "barberia": "Barbería"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -126,6 +127,8 @@ func texto_accion() -> String:
 			return "Hospital: curarte (%d $)  ·  Mayús+E: %s" % [_precio_cura(), _texto_oficio()]
 		"comisaria", "bomberos":
 			return _texto_oficio()
+		"peluqueria", "barberia":
+			return "%s: cambiar de peinado  ·  Mayús+E: %s" % [NOMBRES[servicio], _texto_oficio()]
 		"taberna":
 			return "Tomar algo (%d $): algo de vida y menos sospecha" % Economia.TABERNA_PRECIO
 		"banco":
@@ -179,6 +182,13 @@ func usar(_jugador: Node) -> void:
 			else:
 				_usar_hospital()
 		"comisaria", "bomberos": _usar_oficio()
+		"peluqueria", "barberia":
+			if mayus:
+				_usar_oficio()
+			elif _jugador != null and "hud" in _jugador and _jugador.hud != null:
+				var v: VentanaPeluqueria = VentanaPeluqueria.new()
+				v.local = servicio
+				_jugador.hud.abrir_ventana(v)
 		"taberna": _usar_taberna()
 		"banco": _usar_banco(mayus)
 		"discoteca": _usar_discoteca(mayus)
