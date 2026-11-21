@@ -62,7 +62,7 @@ func _fila(item: Dictionary) -> void:
 	precio.custom_minimum_size.x = 80.0
 	precio.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	fila.add_child(precio)
-	var boton: Button = Hud.crear_boton("Reparar" if Locales.es_taller(local_mundo.local) else "Pedir", _pedir.bind(item))
+	var boton: Button = Hud.crear_boton("Reparar" if Locales.es_taller(local_mundo.local) else ("Dormir" if item.has("dormir") else ("Entrenar" if item.has("entrena") else "Pedir")), _pedir.bind(item))
 	boton.custom_minimum_size.x = 100.0
 	fila.add_child(boton)
 	_filas.append({"item": item, "boton": boton, "precio": precio})

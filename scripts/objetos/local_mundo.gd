@@ -190,6 +190,8 @@ func _planta() -> void:
 		"taberna": _taberna()
 		"taller": _taller()
 		"salon", "barberia": _salon(estilo == "barberia")
+		"posada": _posada()
+		"gimnasio": _gimnasio()
 
 
 # Posiciones de mesa libres de pasillos y mostrador.
@@ -421,6 +423,64 @@ func _taller() -> void:
 	luz(-W * 0.2, D * 0.35, 2.8)
 	luz(W * 0.2, D * 0.55, 2.8)
 	luz(-W * 0.2, D * 0.8, 2.8)
+
+
+func _posada() -> void:
+	mostrador(clampf(W * 0.3, 3.5, 5.0), -W * 0.2)
+	# Camas con cortina a la derecha y al fondo, y un salón con chimenea a la izquierda.
+	for iv in [2.8, 5.6, 8.4]:
+		var ivf: float = float(iv)
+		if ivf > D - 2.4:
+			continue
+		c(W / 2.0 - 1.1, ivf, 0.0, 1.9, 0.45, 1.0, madera, true)
+		c(W / 2.0 - 1.1, ivf, 0.45, 1.8, 0.2, 0.95, tela, false)
+		c(W / 2.0 - 0.3, ivf, 0.45, 0.15, 0.5, 0.9, Color(0.95, 0.95, 0.9), false)
+		c(W / 2.0 - 1.1, ivf + 1.15, 0.0, 1.9, 1.6, 0.1, panel, false)
+	c(-W / 2.0 + 0.6, D * 0.5, 0.0, 1.0, 1.9, 2.0, Color(0.45, 0.43, 0.42), true)
+	var fuego: Node3D = Construir.caja(self, p(-W / 2.0 + 1.05, D * 0.5, 0.5), Vector3(0.08, 0.6, 1.1), Color(1.0, 0.5, 0.1), false, 2.8)
+	if fuego != null:
+		_decor_vivo.append(fuego)
+	var lf: OmniLight3D = Construir.luz(self, p(-W / 2.0 + 1.8, D * 0.5, 1.0), Color(1.0, 0.55, 0.2), 1.1, 6.5)
+	lf.shadow_enabled = false
+	_luces_nodos.append(lf)
+	c(-W / 2.0 + 2.6, D * 0.5, 0.0, 0.9, 0.45, 2.4, tela, true)
+	c(-W / 2.0 + 3.8, D * 0.5, 0.0, 0.7, 0.4, 0.7, madera, true)
+	estante_fondo(minf(W * 0.2, 3.0), 2, [Color(0.5, 0.3, 0.15), Color(0.3, 0.45, 0.6), Color(0.8, 0.7, 0.4)])
+	plantas([Vector2(-W / 2.0 + 0.6, 1.0), Vector2(W / 2.0 - 0.6, 1.0)])
+	cuadro(-W / 2.0, 3.5, 1.7, "izq")
+	luz(-W * 0.2, D * 0.4, 2.7)
+	luz(W * 0.2, D * 0.4, 2.7)
+	_orbe(0.0, D * 0.55, 2.3, Color(0.6, 0.7, 1.0))   # Una luna de bruma que flota.
+
+
+func _gimnasio() -> void:
+	mostrador(clampf(W * 0.25, 3.0, 4.5), W * 0.3)
+	# Banco con barra, rack de mancuernas, cintas y saco de boxeo.
+	for iv in [3.2, 5.6]:
+		var ivf: float = float(iv)
+		c(-W * 0.3, ivf, 0.0, 0.5, 0.45, 1.3, Color(0.2, 0.2, 0.24), true)
+		c(-W * 0.3, ivf, 0.9, 2.0, 0.1, 0.1, Color(0.7, 0.7, 0.75), false)
+		for dx in [-0.9, 0.9]:
+			c(-W * 0.3 + float(dx), ivf, 0.6, 0.12, 0.6, 0.6, Color(0.1, 0.1, 0.12), false)
+	c(-W / 2.0 + 0.5, D * 0.6, 0.0, 0.6, 1.0, 3.0, Color(0.25, 0.25, 0.3), true)
+	for i in 6:
+		c(-W / 2.0 + 0.5, D * 0.6 - 1.2 + i * 0.5, 1.0, 0.3, 0.3, 0.3, Color.from_hsv(float(i) / 6.0, 0.7, 0.8), false)
+	for iv in [3.0, 5.0, 7.0]:
+		c(W / 2.0 - 1.2, float(iv), 0.0, 1.0, 0.25, 2.0, Color(0.15, 0.15, 0.18), true)
+		c(W / 2.0 - 0.5, float(iv), 0.25, 0.1, 1.2, 0.1, Color(0.7, 0.7, 0.75), false)
+		c(W / 2.0 - 0.5, float(iv), 1.3, 0.3, 0.3, 0.6, Color(0.2, 0.3, 0.5), false)
+	c(0.0, D - 3.0, 0.0, 0.1, 0.1, 0.1, Color(0.3, 0.3, 0.3), false)
+	c(0.0, D * 0.55, 1.2, 0.05, 1.4, 0.05, Color(0.3, 0.3, 0.3), false)
+	c(0.0, D * 0.55, 0.4, 0.5, 1.0, 0.5, Color(0.7, 0.15, 0.15), true)
+	# Espejo grande y colchonetas.
+	c(0.0, D - 0.1, 0.8, W * 0.3, 1.5, 0.05, Color(0.7, 0.85, 0.95), false)
+	c(W * 0.12, D * 0.35, 0.0, 3.0, 0.08, 2.2, Color(0.2, 0.55, 0.35), false)
+	var neon: Node3D = Construir.caja(self, p(0.0, D - 0.25, 2.55), Vector3(2.2, 0.14, 0.06), Color(1.0, 0.4, 0.1), false, 3.0)
+	if neon != null:
+		_decor_vivo.append(neon)
+	luz(-W * 0.2, D * 0.4, 2.8)
+	luz(W * 0.2, D * 0.4, 2.8)
+	luz(0.0, D * 0.8, 2.8)
 
 
 # Peluquería y barbería: sillones frente a espejos, lavacabezas y sala de espera.
@@ -671,6 +731,9 @@ static func pedir(item: Dictionary, v = null, id_local: String = "") -> Dictiona
 				return {"ok": false, "msg": "Acerca un vehículo al taller (a menos de 18 m)."}
 			return {"ok": false, "msg": "Eso no hace falta ahora."}
 	var magico: String = str(item.get("magico", ""))
+	var motivo: String = _motivo_especial(item)
+	if motivo != "":
+		return {"ok": false, "msg": motivo}
 	if magico != "" and not Juego.tiene(magico, 1):
 		return {"ok": false, "msg": "Para eso necesitas una %s." % str(Juego.DatosObjetos.datos(magico)["nombre"])}
 	if clase == "bidon" and not Juego.cabe("bidon_gasolina", 1):
@@ -687,6 +750,10 @@ static func pedir(item: Dictionary, v = null, id_local: String = "") -> Dictiona
 	if objeto != "":
 		Juego.anadir(objeto, 1)
 		return {"ok": true, "msg": "Te llevas %s (%d $)." % [str(item["nombre"]).to_lower(), precio]}
+	if item.has("dormir"):
+		return {"ok": true, "msg": _dormir(item, precio)}
+	if item.has("entrena"):
+		return {"ok": true, "msg": _entrenar(item, precio)}
 	return {"ok": true, "msg": _aplicar_consumo(item, precio)}
 
 
@@ -696,6 +763,58 @@ static func precio_final(item: Dictionary, id_local: String) -> int:
 	if id_local != "" and not item.has("vehiculo"):
 		p = maxi(1, int(round(p * (1.0 - Juego.descuento_servicio(id_local)))))
 	return p
+
+
+static var _entrenos_dia: int = -1
+static var _entrenos: Dictionary = {}
+
+
+# Por qué no se puede usar algo de la posada o del gimnasio ("" si se puede).
+static func _motivo_especial(item: Dictionary) -> String:
+	if item.has("entrena"):
+		if Juego.resistencia < 40.0:
+			return "Estás sin aliento. Descansa o tómate un batido."
+		var attr: String = str(item["entrena"])
+		if _entrenos_dia != Juego.dia:
+			_entrenos_dia = Juego.dia
+			_entrenos.clear()
+		if attr != "azar" and _entrenos.has(attr):
+			return "Hoy ya has entrenado eso. Vuelve mañana (los músculos también descansan)."
+		if attr != "azar" and Juego.atributo(attr) >= 20:
+			return "Ya estás al máximo en eso."
+	return ""
+
+
+static func _entrenar(item: Dictionary, precio: int) -> String:
+	var attr: String = str(item["entrena"])
+	if attr == "azar":
+		attr = str(["fuerza", "agilidad", "constitucion", "punteria", "carisma", "sigilo", "ojo"][randi() % 7])
+		Juego.resistencia = maxf(0.0, Juego.resistencia - 15.0)
+	else:
+		_entrenos[attr] = true
+		Juego.resistencia = maxf(0.0, Juego.resistencia - 50.0)
+		Juego.comer(-10.0)
+		Juego.beber(-15.0)
+	Juego.subir_atributo(attr, 1)
+	Juego.cambio.emit()
+	return "Entrenas y subes %s a %d (%d $)." % [str(Juego.Estadisticas.nombre(attr)).to_lower(), Juego.atributo(attr), precio]
+
+
+static func _dormir(item: Dictionary, precio: int) -> String:
+	var horas: float = fposmod(7.0 - Juego.hora, 24.0)
+	if horas < 1.0:
+		horas += 24.0
+	Juego.avanzar_horas(horas)
+	Juego.vida = Juego.vida_max()
+	Juego.resistencia = Juego.resistencia_max()
+	Juego.agotado = false
+	Juego.comer(-25.0)
+	Juego.beber(-25.0)
+	for e in item.get("efectos", []):
+		var ef: Dictionary = e
+		Juego.aplicar_efecto(str(ef["id"]), float(ef["dur"]), float(ef.get("f", 1.0)))
+	Juego.cambio.emit()
+	return "Duermes %d horas y te despiertas descansado (%d $)." % [int(round(horas)), precio]
 
 
 static func _aplicar_taller(clase: String, v, precio: int) -> String:

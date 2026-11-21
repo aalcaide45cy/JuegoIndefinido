@@ -758,9 +758,10 @@ const SERVICIOS_CIUDAD: Dictionary = {Vector2i(1, 1): "banco", Vector2i(-2, -1):
 		Vector2i(3, 2): "casino", Vector2i(-4, -3): "club", Vector2i(-4, 1): "timba",
 		Vector2i(0, 3): "prestamista", Vector2i(3, -3): "mercado_negro",
 		Vector2i(-2, 1): "peluqueria", Vector2i(-1, -2): "barberia",
-		Vector2i(2, 0): "restaurante", Vector2i(-2, 2): "bar", Vector2i(1, 2): "cafeteria", Vector2i(-2, -2): "panaderia"}
+		Vector2i(2, 0): "restaurante", Vector2i(-2, 2): "bar", Vector2i(1, 2): "cafeteria", Vector2i(-2, -2): "panaderia",
+		Vector2i(3, 0): "posada", Vector2i(2, 2): "gimnasio"}
 const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna", Vector2i(-2, 1): "hospital", Vector2i(1, 0): "peluqueria",
-		Vector2i(0, 1): "panaderia", Vector2i(-1, 1): "bar", Vector2i(-1, -2): "taller"}
+		Vector2i(0, 1): "panaderia", Vector2i(-1, 1): "bar", Vector2i(-1, -2): "taller", Vector2i(0, -2): "posada"}
 const COLOR_SERVICIO: Dictionary = {"banco": Color(0.7, 0.62, 0.35), "taberna": Color(0.5, 0.3, 0.18),
 		"hospital": Color(0.88, 0.88, 0.86), "taller": Color(0.3, 0.32, 0.36), "gasolinera": Color(0.85, 0.85, 0.8),
 		"comisaria": Color(0.32, 0.38, 0.55), "bomberos": Color(0.72, 0.28, 0.22),

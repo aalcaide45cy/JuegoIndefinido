@@ -61,7 +61,7 @@ func _ready() -> void:
 	jugador.global_position = Vector3(p.x, h + 20.0, p.y)
 	await get_tree().create_timer(6.0).timeout
 	var n: int = 1
-	for nombre in ["peluqueria", "barberia"]:
+	for nombre in ["posada", "gimnasio"]:
 		var sv = _servicio(nombre)
 		if sv == null:
 			print("No encontrado: ", nombre)

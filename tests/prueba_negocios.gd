@@ -126,6 +126,24 @@ func _ready() -> void:
 	r = LocalMundo.pedir(pan)
 	comprobar(bool(r["ok"]) and J.cuenta("pan") == n_pan + 1, "pan para llevar")
 
+	# --- Posada y gimnasio ---
+	J.dinero = 500
+	J.hora = 23.0
+	J.vida = 30.0
+	var dia0: int = J.dia
+	r = LocalMundo.pedir(Locales.PRODUCTOS["cama_posada"])
+	comprobar(bool(r["ok"]) and J.hora == 7.0 and J.dia == dia0 + 1 and J.vida == J.vida_max(), "dormir en la posada: hora 7, día siguiente, vida máxima (%s)" % str(J.hora))
+	J.resistencia = 100.0
+	var f0: int = J.atributo("fuerza")
+	r = LocalMundo.pedir(Locales.PRODUCTOS["entrena_fuerza"])
+	comprobar(bool(r["ok"]) and J.atributo("fuerza") == f0 + 1 and J.resistencia < 100.0, "pesas suben la fuerza")
+	J.resistencia = 100.0
+	r = LocalMundo.pedir(Locales.PRODUCTOS["entrena_fuerza"])
+	comprobar(not bool(r["ok"]) and J.atributo("fuerza") == f0 + 1, "solo una vez al día por atributo")
+	J.resistencia = 10.0
+	r = LocalMundo.pedir(Locales.PRODUCTOS["entrena_agilidad"])
+	comprobar(not bool(r["ok"]), "sin aliento no se entrena")
+
 	# --- Taller con un vehículo de mentira ---
 	var coche: Node3D = _vehiculo_falso(escena)
 	coche.set("salud", 40.0)

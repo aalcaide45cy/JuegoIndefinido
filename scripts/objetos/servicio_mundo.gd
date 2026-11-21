@@ -26,7 +26,7 @@ const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital":
 		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino", "club": "Club de Copas", "timba": "Timba",
 		"prestamista": "Préstamos", "mercado_negro": "Mercado negro",
 		"peluqueria": "Peluquería", "barberia": "Barbería",
-		"restaurante": "Restaurante", "bar": "Bar", "cafeteria": "Cafetería", "panaderia": "Panadería"}
+		"restaurante": "Restaurante", "bar": "Bar", "cafeteria": "Cafetería", "panaderia": "Panadería", "posada": "Posada", "gimnasio": "Gimnasio"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -136,7 +136,7 @@ func texto_accion() -> String:
 			return _texto_oficio()
 		"peluqueria", "barberia":
 			return "%s: cambiar de peinado  ·  Mayús+E: %s" % [NOMBRES[servicio], _texto_oficio()]
-		"restaurante", "bar", "cafeteria", "panaderia":
+		"restaurante", "bar", "cafeteria", "panaderia", "posada", "gimnasio":
 			return _texto_local()
 		"taberna":
 			return "Tomar algo (%d $): algo de vida y menos sospecha  ·  o entra y pide en el mostrador" % Economia.TABERNA_PRECIO
@@ -198,7 +198,7 @@ func usar(_jugador: Node) -> void:
 				var v: VentanaPeluqueria = VentanaPeluqueria.new()
 				v.local = servicio
 				_jugador.hud.abrir_ventana(v)
-		"restaurante", "bar", "cafeteria", "panaderia":
+		"restaurante", "bar", "cafeteria", "panaderia", "posada", "gimnasio":
 			if mayus and Juego.DatosOficios.oficio_de_lugar(servicio) != "":
 				_usar_oficio()
 			else:

@@ -67,6 +67,22 @@ const LOCALES: Dictionary = {
 		"nombres": ["Taberna del Jabalí", "Taberna La Jarra Rota", "Posada del Cuervo", "Taberna El Tonel", "Taberna Los Ocho Barriles"],
 		"fantasia": "La hidromiel de bruma sube la fama y ayuda a escuchar rumores.",
 	},
+	"posada": {
+		"nombre": "Posada", "npc": "Posadero", "estilo": "posada",
+		"ancho": 20.0, "fondo": 14.0, "color": Color(0.6, 0.45, 0.3), "franja": Color(0.3, 0.45, 0.75),
+		"abre": 0.0, "cierra": 24.0,
+		"carta": ["cama_posada", "cama_bruma", "desayuno_posada", "agua"],
+		"nombres": ["Posada del Gallo Dormilón", "Hostal La Almohada", "Posada Luna de Miel", "Hostal El Cuco", "Posada Las Cuatro Camas"],
+		"fantasia": "La cama de bruma te regala un sueño con efectos al despertar.",
+	},
+	"gimnasio": {
+		"nombre": "Gimnasio", "npc": "Entrenador", "estilo": "gimnasio",
+		"ancho": 20.0, "fondo": 14.0, "color": Color(0.35, 0.5, 0.6), "franja": Color(0.9, 0.35, 0.15),
+		"abre": 7.0, "cierra": 23.0,
+		"carta": ["entrena_fuerza", "entrena_agilidad", "entrena_constitucion", "entrena_bruma", "batido_proteico", "agua"],
+		"nombres": ["Gimnasio Músculo de Piedra", "Gimnasio El Mamut", "Gimnasio Titán", "Gimnasio La Pesa Feliz", "Gimnasio Hierro y Bruma"],
+		"fantasia": "El entrenamiento de bruma sube un atributo al azar sin pasar por las pesas.",
+	},
 	"peluqueria": {
 		"nombre": "Peluquería", "npc": "Peluquera", "estilo": "salon", "tipo": "aspecto",
 		"ancho": 18.0, "fondo": 12.0, "color": Color(0.85, 0.6, 0.7), "franja": Color(0.95, 0.45, 0.7),
@@ -152,6 +168,18 @@ const PRODUCTOS: Dictionary = {
 			"efectos": [{"id": "velocidad", "dur": 90.0, "f": 0.9}], "desc": "Te hace correr un buen rato."},
 	"pan_llevar": {"nombre": "Pan para llevar", "precio": 5, "objeto": "pan", "desc": "Se guarda en la mochila."},
 	"empanada_llevar": {"nombre": "Empanada para llevar", "precio": 12, "objeto": "empanada", "desc": "Se guarda en la mochila."},
+	# ------------------------------ posada y gimnasio ---------------------------
+	#   dormir: pasa la noche hasta las 7:00 (vida y aliento al máximo).  entrena: sube un atributo (1 al día cada uno).
+	"cama_posada": {"nombre": "Cama para pasar la noche", "precio": 40, "dormir": 1, "desc": "Duermes hasta las 7:00. Vida y aliento al máximo."},
+	"cama_bruma": {"nombre": "Cama de bruma", "precio": 90, "dormir": 1, "magico": "hierba_bruma",
+			"efectos": [{"id": "regeneracion", "dur": 60.0, "f": 1.0}, {"id": "concentracion", "dur": 240.0, "f": 1.0}],
+			"desc": "Sueños lúcidos: te despiertas con concentración."},
+	"desayuno_posada": {"nombre": "Desayuno de la casa", "precio": 12, "hambre": 40, "sed": 20, "desc": "Pan, queso y leche."},
+	"entrena_fuerza": {"nombre": "Pesas", "precio": 25, "entrena": "fuerza", "desc": "Sube fuerza. Cansa y da hambre."},
+	"entrena_agilidad": {"nombre": "Cinta y comba", "precio": 25, "entrena": "agilidad", "desc": "Sube agilidad. Cansa y da sed."},
+	"entrena_constitucion": {"nombre": "Circuito de resistencia", "precio": 30, "entrena": "constitucion", "desc": "Sube constitución (más vida máxima)."},
+	"entrena_bruma": {"nombre": "Entrenamiento de bruma", "precio": 70, "entrena": "azar", "magico": "hierba_bruma", "desc": "Sube un atributo al azar, sin sudar tanto."},
+	"batido_proteico": {"nombre": "Batido proteico", "precio": 10, "hambre": 15, "sed": 20, "energia": 30, "desc": "Recupera el aliento."},
 	# --------------------------------- taller ---------------------------------
 	"reparar": {"nombre": "Reparación completa", "precio": 0, "vehiculo": "reparar", "desc": "Chapa y motor como nuevos."},
 	"revision": {"nombre": "Revisión rápida", "precio": 0, "vehiculo": "revision", "desc": "Recupera un 40 % de salud, más barata."},
