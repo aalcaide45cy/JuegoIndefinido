@@ -125,6 +125,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"rep_hampa": Juego.rep_hampa,
 		"territorios": Juego.territorios,
 		"reclutas": Juego.reclutas,
+		"asaltos_info": Juego.asaltos_info,
 		"deuda": Juego.deuda,
 		"dias_deuda": Juego.dias_deuda,
 		"rep_ley": Juego.rep_ley,
@@ -256,6 +257,15 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		for k in terr:
 			Juego.territorios[str(k)] = "jugador"
 	Juego.reclutas = clampi(int(datos.get("reclutas", 0)), 0, 4)
+	var info_asaltos = datos.get("asaltos_info")
+	Juego.asaltos_info = Asaltos.nueva_info()   # Partidas antiguas: sin asaltos.
+	if info_asaltos is Dictionary:
+		var casas_a = info_asaltos.get("casas", {})
+		if casas_a is Dictionary:
+			Juego.asaltos_info["casas"] = casas_a
+		Juego.asaltos_info["buscado_hasta"] = int(info_asaltos.get("buscado_hasta", 0))
+		Juego.asaltos_info["asaltos"] = int(info_asaltos.get("asaltos", 0))
+		Juego.asaltos_info["robado"] = int(info_asaltos.get("robado", 0))
 	Juego.deuda = maxi(0, int(datos.get("deuda", 0)))
 	Juego.dias_deuda = maxi(0, int(datos.get("dias_deuda", 0)))
 	Juego.rep_hampa = clampi(int(datos.get("rep_hampa", 0)), -100, 100)

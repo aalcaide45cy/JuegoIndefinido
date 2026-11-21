@@ -42,6 +42,8 @@ class Plano:
 	var cajas: Array = []
 	var luces: Array = []
 	var habitaciones: Array = []
+	var camas: Array = []      # Para los asaltos: [{"pos": centro de la cama (mundo), "yaw": giro del que duerme}].
+	var muebles: Array = []    # Para los asaltos: [{"tipo": cajon|joyero|armario, "pos": mundo}].
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	var madera: Color
 	var tela: Color
@@ -76,6 +78,24 @@ class Plano:
 		var za: float = z + cara * (D / 2.0 - r.position.y)
 		var zb: float = z + cara * (D / 2.0 - r.end.y)
 		habitaciones.append(Rect2(x + r.position.x, minf(za, zb), r.size.x, absf(za - zb)))
+
+	# Anota la cama cuya primera caja es cajas[desde]: el que duerme se tumba con la cabeza hacia la pared más cercana.
+	func anotar_cama(desde: int) -> void:
+		var cj: Array = cajas[desde]
+		var pos: Vector3 = cj[0]
+		var tam: Vector3 = cj[1]
+		var yaw: float = 0.0
+		var rel_x: float = pos.x - x
+		var rel_z: float = pos.z - z
+		if tam.x > tam.z:
+			yaw = -PI / 2.0 if rel_x > 0.0 else PI / 2.0
+		else:
+			yaw = 0.0 if rel_z * cara < 0.0 else PI
+		camas.append({"pos": pos, "yaw": yaw})
+
+	# Anota un mueble con botín cuya primera caja es cajas[desde].
+	func anotar_mueble(desde: int, tipo: String) -> void:
+		muebles.append({"tipo": tipo, "pos": (cajas[desde] as Array)[0]})
 
 	func color_madera() -> Color:
 		return madera
@@ -116,6 +136,7 @@ static func generar(c: Dictionary) -> Dictionary:
 			else:
 				_vivienda_grande(P, distrito == "rico")
 	return {"cajas": P.cajas, "luces": P.luces, "habitaciones": P.habitaciones, "tipo": tipo,
+			"camas": P.camas, "muebles": P.muebles,
 			"entrada": Vector3(P.x, P.y + 0.1, P.z + P.cara * (P.D / 2.0 - 0.6))}
 
 
@@ -123,21 +144,27 @@ static func generar(c: Dictionary) -> Dictionary:
 
 static func _cama(P: Plano, r: Rect2, pared: String, a: float, off: float = 0.0) -> void:
 	var m: Color = P.color_madera()
+	var n0: int = P.cajas.size()
 	P.pieza(r, pared, a, off, 0, 0.28, 1.0, 1.5, 0.4, 2.0, m)
 	P.pieza(r, pared, a, off, 0, 0.55, 1.1, 1.42, 0.18, 1.8, P.color_tela())
 	P.pieza(r, pared, a, off, 0, 0.7, 0.38, 1.1, 0.14, 0.4, BLANCO, false)
 	P.pieza(r, pared, a, off, 0, 0.65, 0.06, 1.6, 1.0, 0.1, m)
+	P.anotar_cama(n0)
 
 
 static func _mesilla(P: Plano, r: Rect2, pared: String, a: float) -> void:
+	var n0: int = P.cajas.size()
 	P.pieza(r, pared, a, 0.0, 0, 0.25, 0.25, 0.45, 0.5, 0.45, P.color_madera())
 	P.pieza(r, pared, a, 0.0, 0, 0.6, 0.25, 0.2, 0.16, 0.2, Color(0.95, 0.85, 0.4), false)
+	P.anotar_mueble(n0, "joyero" if P.muebles.size() % 2 == 0 else "cajon")   # Asaltos: la mesilla de noche.
 
 
 static func _armario(P: Plano, r: Rect2, pared: String, a: float) -> void:
+	var n0: int = P.cajas.size()
 	P.pieza(r, pared, a, 0.0, 0, 1.05, 0.35, 1.3, 2.1, 0.7, P.color_madera().darkened(0.15))
 	for s in [-0.12, 0.12]:
 		P.pieza(r, pared, a, 0.0, s, 1.0, 0.72, 0.05, 0.3, 0.03, METAL, false)
+	P.anotar_mueble(n0, "armario")   # Asaltos.
 
 
 static func _sofa(P: Plano, r: Rect2, pared: String, a: float, off: float = 0.0) -> void:
@@ -192,12 +219,14 @@ static func _banera(P: Plano, r: Rect2, pared: String, a: float) -> void:
 
 
 static func _escritorio(P: Plano, r: Rect2, pared: String, a: float) -> void:
+	var n0: int = P.cajas.size()
 	var m: Color = P.color_madera()
 	P.pieza(r, pared, a, 0.0, 0, 0.72, 0.35, 1.3, 0.06, 0.7, m)
 	for s in [-0.6, 0.6]:
 		P.pieza(r, pared, a, 0.0, s, 0.35, 0.35, 0.06, 0.7, 0.6, m.darkened(0.2))
 	P.pieza(r, pared, a, 0.0, 0.2, 0.95, 0.2, 0.5, 0.3, 0.05, NEGRO, false)
 	P.pieza(r, pared, a, 0.0, 0, 0.25, 0.9, 0.45, 0.5, 0.45, m.lightened(0.1))   # La silla.
+	P.anotar_mueble(n0, "cajon")   # Asaltos.
 
 
 static func _caja(P: Plano, r: Rect2, pared: String, a: float, off: float, lado: float) -> void:

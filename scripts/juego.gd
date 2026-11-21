@@ -92,6 +92,7 @@ var en_propiedad: Dictionary = {}     # id -> true: casas y huertos COMPRADOS (s
 var granja: Dictionary = {}           # corrales y árboles: id -> estado (animales, producción, nivel).
 var parcelas: Dictionary = {}         # id_huerto -> {semilla, t, total}: cultivo en curso.
 var limites_mundo: Rect2 = Rect2(-5000, -5000, 10000, 10000)   # Todo el mapa (lo fija mundo.gd).
+var asaltos_info: Dictionary = {"casas": {}, "buscado_hasta": 0, "asaltos": 0, "robado": 0}   # Asaltos a casas (ver datos/asaltos.gd).
 var interiores: int = 0              # Cuántos edificios con interior pisas ahora (0 = estás en la calle).
 var viviendas: Dictionary = {}      # id_vivienda -> true si la tienes alquilada.
 var nivel: int = 1
@@ -144,6 +145,7 @@ func reiniciar() -> void:
 	rep_ley = 0
 	territorios = {}
 	reclutas = 0
+	asaltos_info = {"casas": {}, "buscado_hasta": 0, "asaltos": 0, "robado": 0}
 	deuda = 0
 	dias_deuda = 0
 	proteccion_hasta_dia = 0

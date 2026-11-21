@@ -610,6 +610,57 @@ const LISTA: Dictionary = {
 		"color": Color(0.75, 0.7, 0.4), "forma": "caja",
 		"descripcion": "Para el rifle y el de francotirador.",
 	},
+
+	# --------------------- Herramientas y botín de asaltos ---------------------
+	# Ver datos/asaltos.gd: la ganzúa abre en silencio, la palanca rápido y con ruido.
+	"ganzua": {
+		"nombre": "Ganzúa", "tipo": "herramienta", "pila": 5, "precio": 45,
+		"tienda": "ferreteria", "nivel": 2, "habilidad": "",
+		"color": Color(0.65, 0.65, 0.7), "forma": "cuchillo",
+		"descripcion": "Abre puertas y ventanas en silencio. A veces se rompe.",
+	},
+	"palanca": {
+		"nombre": "Palanca", "tipo": "herramienta", "pila": 1, "precio": 30,
+		"tienda": "ferreteria", "nivel": 2, "habilidad": "",
+		"color": Color(0.35, 0.35, 0.4), "forma": "palo",
+		"descripcion": "Fuerza cerraduras rápido, pero se oye hasta en la calle.",
+	},
+	"joyas": {
+		"nombre": "Joyas", "tipo": "material", "pila": 10, "precio": 220,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.75, 0.2), "forma": "bolsita",
+		"descripcion": "Robadas. Se venden por la mitad en cualquier tienda.",
+	},
+	"reloj_oro": {
+		"nombre": "Reloj de oro", "tipo": "material", "pila": 10, "precio": 150,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.9, 0.78, 0.3), "forma": "bolsita",
+		"descripcion": "Robado. Pesa y brilla.",
+	},
+	"plata": {
+		"nombre": "Cubertería de plata", "tipo": "material", "pila": 10, "precio": 90,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.8, 0.8, 0.85), "forma": "caja",
+		"descripcion": "Robada de una vitrina.",
+	},
+	"electronica": {
+		"nombre": "Aparato electrónico", "tipo": "material", "pila": 10, "precio": 120,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.2, 0.22, 0.28), "forma": "caja",
+		"descripcion": "Una radio o un reloj de mesa que alguien echará de menos.",
+	},
+	"licor": {
+		"nombre": "Botella de licor caro", "tipo": "material", "pila": 10, "precio": 60,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.5, 0.25, 0.1), "forma": "caja",
+		"descripcion": "Robada de un mueble bar.",
+	},
+	"cuadro": {
+		"nombre": "Cuadro pequeño", "tipo": "material", "pila": 1, "precio": 400,
+		"tienda": "", "nivel": 1, "habilidad": "",
+		"color": Color(0.55, 0.4, 0.25), "forma": "caja",
+		"descripcion": "Detrás de él estaba la caja fuerte.",
+	},
 }
 
 
