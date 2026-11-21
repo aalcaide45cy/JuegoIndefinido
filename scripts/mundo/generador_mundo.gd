@@ -757,8 +757,10 @@ const SERVICIOS_CIUDAD: Dictionary = {Vector2i(1, 1): "banco", Vector2i(-2, -1):
 		Vector2i(-3, -1): "discoteca", Vector2i(1, -2): "tragaperras",
 		Vector2i(3, 2): "casino", Vector2i(-4, -3): "club", Vector2i(-4, 1): "timba",
 		Vector2i(0, 3): "prestamista", Vector2i(3, -3): "mercado_negro",
-		Vector2i(-2, 1): "peluqueria", Vector2i(-1, -2): "barberia"}
-const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna", Vector2i(-2, 1): "hospital", Vector2i(1, 0): "peluqueria"}
+		Vector2i(-2, 1): "peluqueria", Vector2i(-1, -2): "barberia",
+		Vector2i(2, 0): "restaurante", Vector2i(-2, 2): "bar", Vector2i(1, 2): "cafeteria", Vector2i(-2, -2): "panaderia"}
+const SERVICIOS_PUEBLO: Dictionary = {Vector2i(1, -1): "gasolinera", Vector2i(-2, 0): "taberna", Vector2i(-2, 1): "hospital", Vector2i(1, 0): "peluqueria",
+		Vector2i(0, 1): "panaderia", Vector2i(-1, 1): "bar", Vector2i(-1, -2): "taller"}
 const COLOR_SERVICIO: Dictionary = {"banco": Color(0.7, 0.62, 0.35), "taberna": Color(0.5, 0.3, 0.18),
 		"hospital": Color(0.88, 0.88, 0.86), "taller": Color(0.3, 0.32, 0.36), "gasolinera": Color(0.85, 0.85, 0.8),
 		"comisaria": Color(0.32, 0.38, 0.55), "bomberos": Color(0.72, 0.28, 0.22),
@@ -770,6 +772,10 @@ const NOMBRE_SERVICIO: Dictionary = {"banco": "BANCO", "taberna": "TABERNA", "ho
 		"taller": "TALLER", "gasolinera": "GASOLINERA", "comisaria": "COMISARÍA", "bomberos": "BOMBEROS",
 		"discoteca": "DISCOTECA", "tragaperras": "TRAGAPERRAS", "casino": "CASINO", "club": "CLUB DE COPAS", "timba": "TIMBA",
 		"prestamista": "PRÉSTAMOS", "mercado_negro": "MERCADO NEGRO", "peluqueria": "PELUQUERÍA", "barberia": "BARBERÍA"}
+
+
+# Los negocios con interior (datos/locales.gd) traen su propio color y tamaño.
+const Locales = preload("res://scripts/datos/locales.gd")
 
 
 static func servicio_de(s: Dictionary, k: int, l: int) -> String:
@@ -830,6 +836,9 @@ static func _servicio_edificio(s: Dictionary, k: int, l: int, serv: String) -> D
 	var fondo: float = 12.0
 	var pisos: int = 1
 	var cz: float = bz + 14.0
+	if Locales.existe(serv):
+		ancho = float(Locales.LOCALES[serv]["ancho"])
+		fondo = float(Locales.LOCALES[serv]["fondo"])
 	match serv:
 		"banco":
 			ancho = 20.0
@@ -861,7 +870,7 @@ static func _servicio_edificio(s: Dictionary, k: int, l: int, serv: String) -> D
 			cz = bz + 8.0
 	return {"x": bx + 18.0, "z": cz, "y": s["base"], "w": ancho, "d": fondo, "pisos": pisos,
 			"alto": pisos * 3.2 + (0.8 if serv == "gasolinera" else 0.0), "puerta": 1, "plano": true,
-			"color": COLOR_SERVICIO[serv], "techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": serv}
+			"color": COLOR_SERVICIO.get(serv, (Locales.LOCALES.get(serv, {}) as Dictionary).get("color", Color(0.6, 0.55, 0.5))), "techo": Color(0.25, 0.25, 0.28), "id": "", "servicio": serv}
 
 
 # ---------------------------------- casas -------------------------------------
@@ -1167,7 +1176,8 @@ static func _edificio(mb: ConstructorMalla, c: Dictionary, detalle: bool) -> voi
 	var d: float = c["d"]
 	var alto: float = c["alto"]
 	var centro: Vector3 = Vector3(c["x"], y + alto / 2.0 - 0.2, c["z"])
-	var hueca: bool = detalle and not c.has("servicio")   # Todas las casas son huecas (los servicios tienen su interior aparte).
+	# Todas las casas son huecas. Los servicios también si tienen interior de datos/locales.gd (restaurante, bar, taller...).
+	var hueca: bool = detalle and (not c.has("servicio") or Locales.existe(str(c["servicio"])))
 	if hueca:
 		_paredes_con_interior(mb, c)
 	else:
@@ -1248,7 +1258,7 @@ static func _decorar_servicio(mb: ConstructorMalla, c: Dictionary) -> void:
 			"casino": Color(0.85, 0.65, 0.15), "club": Color(0.85, 0.2, 0.45), "timba": Color(0.6, 0.6, 0.65),
 			"prestamista": Color(0.8, 0.7, 0.2), "mercado_negro": Color(0.3, 0.7, 0.35),
 			"peluqueria": Color(0.95, 0.45, 0.7), "barberia": Color(0.85, 0.15, 0.15)}
-	var franja: Color = franjas[serv]
+	var franja: Color = franjas.get(serv, (Locales.LOCALES.get(serv, {}) as Dictionary).get("franja", Color(0.9, 0.5, 0.2)))
 	mb.caja(Vector3(x, y + 3.4, z + cara * (d / 2.0 + 0.1)), Vector3(minf(w - 2.0, 8.0), 0.9, 0.14), franja)
 	if serv == "hospital":
 		var zc: float = z + cara * (d / 2.0 + 0.1)
