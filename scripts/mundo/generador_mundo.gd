@@ -1621,6 +1621,8 @@ static func _vegetacion(x0: float, z0: float, rect: Rect2, lista: Array, segs: A
 			var pinar: float = densidad_bosque(x, z, h)
 			var fertil: float = smoothstep(-0.2, 0.4, _r_bosque.get_noise_2d(x + 5000.0, z - 3000.0))
 			var pos: Vector2 = Vector2(x, z)
+			if _f(gx, gz, 38) >= Graficos.factor_vegetacion():
+				continue   # Ajuste "densidad de vegetación": se aclara por azar fijo (misma celda, mismo resultado).
 			var azar: float = _f(gx, gz, 33)
 			var giro: float = TAU * _f(gx, gz, 35)
 			var esc: float = 0.7 + 0.8 * _f(gx, gz, 34)
@@ -1662,6 +1664,8 @@ static func _arboles(x0: float, z0: float, rect: Rect2, lista: Array, segs: Arra
 			var h: float = altura_lista(x, z, lista)
 			if _f(gx, gz, 23) > densidad_bosque(x, z, h) * 0.85:
 				continue
+			if _f(gx, gz, 26) >= Graficos.factor_vegetacion():
+				continue   # Ajuste "densidad de vegetación".
 			var dentro: bool = false
 			for s in lista:
 				if s.has("camino"):

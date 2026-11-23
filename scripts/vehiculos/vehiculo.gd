@@ -525,7 +525,13 @@ func _choques(v_antes: float, delta: float) -> void:
 	for i in chasis.get_slide_collision_count():
 		var otro = chasis.get_slide_collision(i).get_collider()
 		if otro != null and otro.has_method("recibir_dano") and absf(v_antes) > 5.0 and _t_golpe <= 0.0:
-			otro.recibir_dano(absf(v_antes) * 4.0)
+			if otro.has_method("derribar"):
+				# Un peatón: sale despedido en la dirección del coche, con sangre y gritos.
+				var dir3: Vector3 = (otro.global_position - chasis.global_position)
+				dir3.y = 0.0
+				otro.derribar(dir3.normalized() if dir3.length() > 0.01 else Vector3.FORWARD, absf(v_antes), true)
+			else:
+				otro.recibir_dano(absf(v_antes) * 4.0)
 			Juego.atropello_visto = 10.0   # Los guardias que lo vean te multarán y te perseguirán.
 			Juego.delito_visto = 6.0
 			Juego.sospecha = minf(100.0, Juego.sospecha + 10.0)
