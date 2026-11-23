@@ -87,6 +87,11 @@ const LISTA: Dictionary = {
 		"mods": {"velocidad": 0.15},
 		"visual": {"tinte": Color(1.0, 0.45, 0.7, 0.10)},
 	},
+	"buen_humor": {
+		"nombre": "Buen humor", "epiteto": ["Animado", "Animada"], "bueno": true, "dur": 120.0,
+		"color": Color(1.0, 0.85, 0.4), "descripcion": "Un 20 % más de experiencia y la sospecha baja algo más rápido (comida y bebida de los locales).",
+		"mods": {"xp": 0.2, "calma": 0.3},
+	},
 
 	# -------------------------------- Malos ----------------------------------
 	"veneno": {

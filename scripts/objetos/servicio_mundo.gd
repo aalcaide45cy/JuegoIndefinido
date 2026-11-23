@@ -19,12 +19,14 @@ extends Interactuable
 
 const Economia = preload("res://scripts/datos/economia.gd")
 const Casino = preload("res://scripts/datos/casino.gd")
+const Locales = preload("res://scripts/datos/locales.gd")
 
 const NOMBRES: Dictionary = {"banco": "Banco", "taberna": "Taberna", "hospital": "Hospital",
 		"taller": "Taller", "gasolinera": "Gasolinera", "comisaria": "Comisaría", "bomberos": "Bomberos",
 		"discoteca": "Discoteca", "tragaperras": "Tragaperras", "casino": "Casino", "club": "Club de Copas", "timba": "Timba",
 		"prestamista": "Préstamos", "mercado_negro": "Mercado negro",
-		"peluqueria": "Peluquería", "barberia": "Barbería"}
+		"peluqueria": "Peluquería", "barberia": "Barbería",
+		"restaurante": "Restaurante", "bar": "Bar", "cafeteria": "Cafetería", "panaderia": "Panadería", "posada": "Posada", "gimnasio": "Gimnasio"}
 
 var servicio: String = "gasolinera"
 var con_visual: bool = false
@@ -32,6 +34,7 @@ var _neon: MeshInstance3D = null
 var _neon2: Node3D = null
 var _luces: Array = []
 var _t_noche: float = 0.0
+var _local: LocalMundo = null   # Interior visitable (negocios de datos/locales.gd).
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 static var _tiradas_seguidas: int = 0
 
@@ -42,6 +45,10 @@ func _ready() -> void:
 			str(NOMBRES.get(servicio, servicio)).to_upper(), 48, Color(1.0, 0.95, 0.7))
 	rotulo.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	rotulo.no_depth_test = false
+	# Negocios con interior: decoración, mostrador y persona que atiende (ver local_mundo.gd).
+	if Locales.existe(servicio):
+		_local = LocalMundo.crear(self, servicio)
+		rotulo.text = _local.nombre.to_upper()
 	if con_visual and servicio == "gasolinera":
 		_dibujar_gasolinera()
 	_rng.randomize()
@@ -129,8 +136,10 @@ func texto_accion() -> String:
 			return _texto_oficio()
 		"peluqueria", "barberia":
 			return "%s: cambiar de peinado  ·  Mayús+E: %s" % [NOMBRES[servicio], _texto_oficio()]
+		"restaurante", "bar", "cafeteria", "panaderia", "posada", "gimnasio":
+			return _texto_local()
 		"taberna":
-			return "Tomar algo (%d $): algo de vida y menos sospecha" % Economia.TABERNA_PRECIO
+			return "Tomar algo (%d $): algo de vida y menos sospecha  ·  o entra y pide en el mostrador" % Economia.TABERNA_PRECIO
 		"banco":
 			return "Banco (%d $ ingresados): E ingresar  ·  Mayús+E retirar todo" % Juego.banco
 		"discoteca":
@@ -189,7 +198,16 @@ func usar(_jugador: Node) -> void:
 				var v: VentanaPeluqueria = VentanaPeluqueria.new()
 				v.local = servicio
 				_jugador.hud.abrir_ventana(v)
-		"taberna": _usar_taberna()
+		"restaurante", "bar", "cafeteria", "panaderia", "posada", "gimnasio":
+			if mayus and Juego.DatosOficios.oficio_de_lugar(servicio) != "":
+				_usar_oficio()
+			else:
+				Juego.avisar("Pasa dentro y pide en el mostrador.")
+		"taberna":
+			if mayus:
+				_usar_oficio()
+			else:
+				_usar_taberna()
 		"banco": _usar_banco(mayus)
 		"discoteca": _usar_discoteca(mayus)
 		"tragaperras": _usar_tragaperras(mayus)
@@ -212,6 +230,16 @@ func _precio_reparacion(v) -> int:
 func _precio_cura() -> int:
 	var base: int = maxi(Economia.CURA_MINIMA, int(ceil((Juego.vida_max() - Juego.vida) * Economia.CURA_POR_PUNTO)))
 	return maxi(1, int(round(base * (1.0 - Juego.descuento_servicio("hospital")))))
+
+
+func _texto_local() -> String:
+	var nom: String = _local.nombre if _local != null else str(NOMBRES.get(servicio, servicio))
+	if not Locales.abierto(servicio, Juego.hora):
+		return "%s: cerrado (abre %s)" % [nom, Locales.texto_horario(servicio)]
+	var extra: String = ""
+	if Juego.DatosOficios.oficio_de_lugar(servicio) != "":
+		extra = "  ·  Mayús+E: " + _texto_oficio()
+	return "%s: entra y pide en el mostrador%s" % [nom, extra]
 
 
 # Lo que hace Mayús+E (o E) aquí con el oficio de este lugar.

@@ -13,6 +13,7 @@
 class_name GestorInteriores
 extends Node3D
 
+const Locales = preload("res://scripts/datos/locales.gd")
 const RADIO_PUERTA: float = 170.0
 const RADIO_INTERIOR: float = 55.0
 const MARGEN: float = 15.0              # Histéresis para quitar.
@@ -96,6 +97,9 @@ func _recalcular_lista(p2: Vector2) -> void:
 	var rect: Rect2 = Rect2(p2.x - RADIO_LISTA, p2.y - RADIO_LISTA, RADIO_LISTA * 2.0, RADIO_LISTA * 2.0)
 	for s in GeneradorMundo.asentamientos_cerca(rect):
 		for c in GeneradorMundo._casas_en(s, rect):
+			# Los negocios de datos/locales.gd traen su propio interior y puerta (LocalMundo): no se duplican.
+			if c.has("servicio") and Locales.existe(str(c["servicio"])):
+				continue
 			_lista.append(c)   # También los servicios (banco, hospital, taberna...): todo edificio se visita.
 	for g in GeneradorMundo._gasolineras_de_carretera(rect, GeneradorMundo.segmentos_para(rect)):
 		_lista.append(g)

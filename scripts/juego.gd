@@ -902,6 +902,9 @@ func descuento_servicio(servicio: String) -> float:
 		return float(DatosOficios.DESCUENTO_HOSPITAL[rango_oficio()])
 	if oficio == "mecanico" and servicio == "taller":
 		return float(DatosOficios.DESCUENTO_TALLER[rango_oficio()])
+	# Hostelería: quien trabaja de camarero, cocinero, barman o panadero come y bebe a mitad de precio.
+	if oficio != "" and oficio == DatosOficios.oficio_de_lugar(servicio) and ["restaurante", "taberna", "bar", "panaderia"].has(servicio):
+		return 0.5
 	return 0.0
 
 

@@ -77,6 +77,46 @@ const LISTA: Dictionary = {
 		"ventaja": "Cortes y barbas a mitad de precio en las barberías.",
 		"requisito": "",
 	},
+	"camarero": {
+		"nombre": "Camarero", "lugar": "restaurante", "sueldo_hora": 12.0,
+		"rangos": [["Pinche", 0, 1.0], ["Camarero", 120, 1.4], ["Jefe de sala", 350, 1.9], ["Maître", 800, 2.6]],
+		"avisos": [
+			{"texto": "Mesa esperando su pedido", "tipo": "pedido", "pago": 34, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Banquete que servir", "tipo": "pedido", "pago": 54, "xp": 18, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"cocinero": {
+		"nombre": "Cocinero", "lugar": "taberna", "sueldo_hora": 13.0,
+		"rangos": [["Pinche de cocina", 0, 1.0], ["Cocinero", 120, 1.4], ["Jefe de cocina", 350, 1.9], ["Chef de la bruma", 800, 2.6]],
+		"avisos": [
+			{"texto": "Encargo de estofado", "tipo": "pedido", "pago": 38, "xp": 13, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Plato especial para un cliente", "tipo": "pedido", "pago": 56, "xp": 19, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"barman": {
+		"nombre": "Barman", "lugar": "bar", "sueldo_hora": 12.0,
+		"rangos": [["Ayudante de barra", 0, 1.0], ["Barman", 120, 1.4], ["Coctelero", 350, 1.9], ["Maestro de la bruma", 800, 2.6]],
+		"avisos": [
+			{"texto": "Ronda para una mesa", "tipo": "pedido", "pago": 32, "xp": 11, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Cóctel de la casa", "tipo": "pedido", "pago": 50, "xp": 17, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Bebes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
+	"panadero": {
+		"nombre": "Panadero", "lugar": "panaderia", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de horno", 0, 1.0], ["Panadero", 120, 1.4], ["Maestro panadero", 350, 1.9], ["Panadero real", 800, 2.6]],
+		"avisos": [
+			{"texto": "Reparto de pan a una casa", "tipo": "pedido", "pago": 30, "xp": 10, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Pedido de pasteles", "tipo": "pedido", "pago": 46, "xp": 16, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Comes a mitad de precio en los locales donde trabajes.",
+		"requisito": "",
+	},
 }
 
 const DESCUENTO_HOSPITAL: Array = [0.25, 0.4, 0.55, 0.7]
