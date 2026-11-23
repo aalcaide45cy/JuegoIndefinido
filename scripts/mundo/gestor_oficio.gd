@@ -67,7 +67,19 @@ func crear_aviso() -> bool:
 	var lista: Array = Juego.DatosOficios.LISTA[Juego.oficio]["avisos"]
 	var a: AvisoOficio = AvisoOficio.new()
 	a.oficio = Juego.oficio
-	a.datos = lista[randi() % lista.size()]
+	a.datos = (lista[randi() % lista.size()] as Dictionary).duplicate()
+	if a.datos.has("local"):
+		# Un cliente que pide un peinado (peluquero y barbero): ver datos/peluqueria.gd.
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.randomize()
+		var c: Dictionary = Juego.DatosPeluqueria.cliente_al_azar(str(a.datos["local"]), rng, Juego.DatosAspecto)
+		var asp: Dictionary = Juego.DatosAspecto.POR_DEFECTO.duplicate()
+		for k in (c["pide"] as Dictionary):
+			asp[k] = c["pide"][k]
+		asp["piel"] = rng.randi() % 5
+		asp["abrigo"] = rng.randi() % 7
+		a.datos["aspecto_cliente"] = asp
+		a.datos["texto"] = "%s: %s" % [a.datos["texto"], c["texto"]]
 	a.tiempo = Juego.DatosOficios.AVISO_DURACION
 	a.position = punto
 	get_parent().add_child(a)

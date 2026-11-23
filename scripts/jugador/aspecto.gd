@@ -26,10 +26,14 @@ const NOMBRES_ABRIGO: Array = ["Violeta oscuro", "Granate", "Azul noche", "Verde
 const BUFANDAS: Array = [Color(0.25, 0.5, 0.3), Color(0.75, 0.2, 0.15), Color(0.9, 0.9, 0.85),
 		Color(0.2, 0.35, 0.65), Color(0.85, 0.7, 0.2), Color(0.12, 0.12, 0.12)]
 const NOMBRES_BUFANDA: Array = ["Verde", "Roja", "Blanca", "Azul", "Amarilla", "Negra"]
+# Los dos últimos tintes son MÁGICOS (Hoja de Bruma y luz de luna): solo los hace una peluquería.
 const PELOS: Array = [Color(0.1, 0.07, 0.05), Color(0.35, 0.2, 0.1), Color(0.75, 0.55, 0.25),
-		Color(0.7, 0.25, 0.1), Color(0.75, 0.75, 0.75), Color(0.25, 0.4, 0.75)]
-const NOMBRES_PELO: Array = ["Negro", "Castaño", "Rubio", "Pelirrojo", "Canoso", "Azul"]
-const PEINADOS: Array = ["Corto", "Largo", "Rapado"]
+		Color(0.7, 0.25, 0.1), Color(0.75, 0.75, 0.75), Color(0.25, 0.4, 0.75),
+		Color(0.3, 0.85, 0.5), Color(0.7, 0.55, 1.0)]
+const NOMBRES_PELO: Array = ["Negro", "Castaño", "Rubio", "Pelirrojo", "Canoso", "Azul",
+		"Verde Hoja de Bruma", "Violeta de luna"]
+const PEINADOS: Array = ["Corto", "Largo", "Rapado", "Mohicano", "Coleta", "Afro"]
+const BARBAS: Array = ["Sin barba", "Bigote", "Perilla", "Barba corta", "Barba larga"]
 const SOMBREROS: Array = ["Ala ancha", "Gorra", "Capucha", "Sin sombrero"]
 const COMPLEXIONES: Array = ["Delgada", "Normal", "Robusta"]
 
@@ -40,12 +44,13 @@ const OPCIONES: Array = [
 	["piel", "Piel", NOMBRES_PIEL],
 	["peinado", "Peinado", PEINADOS],
 	["pelo", "Color de pelo", NOMBRES_PELO],
+	["barba", "Barba", BARBAS],
 	["sombrero", "Sombrero", SOMBREROS],
 	["abrigo", "Abrigo", NOMBRES_ABRIGO],
 	["bufanda", "Bufanda", NOMBRES_BUFANDA],
 ]
 
-const POR_DEFECTO: Dictionary = {"cuerpo": 0, "complexion": 1, "piel": 0, "peinado": 0, "pelo": 0,
+const POR_DEFECTO: Dictionary = {"cuerpo": 0, "complexion": 1, "piel": 0, "peinado": 0, "pelo": 0, "barba": 0,
 		"sombrero": 0, "abrigo": 0, "bufanda": 0}
 
 
@@ -104,6 +109,22 @@ static func _muneco(raiz: Node3D, d: Dictionary) -> void:
 		1:
 			Construir.esfera(base, Vector3(0, 1.47, 0.02), 0.215, pelo, Vector3(1.0, 0.72, 1.0))
 			Construir.caja(base, Vector3(0, 1.28, 0.16), Vector3(0.36, 0.45, 0.1), pelo, false)
+		3:   # Mohicano: cresta de delante a atrás.
+			Construir.caja(base, Vector3(0, 1.66, 0.0), Vector3(0.07, 0.24, 0.4), pelo, false)
+		4:   # Coleta.
+			Construir.esfera(base, Vector3(0, 1.47, 0.02), 0.215, pelo, Vector3(1.0, 0.72, 1.0))
+			Construir.cilindro(base, Vector3(0, 1.4, 0.26), 0.06, 0.4, pelo)
+		5:   # Afro.
+			Construir.esfera(base, Vector3(0, 1.55, 0.02), 0.31, pelo)
+	# Barba y bigote (del color del pelo).
+	var barba: int = int(d["barba"])
+	if barba >= 1:
+		Construir.caja(base, Vector3(0, 1.36, -0.19), Vector3(0.2, 0.04, 0.05), pelo, false)   # Bigote.
+	if barba == 2:
+		Construir.caja(base, Vector3(0, 1.28, -0.17), Vector3(0.07, 0.1, 0.05), pelo, false)
+	elif barba >= 3:
+		var largo: float = 0.12 if barba == 3 else 0.3
+		Construir.caja(base, Vector3(0, 1.3 - largo / 2.0 + 0.06, -0.15), Vector3(0.3, largo, 0.1), pelo, false)
 	# Sombrero.
 	var tela: Color = abrigo.darkened(0.45)
 	match int(d["sombrero"]):

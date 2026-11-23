@@ -9,7 +9,8 @@
 #
 #   nombre, lugar (servicio donde se ficha), sueldo_hora ($ por hora de juego en
 #   servicio, multiplicado por el rango), rangos [[nombre, xp, multiplicador]],
-#   avisos [{texto, tipo (aspecto del marcador), pago, xp, golpes (pulsaciones de
+#   avisos [{texto, tipo (aspecto del marcador), local (opcional: pide un cliente de
+#   datos/peluqueria.gd), pago, xp, golpes (pulsaciones de
 #   E para resolverlo), riesgo (vida que pierdes al resolverlo)}], ventaja.
 # Para añadir un oficio nuevo copia una entrada (y, si hace falta, un lugar nuevo
 # en generador_mundo.gd).
@@ -54,6 +55,26 @@ const LISTA: Dictionary = {
 			{"texto": "Coche averiado en la calzada", "tipo": "averia", "pago": 36, "xp": 12, "golpes": 3, "riesgo": 0.0},
 		],
 		"ventaja": "Descuento en el taller: 20 % (Aprendiz) hasta 60 % (Jefe).",
+		"requisito": "",
+	},
+	"peluquero": {
+		"nombre": "Peluquero", "lugar": "peluqueria", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de tijeras", 0, 1.0], ["Peluquero", 120, 1.4], ["Estilista", 350, 1.9], ["Maestro del salón", 800, 2.6]],
+		"avisos": [
+			{"texto": "Cliente a domicilio", "tipo": "cliente", "local": "peluqueria", "pago": 34, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Novia con prisa", "tipo": "cliente", "local": "peluqueria", "pago": 52, "xp": 18, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Cortes y tintes a mitad de precio en las peluquerías.",
+		"requisito": "",
+	},
+	"barbero": {
+		"nombre": "Barbero", "lugar": "barberia", "sueldo_hora": 11.0,
+		"rangos": [["Aprendiz de navaja", 0, 1.0], ["Barbero", 120, 1.4], ["Maestro barbero", 350, 1.9], ["Barbero real", 800, 2.6]],
+		"avisos": [
+			{"texto": "Cliente con barba", "tipo": "cliente", "local": "barberia", "pago": 32, "xp": 12, "golpes": 3, "riesgo": 0.0},
+			{"texto": "Afeitado de gala", "tipo": "cliente", "local": "barberia", "pago": 48, "xp": 16, "golpes": 4, "riesgo": 0.0},
+		],
+		"ventaja": "Cortes y barbas a mitad de precio en las barberías.",
 		"requisito": "",
 	},
 }
