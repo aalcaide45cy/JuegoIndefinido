@@ -93,6 +93,9 @@ static func explosion(padre: Node3D, pos: Vector3, radio: float, dano: float) ->
 		var ultima = _marcas.back()
 		if is_instance_valid(ultima):
 			ultima.scale = Vector3.ONE * radio * 2.0
+	# Crater en el suelo (grande si la explosión es grande).
+	if not suelo.is_empty() and radio >= 4.0:
+		Destruccion.crater(padre, suelo["position"], radio * 0.5)
 	# Daño a lo que esté cerca (más cuanto más cerca).
 	for nodo in arbol.get_nodes_in_group("danable"):
 		var cosa: Node3D = nodo as Node3D
