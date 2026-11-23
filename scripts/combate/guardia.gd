@@ -226,8 +226,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_vigilar_atasco(delta, velocidad > 0.0 and hacia.length() > 0.1)
 	if _modelo != null and _t_anim <= 0.0:
-		var corre: bool = velocity.length() > 0.2
-		Assets.poner_animacion(_modelo, "Run" if velocity.length() > 3.0 else ("Walk" if corre else "Idle"))
+		Assets.animar_por_velocidad(_modelo, Vector2(velocity.x, velocity.z).length())
 
 
 # Red de seguridad: si intenta andar y no avanza (un mueble, una esquina, una pared
