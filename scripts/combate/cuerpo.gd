@@ -42,22 +42,33 @@ const MULT: Dictionary = {
 # Energía acumulada que hace falta para arrancar cada parte.
 const UMBRAL_CORTE: Dictionary = {"cabeza": 60.0, "brazo": 40.0, "antebrazo": 30.0, "pierna": 60.0, "pantorrilla": 45.0}
 
-# Huesos físicos del ragdoll: [nombre base, hueso al que apunta ("" = largo fijo), radio, masa, tipo de articulación]
-# Nombres del rig de Quaternius; se buscan también con sufijo ("Head_2", "Body_2").
+# Huesos físicos del ragdoll: [nombre base, hueso al que apunta ("" = largo fijo), radio, masa,
+# tipo de articulación, límites]. Cono: [giro lateral (swing), giro sobre sí mismo (twist)].
+# Bisagra (rodilla/codo): [mínimo, máximo] en grados; solo dobla hacia donde dobla una persona.
+# Los límites son los de un cuerpo de verdad: así cae "como un trapo" sin retorcerse imposible.
+# Nombres del rig de Quaternius; se buscan también con sufijo ("Head_2", "Body_2") y con alias.
 const RAGDOLL: Array = [
-	["Body", "Hips", 0.17, 12.0, "cono"],
-	["Abdomen", "Torso", 0.16, 9.0, "cono"],
-	["Torso", "Neck", 0.19, 13.0, "cono"],
-	["Head", "", 0.15, 5.0, "cono"],
-	["UpperArm.L", "LowerArm.L", 0.075, 2.5, "cono"],
-	["LowerArm.L", "Middle1.L", 0.065, 2.0, "bisagra"],
-	["UpperArm.R", "LowerArm.R", 0.075, 2.5, "cono"],
-	["LowerArm.R", "Middle1.R", 0.065, 2.0, "bisagra"],
-	["UpperLeg.L", "LowerLeg.L", 0.1, 7.0, "cono"],
-	["LowerLeg.L", "Foot.L", 0.085, 4.0, "bisagra"],
-	["UpperLeg.R", "LowerLeg.R", 0.1, 7.0, "cono"],
-	["LowerLeg.R", "Foot.R", 0.085, 4.0, "bisagra"],
+	["Body", "Hips", 0.17, 12.0, "cono", [0.0, 0.0]],
+	["Abdomen", "Torso", 0.16, 9.0, "cono", [28.0, 18.0]],
+	["Torso", "Neck", 0.19, 13.0, "cono", [24.0, 18.0]],
+	["Head", "", 0.15, 5.0, "cono", [48.0, 45.0]],
+	["UpperArm.L", "LowerArm.L", 0.075, 2.5, "cono", [85.0, 55.0]],
+	["LowerArm.L", "Middle1.L", 0.065, 2.0, "codo", [0.0, 145.0]],
+	["UpperArm.R", "LowerArm.R", 0.075, 2.5, "cono", [85.0, 55.0]],
+	["LowerArm.R", "Middle1.R", 0.065, 2.0, "codo", [0.0, 145.0]],
+	["UpperLeg.L", "LowerLeg.L", 0.1, 7.0, "cono", [60.0, 22.0]],
+	["LowerLeg.L", "Foot.L", 0.085, 4.0, "rodilla", [0.0, 140.0]],
+	["UpperLeg.R", "LowerLeg.R", 0.1, 7.0, "cono", [60.0, 22.0]],
+	["LowerLeg.R", "Foot.R", 0.085, 4.0, "rodilla", [0.0, 140.0]],
 ]
+
+# Amortiguación de giro: al principio el cuerpo aún tiene "tono muscular" (se dobla, no
+# rebota); en menos de un segundo se suelta del todo (como los cuerpos de GTA, que se
+# desploman blandos). Un tiro en la cabeza lo suelta al instante.
+const TONO_INICIAL: float = 3.0
+const TONO_FINAL: float = 0.35
+const SEGUNDOS_SOLTAR: float = 0.7
+const SIGNO_RODILLA: float = -1.0   # Comprobado con tests/prueba_cuerpo (rodillas y codos doblan hacia el lado bueno).
 
 # Nombres del rig del Toon Shooter -> rig de las personas (estilo Unreal).
 const ALIAS_HUESOS: Dictionary = {
@@ -449,9 +460,10 @@ static func reciente(quien: Node, ms: int = 80) -> bool:
 static func _empuje(tipo: String, dano: float) -> float:
 	match tipo:
 		"bala":
-			return clampf(dano / 12.0, 1.2, 6.0)
+			# Una bala casi no empuja (en GTA el cuerpo se desploma, no sale volando).
+			return clampf(dano / 30.0, 0.8, 2.6)
 		"perdigon":
-			return 1.2
+			return 1.6
 		"explosion":
 			return clampf(dano / 8.0, 4.0, 14.0)
 		"atropello":
@@ -877,15 +889,50 @@ static func ragdoll(quien: Node3D, modelo: Node3D, impulso: Vector3, muerte: boo
 	_mover_al_final(esq, pose)
 	sim.active = true
 	sim.physical_bones_start_simulation()
-	# El golpe: más fuerte en el tronco, algo de giro para que no caiga como una tabla.
+	_amortiguar_articulaciones(esq, sim)
+	# Como en GTA: el cuerpo sigue con la inercia que llevaba (si corría, sigue hacia
+	# delante), el golpe se aplica en el hueso tocado y en el punto exacto (un tiro en el
+	# hombro lo hace girar), y los músculos se sueltan poco a poco (se desploma doblando
+	# rodillas, no cae como una tabla).
+	var inercia: Vector3 = Vector3.ZERO
+	if "velocity" in quien:
+		inercia = quien.velocity
+		inercia.y = maxf(inercia.y, -2.0)
+	var ult: Dictionary = quien.get_meta("ult_impacto", {}) if quien.has_meta("ult_impacto") else {}
+	var reciente_golpe: bool = not ult.is_empty() and Time.get_ticks_msec() - int(ult.get("ms", 0)) < 400
+	var zona_golpe: String = String(ult.get("zona", "")) if reciente_golpe else ""
+	var punto_golpe: Vector3 = ult.get("punto", Vector3.ZERO) if reciente_golpe else Vector3.ZERO
+	var tocado: PhysicalBone3D = null
+	var mejor: float = 0.45
 	for pb in sim.get_children():
 		if not pb is PhysicalBone3D:
 			continue
 		var b: PhysicalBone3D = pb
-		var peso: float = 1.0 if b.bone_name.begins_with("Torso") or b.bone_name.begins_with("Abdomen") else 0.75
-		b.linear_velocity = impulso * peso + Vector3(randf_range(-0.3, 0.3), 0.0, randf_range(-0.3, 0.3))
+		# El tronco se lleva el golpe; las piernas casi no (los pies se quedan y el cuerpo se dobla).
+		var nb: String = b.bone_name
+		var peso: float = 0.7
+		if nb.begins_with("Torso") or nb.begins_with("Abdomen") or nb.begins_with("spine") or nb.begins_with("Head") or nb.begins_with("neck"):
+			peso = 1.0
+		elif nb.contains("Leg") or nb.begins_with("thigh") or nb.begins_with("calf"):
+			peso = 0.25 if muerte and reciente_golpe and String(ult.get("tipo", "")) in ["bala", "perdigon", "filo", "contundente"] else 0.6
+		b.linear_velocity = inercia * (0.8 if peso < 0.5 else 1.0) + impulso * peso
+		b.angular_velocity = Vector3.ZERO
 		if impulso.length() > 6.0:
 			b.linear_velocity += Vector3.UP * clampf(impulso.length() * 0.25, 0.0, 5.0)
+		if reciente_golpe:
+			var d: float = b.global_position.distance_to(punto_golpe)
+			if d < mejor:
+				mejor = d
+				tocado = b
+	if tocado != null and impulso.length() > 0.5:
+		# El hueso tocado recibe un empujón extra justo donde entró la bala: gira y arrastra al resto.
+		tocado.apply_impulse(impulso * tocado.mass * 0.6, punto_golpe - tocado.global_position)
+	elif impulso.length() > 0.5:
+		# Sin punto (atropello, explosión): las piernas se quedan atrás y el cuerpo vuelca.
+		for pb in sim.get_children():
+			if pb is PhysicalBone3D and ((pb as PhysicalBone3D).bone_name.contains("Leg") or (pb as PhysicalBone3D).bone_name.begins_with("thigh") or (pb as PhysicalBone3D).bone_name.begins_with("calf")):
+				(pb as PhysicalBone3D).linear_velocity = inercia + impulso * 0.45
+	_soltar_musculos(esq, sim, 0.05 if zona_golpe == "cabeza" else SEGUNDOS_SOLTAR)
 	esq.set_meta("_ragdoll_ms", Time.get_ticks_msec())
 	esq.set_meta("_ragdoll_muerte", muerte)
 	_activos.erase(esq)
@@ -897,10 +944,65 @@ static func ragdoll(quien: Node3D, modelo: Node3D, impulso: Vector3, muerte: boo
 	var id: int = int(esq.get_meta("_ragdoll_id", 0)) + 1
 	esq.set_meta("_ragdoll_id", id)
 	if muerte:
-		luego(esq, SEGUNDOS_CONGELAR, func() -> void:
-			if int(esq.get_meta("_ragdoll_id", 0)) == id:
-				congelar(esq))
+		_vigilar_reposo(esq, id, 0)
 	return true
+
+
+# Amortiguación entre cada hueso y su padre (idea de Drop-In Ragdoll, MIT): frena que un
+# antebrazo o una mano se queden bailando sin frenar el vuelco del cuerpo entero.
+static func _amortiguar_articulaciones(esq: Skeleton3D, sim: PhysicalBoneSimulator3D) -> void:
+	for h in sim.get_children():
+		if h is AmortiguaRagdoll:
+			h.queue_free()
+	var por_hueso: Dictionary = {}
+	for pb in sim.get_children():
+		if pb is PhysicalBone3D:
+			por_hueso[esq.find_bone((pb as PhysicalBone3D).bone_name)] = pb
+	var pares: Array = []
+	for i in por_hueso:
+		var p: int = esq.get_bone_parent(i)
+		while p >= 0 and not por_hueso.has(p):
+			p = esq.get_bone_parent(p)
+		if p >= 0:
+			pares.append([por_hueso[i], por_hueso[p]])
+	var am: AmortiguaRagdoll = AmortiguaRagdoll.new()
+	am.name = "Amortigua"
+	am.pares = pares
+	sim.add_child(am)
+
+
+# Los músculos se sueltan: la amortiguación de giro baja de TONO_INICIAL a TONO_FINAL.
+static func _soltar_musculos(esq: Skeleton3D, sim: PhysicalBoneSimulator3D, segundos: float) -> void:
+	var huesos: Array = []
+	for pb in sim.get_children():
+		if pb is PhysicalBone3D:
+			huesos.append(pb)
+			(pb as PhysicalBone3D).angular_damp = TONO_INICIAL if segundos > 0.1 else TONO_FINAL
+	if segundos <= 0.1:
+		return
+	var tw: Tween = esq.create_tween()
+	tw.tween_method(func(v: float) -> void:
+		for h in huesos:
+			if is_instance_valid(h):
+				(h as PhysicalBone3D).angular_damp = v, TONO_INICIAL, TONO_FINAL, segundos).set_ease(Tween.EASE_OUT)
+
+
+# Se congela cuando el cuerpo ya está quieto (o, como mucho, a los SEGUNDOS_CONGELAR + 4 s).
+static func _vigilar_reposo(esq: Skeleton3D, id: int, vueltas: int) -> void:
+	luego(esq, 1.0 if vueltas > 0 else 2.5, func() -> void:
+		if int(esq.get_meta("_ragdoll_id", 0)) != id:
+			return
+		var sim: PhysicalBoneSimulator3D = _simulador(esq)
+		if sim == null:
+			return
+		var max_v: float = 0.0
+		for pb in sim.get_children():
+			if pb is PhysicalBone3D:
+				max_v = maxf(max_v, (pb as PhysicalBone3D).linear_velocity.length())
+		if max_v < 0.12 or vueltas >= int(SEGUNDOS_CONGELAR) + 2:
+			congelar(esq)
+		else:
+			_vigilar_reposo(esq, id, vueltas + 1))
 
 
 static func _simulador(esq: Skeleton3D) -> PhysicalBoneSimulator3D:
@@ -939,8 +1041,8 @@ static func _construir_ragdoll(esq: Skeleton3D, quien: Node) -> PhysicalBoneSimu
 		pb.mass = float(def[3])
 		pb.friction = 0.9
 		pb.bounce = 0.0
-		pb.linear_damp = 0.15
-		pb.angular_damp = 1.5
+		pb.linear_damp = 0.08
+		pb.angular_damp = TONO_INICIAL
 		pb.collision_layer = CAPA_RESTOS
 		pb.collision_mask = 1
 		var forma: CollisionShape3D = CollisionShape3D.new()
@@ -956,16 +1058,7 @@ static func _construir_ragdoll(esq: Skeleton3D, quien: Node) -> PhysicalBoneSimu
 		b_off.origin = b_off.basis * Vector3(0, 0, -mitad)
 		pb.body_offset = b_off
 		pb.joint_offset = Transform3D(Basis(), Vector3(0, 0, mitad))
-		match def[4]:
-			"bisagra":
-				pb.joint_type = PhysicalBone3D.JOINT_TYPE_HINGE
-				pb.set("joint_constraints/angular_limit_enabled", true)
-				pb.set("joint_constraints/angular_limit_upper", 5.0)
-				pb.set("joint_constraints/angular_limit_lower", -120.0)
-			_:
-				pb.joint_type = PhysicalBone3D.JOINT_TYPE_CONE
-				pb.set("joint_constraints/swing_span", 50.0)
-				pb.set("joint_constraints/twist_span", 35.0)
+		_articulacion(pb, esq, i, b_off, String(def[4]), def[5], punta_local)
 		var zona: String = "torso"
 		var nb: String = String(def[0])
 		if nb == "Head":
@@ -979,6 +1072,64 @@ static func _construir_ragdoll(esq: Skeleton3D, quien: Node) -> PhysicalBoneSimu
 		pb.set_meta("base", "" if zona == "torso" else nb)
 		sim.add_child(pb)
 	return sim
+
+
+# Articulación con los ejes bien puestos. En Godot el cono gira sobre su eje X y la
+# bisagra sobre su eje Z, así que: X a lo largo del hueso (hacia el padre) y, en rodillas
+# y codos, Z hacia el costado del personaje. Antes los ejes iban cruzados y las rodillas
+# de las personas no doblaban (caían tiesas) y en los muñecos doblaban al revés.
+static func _articulacion(pb: PhysicalBone3D, esq: Skeleton3D, i: int, b_off: Transform3D, tipo: String, lim: Array, punta_local: Vector3 = Vector3.ZERO) -> void:
+	var eje: Vector3 = Vector3(0, 0, 1)   # Del cuerpo físico hacia su articulación (el padre).
+	if tipo == "cono":
+		pb.joint_type = PhysicalBone3D.JOINT_TYPE_CONE
+		pb.joint_rotation = Vector3.ZERO
+		pb.joint_offset = Transform3D(Basis(eje, Vector3(0, 1, 0), Vector3(-1, 0, 0)), pb.joint_offset.origin)
+		pb.set("joint_constraints/swing_span", float(lim[0]))
+		pb.set("joint_constraints/twist_span", float(lim[1]))
+		pb.set("joint_constraints/softness", 0.8)
+		pb.set("joint_constraints/relaxation", 1.0)
+		return
+	# Eje de la bisagra = hueso x hacia dónde dobla (el codo lleva la mano hacia delante,
+	# la rodilla lleva el pie hacia atrás). Todo en la pose de reposo del esqueleto.
+	var dcha: Vector3 = Vector3.RIGHT
+	var cl: int = hueso(esq, "UpperLeg.L")
+	var cr: int = hueso(esq, "UpperLeg.R")
+	if cl >= 0 and cr >= 0:
+		dcha = (esq.get_bone_global_rest(cr).origin - esq.get_bone_global_rest(cl).origin).normalized()
+	var arriba: Vector3 = Vector3.UP
+	var pel: int = hueso(esq, "Body")
+	var cue: int = hueso(esq, "Neck")
+	if pel >= 0 and cue >= 0:
+		arriba = (esq.get_bone_global_rest(cue).origin - esq.get_bone_global_rest(pel).origin).normalized()
+	var delante: Vector3 = arriba.cross(dcha).normalized()
+	var dobla: Vector3 = -delante if tipo == "rodilla" else delante
+	var g: Transform3D = esq.get_bone_global_rest(i) * b_off
+	var dir_hueso: Vector3 = (g.basis * Vector3(0, 0, -1)).normalized()
+	var eje_s: Vector3 = dir_hueso.cross(dobla)
+	if eje_s.length() < 0.2:
+		eje_s = dcha
+	var lat: Vector3 = g.basis.inverse() * eje_s.normalized()
+	lat = (lat - eje * lat.dot(eje)).normalized()
+	pb.joint_type = PhysicalBone3D.JOINT_TYPE_HINGE
+	pb.joint_offset = Transform3D(Basis(eje, lat.cross(eje), lat), pb.joint_offset.origin)
+	# Los límites se miden desde la pose en la que empieza a caer (como explica Drop-In
+	# Ragdoll): si el codo ya iba doblado 40°, solo le quedan 105° más y 40° hasta recto.
+	var doblez: float = 0.0
+	var padre: int = esq.get_bone_parent(i)
+	if padre >= 0 and punta_local.length() > 0.01:
+		var poses: Array = _poses_reales(esq)
+		var gi: Transform3D = poses[i]
+		var arriba_l: Vector3 = (gi.origin - (poses[padre] as Transform3D).origin)
+		var abajo_l: Vector3 = (gi * punta_local) - gi.origin
+		if arriba_l.length() > 0.01 and abajo_l.length() > 0.01:
+			doblez = clampf(rad_to_deg(arriba_l.angle_to(abajo_l)), 0.0, float(lim[1]) - 10.0)
+	var a: float = (float(lim[0]) - doblez) * SIGNO_RODILLA
+	var b: float = (float(lim[1]) - doblez) * SIGNO_RODILLA
+	pb.set("joint_constraints/angular_limit_enabled", true)
+	pb.set("joint_constraints/angular_limit_lower", minf(a, b))
+	pb.set("joint_constraints/angular_limit_upper", maxf(a, b))
+	pb.set("joint_constraints/angular_limit_softness", 0.9)
+	pb.set("joint_constraints/angular_limit_relaxation", 1.0)
 
 
 # Onda expansiva: empuja cadáveres que están cayendo y miembros sueltos.

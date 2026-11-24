@@ -123,6 +123,26 @@ func _ready() -> void:
 	await _foto("persona_2_ragdoll")
 	for hm2 in hs:
 		hm2.queue_free()
+
+	# 0b) "Trapo": alguien que corre recibe un tiro en el pecho; secuencia de la caída
+	# vista de lado (sigue con su inercia, se le doblan las rodillas y se desploma).
+	var corredor: Muneco = Muneco.new()
+	corredor.humano = true
+	corredor.personaje = "Superhero_Male_FullBody"
+	add_child(corredor)
+	corredor.global_position = Vector3(0, 0, 1.5)
+	await _esperar(0.4)
+	corredor.velocity = Vector3(0, 0, -4.5)   # Corriendo hacia -Z.
+	cam.look_at_from_position(Vector3(5.5, 1.5, -0.5), Vector3(0, 0.8, -0.5))
+	var pecho2: Vector3 = corredor.global_position + Vector3(0, 1.3, 0)
+	Cuerpo.impactar(corredor, pecho2 + Vector3(-4, 0, 0), Vector3(1, 0, 0), 200.0, "bala", {"punto": pecho2, "distancia": 4.0})
+	var tiempos: Array = [0.12, 0.3, 0.55, 2.2]
+	var antes: float = 0.0
+	for k2 in tiempos.size():
+		await _esperar(float(tiempos[k2]) - antes)
+		antes = float(tiempos[k2])
+		await _foto("trapo_%d_caida_%.2fs" % [k2 + 1, antes])
+	corredor.queue_free()
 	cam.look_at_from_position(Vector3(1.8, 1.7, -3.2), Vector3(0, 1.0, 0.5))
 
 	# 1) Tiro en el brazo con rifle: el brazo sale volando, el resto sigue en pie.

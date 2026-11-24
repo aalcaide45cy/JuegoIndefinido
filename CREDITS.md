@@ -39,3 +39,8 @@ en `scripts/musica.gd`, `scripts/sonido.gd` y `scripts/ui/iconos.gd`; no usan ar
 ## Vehículos generados con IA (assets/vehiculos/)
 Carrocerías 3D creadas con Higgsfield (imagen de referencia + Meshy 7). Las ruedas son de
 Kenney Car Kit (CC0). Detalles en `docs/VEHICULOS_IA.md`.
+
+## Ideas de código
+El freno entre articulaciones del ragdoll (`scripts/combate/amortigua_ragdoll.gd`) y la forma de medir
+los límites de rodillas y codos desde la pose inicial están adaptados de **Drop-In Ragdoll**
+de Sir Debugalot (licencia MIT), https://github.com/debugalot/drop-in-ragdoll
