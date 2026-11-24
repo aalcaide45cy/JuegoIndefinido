@@ -81,6 +81,12 @@ func _ready() -> void:
 			cerebro.arma_modelo if armado else "", "Idle")
 	if modelo != null:
 		PersonaIA._mostrar_arma_en(modelo, "")
+		var prendas: Dictionary = {}
+		if id_rol == "abuelo":
+			prendas = {"color_pelo": Color(0.75, 0.75, 0.74), "manga": 2, "pierna": 0}
+		elif id_rol == "padre" or id_rol == "madre":
+			prendas = {"pierna": 0} if rng.randf() < 0.6 else {}   # En casa, a menudo en pantalón largo.
+		Ropa.vestir(modelo, rng.randi(), prendas)
 		_cuerpo.add_child(modelo)
 		if id_rol == "abuelo":
 			modelo.scale = Vector3.ONE * 0.94

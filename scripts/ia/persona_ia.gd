@@ -1370,7 +1370,13 @@ func acompana() -> bool:
 	return true
 
 
+var reloj_hueco: float = 0.0
+var tapado_hueco: bool = false
+
+
 func a_acompanar(_bb: Dictionary, _d: float) -> int:
+	if not acompana():
+		return ArbolIA.FALLO   # El acompañante se ha ido (o ya no está).
 	libre = true
 	accion = "acompanar"
 	var lp: Vector3 = lider.global_position
@@ -1382,6 +1388,19 @@ func a_acompanar(_bb: Dictionary, _d: float) -> int:
 		var s2 = cuerpo.ia_sitio_junto_a(lider)
 		if s2 != null:
 			sitio = s2
+	# Si en su sitio hay un árbol, una farola o un banco, se pone detrás del otro hasta pasarlo.
+	reloj_hueco -= _d
+	if reloj_hueco <= 0.0:
+		reloj_hueco = 0.2
+		var desde: Vector3 = Vector3(lp.x, lp.y + 1.0, lp.z)
+		var hasta: Vector3 = Vector3(sitio.x, lp.y + 1.0, sitio.y) + Vector3(dirl.x, 0, dirl.y) * 0.9
+		var q: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, hasta + (hasta - desde).normalized() * 0.4)
+		if cuerpo is CollisionObject3D:
+			q.exclude = [(cuerpo as CollisionObject3D).get_rid()]
+		var hit: Dictionary = cuerpo.get_world_3d().direct_space_state.intersect_ray(q)
+		tapado_hueco = not hit.is_empty() and not (hit["collider"] is CharacterBody3D)
+	if tapado_hueco:
+		sitio = Vector2(lp.x, lp.z) - dirl * 0.85
 	var al: Vector2 = sitio - pos2()
 	var d: float = al.length()
 	if d > 0.25:

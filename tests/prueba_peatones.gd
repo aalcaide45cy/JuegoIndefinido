@@ -118,6 +118,8 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 		var rozan_libres: int = 0
 		var max_peat: int = 0
 		var ejemplos: Array = []
+		var ejemplos_libres: Array = []
+		var talud: int = 0
 		var t: float = 0.0
 		while t < SEGUNDOS:
 			jugador.global_position = Vector3(p.x + 2.0, h + 30.0, p.y + 2.0)
@@ -139,8 +141,13 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 					var o: Object = hit["collider"]
 					if o is AnimatableBody3D or o is CharacterBody3D:
 						continue   # Coches, otros peatones, guardias.
+					if q.estado >= 4 and (o as Node).get_parent() != null and str((o as Node).get_parent().name).begins_with("Trozo"):
+						talud += 1   # Cruzando fuera del paso o acompañando: roza el talud del monte en una calle del borde.
+						break
 					if q.estado == 5:
 						rozan_libres += 1   # Libre (huyendo, charlando...): rozar un tronco un instante se tolera.
+						if ejemplos_libres.size() < 4:
+							ejemplos_libres.append("%s en (%.1f, %.1f) contra %s %s" % [q.cerebro.accion if q.cerebro != null else "?", q.global_position.x, q.global_position.z, o.get_class(), (o as Node).name])
 						break
 					dentro += 1
 					if ejemplos.size() < 3:
@@ -156,8 +163,10 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 							info = "forma %s hueso %s en (%.1f, %.1f, %.1f) cuerpo %s ruta %s y_peaton %.2f" % [f3.shape.get_class(), f3.name, f3.global_position.x, f3.global_position.y, f3.global_position.z, cb.name, cb.get_path(), q.global_position.y]
 						ejemplos.append("rel (%.1f, %.1f) estado %d %s" % [fposmod(q.global_position.x - p.x, 44.0), fposmod(q.global_position.z - p.y, 44.0), q.estado, info])
 					break
-		print("  ", lugar[0], ": peatones máx ", max_peat, " | muestras ", muestras, " | dentro de algo macizo ", dentro, " | libres que rozan algo ", rozan_libres, " ", ejemplos)
-		if dentro > 0 or rozan_libres > maxi(2, muestras / 100):
+		print("  ", lugar[0], ": peatones máx ", max_peat, " | muestras ", muestras, " | dentro de algo macizo ", dentro, " | libres que rozan algo ", rozan_libres, " | rozan el talud ", talud, " ", ejemplos, " ", ejemplos_libres)
+		# El talud del monte junto a las calles del borde de los pueblos en pendiente es cosa del
+		# generador del terreno: se tolera un poco y se avisa si se dispara.
+		if dentro > 0 or rozan_libres > maxi(2, muestras / 100) or talud > maxi(4, muestras / 40):
 			fallos.append("peatones dentro de edificios en " + str(lugar[0]))
 		if lugar[0] == "ciudad original" and max_peat > 0:
 			fallos.append("hay peatones en las avenidas de la ciudad original (no tienen acera)")

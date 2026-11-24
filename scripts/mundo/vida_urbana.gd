@@ -626,6 +626,7 @@ func _vestir_peaton(a: Agente) -> void:
 	if persona != null:
 		if arma != "":
 			PersonaIA._mostrar_arma_en(persona, "")
+		Ropa.vestir(persona, randi())   # Ropa y pelo variados (el modelo base viene en ropa interior).
 		a.add_child(persona)
 		a.modelo = persona
 	else:
@@ -721,6 +722,14 @@ func _suelo_peaton(a: Agente, punto: Vector2, base: float, ya: bool, delta: floa
 				var hy: float = (choque["position"] as Vector3).y
 				if hy < base + 1.2:
 					sy = hy   # Más alto sería un tejado o un muro: no se sube.
+			elif choque.is_empty():
+				# Nada debajo: el rayo empezó bajo tierra (borde del pueblo donde el monte queda más
+				# alto que la calle). Se busca el terreno desde más arriba.
+				cons.from = Vector3(punto.x, base + 9.0, punto.y)
+				cons.to = Vector3(punto.x, base - 1.0, punto.y)
+				var c2: Dictionary = get_world_3d().direct_space_state.intersect_ray(cons)
+				if not c2.is_empty() and (c2["collider"] as Node).get_parent() != null and str((c2["collider"] as Node).get_parent().name).begins_with("Trozo"):
+					sy = (c2["position"] as Vector3).y
 			a.set_meta("suelo_y", sy)
 		a.set_meta("t_suelo", t)
 		objetivo = float(a.get_meta("suelo_y", base))

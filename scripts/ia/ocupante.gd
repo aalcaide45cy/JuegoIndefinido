@@ -56,6 +56,8 @@ func _ready() -> void:
 	if modelo != null:
 		if armado:
 			PersonaIA._mostrar_arma_en(modelo, "")
+		# Quien atiende va de uniforme claro; los clientes, como cualquiera.
+		Ropa.vestir(modelo, semilla, {"camisa": Color(0.92, 0.92, 0.9), "manga": 1, "pierna": 0} if es_empleado() else {})
 		add_child(modelo)
 	else:
 		Construir.cilindro(self, Vector3(0, 0.6, 0), 0.3, 1.2, Color.from_hsv(_rng.randf(), 0.4, 0.5), false)
