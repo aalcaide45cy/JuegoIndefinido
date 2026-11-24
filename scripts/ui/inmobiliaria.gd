@@ -14,10 +14,9 @@ var _lista: VBoxContainer
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(780, 640))
-	cabecera(caja, "Inmobiliaria")
-	subtitulo(caja, "Alquila (pago inicial y un 4 % del precio cada día) o compra (40 veces el alquiler; vendes por el 70 %).")
-	caja.add_child(Hud.crear_boton("Montar mi propia inmobiliaria (comprar pisos, venderlos y alquilarlos)...", _abrir_negocio))
+	var caja: VBoxContainer = marco("Inmobiliaria", "", Vector2(780, 640))
+	caja.add_child(UI.nota("Alquila (pago inicial y un 4 % del precio cada día) o compra (40 veces el alquiler; vendes por el 70 %)."))
+	caja.add_child(UI.boton("Montar mi propia inmobiliaria (comprar pisos, venderlos y alquilarlos)…", _abrir_negocio, "BotonSuave"))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caja.add_child(scroll)
@@ -49,7 +48,7 @@ func _pintar() -> void:
 	for h in _lista.get_children():
 		h.queue_free()
 	for tipo in ["casa", "huerto"]:
-		var t: Label = Hud.crear_label(20, Color(0.6, 0.9, 0.6))
+		var t: Label = UI.etiqueta("", "Titulo", Tema.BRUMA, 18)
 		t.text = "CASAS" if tipo == "casa" else "HUERTOS (para cultivos legales)"
 		_lista.add_child(t)
 		for p in Propiedades.LISTA + Propiedades.del_mundo_propias():

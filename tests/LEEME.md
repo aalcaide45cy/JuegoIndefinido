@@ -16,6 +16,7 @@ godot --headless --path . res://tests/prueba_magia.tscn   # magia: escuelas, hec
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_magia.tscn -- /carpeta   # capturas de la magia
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/medir_rendimiento.tscn -- /carpeta   # rendimiento (CSV + capturas)
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_opciones.tscn -- /carpeta   # capturas de Pausa, Sonido y Controles
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_menus.tscn -- /carpeta prefijo   # una captura de CADA menú
 ```
 
 En la nube: descargar `Godot_v4.7.1-stable_linux.x86_64.zip` de las versiones de Godot en GitHub,

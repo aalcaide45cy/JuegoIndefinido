@@ -15,9 +15,8 @@ var _texto: Label
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(860, 620))
-	cabecera(caja, "Bolsa de trabajo")
-	subtitulo(caja, "Los sueldos se pagan cada día del juego. Sin dinero ese día, se van.")
+	var caja: VBoxContainer = marco("Bolsa de trabajo", "", Vector2(860, 620))
+	caja.add_child(UI.nota("Los sueldos se pagan cada día del juego. Sin dinero ese día, se van."))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caja.add_child(scroll)
@@ -31,7 +30,7 @@ func construir() -> void:
 
 
 func _titulo(t: String) -> void:
-	var l: Label = Hud.crear_label(20, Color(0.6, 0.9, 0.6))
+	var l: Label = UI.etiqueta("", "Titulo", Tema.BRUMA, 18)
 	l.text = t
 	_lista.add_child(l)
 

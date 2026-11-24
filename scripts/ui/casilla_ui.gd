@@ -16,6 +16,9 @@ const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 
 # Se emite con Mayúsculas + clic; quien crea la casilla decide adónde va.
 signal envio_rapido(casilla: CasillaUI)
+# Se emite al pasar el ratón por encima, al enfocarla con el mando o al hacer clic: las ventanas
+# la usan para enseñar el detalle del objeto en su panel lateral.
+signal elegida(casilla: CasillaUI)
 
 const TAM: float = 56.0
 
@@ -23,6 +26,10 @@ var lista: Array          # La lista de Juego a la que pertenece (inventario o e
 var indice: int = 0
 var numero: String = ""   # Número que se pinta arriba (1-9 en la barra rápida).
 var arrastrable: bool = true
+var atenuada: bool = false   # Se pinta apagada (no encaja con el filtro o el buscador de la ventana).
+
+# Casilla "cogida" con el mando (A la coge, A en otra la suelta). Solo una a la vez en todo el juego.
+static var cogida: CasillaUI = null
 
 
 func _init(lista_casillas: Array = [], i: int = 0, tam: float = TAM) -> void:
@@ -30,11 +37,20 @@ func _init(lista_casillas: Array = [], i: int = 0, tam: float = TAM) -> void:
 	indice = i
 	custom_minimum_size = Vector2(tam, tam)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	focus_mode = Control.FOCUS_ALL
 
 
 func _ready() -> void:
 	Juego.cambio.connect(_al_cambiar)
+	mouse_entered.connect(func() -> void: elegida.emit(self))
+	focus_entered.connect(func() -> void: elegida.emit(self))
+	focus_exited.connect(queue_redraw)
 	_al_cambiar()
+
+
+func _exit_tree() -> void:
+	if cogida == self:
+		cogida = null
 
 
 func _al_cambiar() -> void:
@@ -57,29 +73,35 @@ func _es_seleccionada() -> bool:
 
 func _draw() -> void:
 	var r: Rect2 = Rect2(Vector2.ZERO, size)
-	# Fondo y borde (el de la casilla en la mano, dorado).
-	draw_rect(r, Color(0.1, 0.11, 0.11, 0.92))
-	var borde: Color = Color(0.95, 0.8, 0.35) if _es_seleccionada() else Color(0.3, 0.4, 0.32)
-	draw_rect(r, borde, false, 3.0 if _es_seleccionada() else 1.5)
+	# Fondo y borde: dorado en la casilla en la mano, azul si la tiene "cogida" el mando.
+	draw_style_box(Tema.caja(Color(0.075, 0.085, 0.1, 0.95), Tema.BORDE_SUAVE, 1, 6, 0, 0), r)
+	var seleccionada: bool = _es_seleccionada()
+	if seleccionada:
+		draw_style_box(Tema.caja(Color(0, 0, 0, 0), Tema.ACENTO, 2, 6, 0, 0), r)
 	if numero != "":
-		draw_string(get_theme_default_font(), Vector2(4, 14), numero, HORIZONTAL_ALIGNMENT_LEFT,
-				-1, 12, Color(0.75, 0.75, 0.7))
+		draw_string(Tema.fuente("semibold"), Vector2(5, 14), numero, HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 12, Tema.ACENTO if seleccionada else Tema.TEXTO_TENUE)
 	var casilla = lista[indice]
-	if casilla == null:
-		return
-	Iconos.dibujar(self, r.grow(-3.0), casilla["id"])
-	# Cantidad abajo a la derecha (si es un montón) o el agua de la jarra.
-	var texto: String = ""
-	if casilla["cantidad"] > 1:
-		texto = str(casilla["cantidad"])
-	elif casilla.has("agua"):
-		texto = "%d/%d" % [casilla["agua"], DatosObjetos.datos(casilla["id"])["agua_max"]]
-	if texto != "":
-		var fuente: Font = get_theme_default_font()
-		draw_string_outline(fuente, Vector2(0, size.y - 5), texto, HORIZONTAL_ALIGNMENT_RIGHT,
-				size.x - 5, 15, 4, Color.BLACK)
-		draw_string(fuente, Vector2(0, size.y - 5), texto, HORIZONTAL_ALIGNMENT_RIGHT,
-				size.x - 5, 15, Color.WHITE)
+	if casilla != null:
+		Iconos.dibujar(self, r.grow(-4.0), casilla["id"])
+		# Cantidad abajo a la derecha (si es un montón) o el agua de la jarra.
+		var texto: String = ""
+		if casilla["cantidad"] > 1:
+			texto = str(casilla["cantidad"])
+		elif casilla.has("agua"):
+			texto = "%d/%d" % [casilla["agua"], DatosObjetos.datos(casilla["id"])["agua_max"]]
+		if texto != "":
+			var fuente: Font = Tema.fuente("bold")
+			draw_string_outline(fuente, Vector2(0, size.y - 6), texto, HORIZONTAL_ALIGNMENT_RIGHT,
+					size.x - 6, 15, 5, Color.BLACK)
+			draw_string(fuente, Vector2(0, size.y - 6), texto, HORIZONTAL_ALIGNMENT_RIGHT,
+					size.x - 6, 15, Color.WHITE)
+	if atenuada:
+		draw_style_box(Tema.caja(Color(0.03, 0.035, 0.045, 0.78), Color(0, 0, 0, 0), 0, 6, 0, 0), r)
+	if cogida == self:
+		draw_style_box(Tema.caja(Color(Tema.AZUL.r, Tema.AZUL.g, Tema.AZUL.b, 0.18), Tema.AZUL, 3, 6, 0, 0), r)
+	elif has_focus():
+		draw_style_box(Tema.caja(Color(1, 1, 1, 0.06), Tema.ACENTO, 2, 6, 0, 0), r)
 
 
 # --------------------------- Arrastrar y soltar --------------------------------
@@ -111,13 +133,47 @@ func _drop_data(_pos: Vector2, datos: Variant) -> void:
 
 
 func _gui_input(evento: InputEvent) -> void:
+	# Mando y teclado: A / Intro coge la casilla y suelta en otra (como arrastrar); X la manda a la
+	# otra zona (como Mayús + clic); Y divide el montón (como clic derecho).
+	if arrastrable and evento is InputEventJoypadButton and evento.pressed:
+		var b: int = (evento as InputEventJoypadButton).button_index
+		if b == JOY_BUTTON_X:
+			envio_rapido.emit(self)
+			accept_event()
+			return
+		if b == JOY_BUTTON_Y:
+			Juego.dividir(lista, indice)
+			accept_event()
+			return
+	if arrastrable and evento.is_action_pressed("ui_accept"):
+		_coger_o_soltar()
+		accept_event()
+		return
 	var boton: InputEventMouseButton = evento as InputEventMouseButton
-	if boton == null or not boton.pressed or not arrastrable:
+	if boton == null or not boton.pressed:
+		return
+	if boton.button_index == MOUSE_BUTTON_LEFT:
+		elegida.emit(self)
+	if not arrastrable:
 		return
 	if boton.button_index == MOUSE_BUTTON_RIGHT:
 		Juego.dividir(lista, indice)
 	elif boton.button_index == MOUSE_BUTTON_LEFT and boton.shift_pressed:
 		envio_rapido.emit(self)
+
+
+func _coger_o_soltar() -> void:
+	if cogida == null:
+		if lista[indice] != null:
+			cogida = self
+			queue_redraw()
+	else:
+		var origen: CasillaUI = cogida
+		cogida = null
+		if origen != self and is_instance_valid(origen):
+			Juego.mover(origen.lista, origen.indice, lista, indice)
+		origen.queue_redraw()
+		queue_redraw()
 
 
 # ------------------------------ Iconos ----------------------------------------

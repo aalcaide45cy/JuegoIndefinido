@@ -34,7 +34,7 @@ func _diferencia(a: float, b: float) -> float:
 func _draw() -> void:
 	if _jugador == null:
 		return
-	var fuente: Font = ThemeDB.fallback_font
+	var fuente: Font = Tema.fuente("semibold")
 	var ancho: float = size.x
 	var centro_x: float = ancho / 2.0
 	var alto_tira: float = 30.0

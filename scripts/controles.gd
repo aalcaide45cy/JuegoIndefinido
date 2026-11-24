@@ -22,6 +22,8 @@ extends Node
 
 const RUTA: String = "user://controles.cfg"
 
+signal escala_cambiada   # El Hud la escucha para reajustar el tamaño de la interfaz.
+
 # Las acciones que se pueden reasignar, con su nombre para el menú (en orden de aparición).
 const ACCIONES: Array = [
 	["adelante", "Adelante"], ["atras", "Atrás"], ["izquierda", "Izquierda"], ["derecha", "Derecha"],
@@ -40,6 +42,8 @@ var sensibilidad_raton: float = 1.0     # Multiplica la sensibilidad base (0,2 a
 var sensibilidad_mando: float = 1.0
 var invertir_y: bool = false
 var mando_activo: bool = true
+var mostrar_ayuda: bool = true          # La línea de teclas de abajo del HUD.
+var escala_interfaz: float = 1.0        # 0,8 a 1,4: tamaño de menús y HUD (lo aplica Hud).
 
 var _por_defecto: Dictionary = {}       # acción -> Array de physical_keycode
 var _gatillo_der: bool = false
@@ -106,6 +110,8 @@ func restablecer() -> void:
 	sensibilidad_mando = 1.0
 	invertir_y = false
 	mando_activo = true
+	mostrar_ayuda = true
+	escala_interfaz = 1.0
 	guardar()
 
 
@@ -123,6 +129,8 @@ func guardar() -> void:
 	cfg.set_value("opciones", "sensibilidad_mando", sensibilidad_mando)
 	cfg.set_value("opciones", "invertir_y", invertir_y)
 	cfg.set_value("opciones", "mando_activo", mando_activo)
+	cfg.set_value("opciones", "mostrar_ayuda", mostrar_ayuda)
+	cfg.set_value("opciones", "escala_interfaz", escala_interfaz)
 	for a in ACCIONES:
 		var accion: String = str(a[0])
 		var actuales: Array = teclas_de(accion)
@@ -139,6 +147,8 @@ func cargar() -> void:
 	sensibilidad_mando = clampf(float(cfg.get_value("opciones", "sensibilidad_mando", 1.0)), 0.2, 3.0)
 	invertir_y = bool(cfg.get_value("opciones", "invertir_y", false))
 	mando_activo = bool(cfg.get_value("opciones", "mando_activo", true))
+	mostrar_ayuda = bool(cfg.get_value("opciones", "mostrar_ayuda", true))
+	escala_interfaz = clampf(float(cfg.get_value("opciones", "escala_interfaz", 1.0)), 0.8, 1.4)
 	if cfg.has_section("teclas"):
 		for accion in cfg.get_section_keys("teclas"):
 			var lista = cfg.get_value("teclas", accion, [])

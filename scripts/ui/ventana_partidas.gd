@@ -24,13 +24,21 @@ var _confirmar: String = ""   # "borrar:3" o "guardar:2": la acción que espera 
 
 func construir() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_caja = panel_centrado(Vector2(860, 560))
-	cabecera(_caja, "Partidas guardadas" if modo == Modo.INICIO else "Guardar y cargar")
+	pistas_extra = []
+	var cuerpo: VBoxContainer = marco("Partidas guardadas" if modo == Modo.INICIO else "Guardar y cargar",
+			"%d ranuras" % Guardado.NUM_RANURAS, Vector2(860, 600))
+	_caja = cuerpo
+	var desplazable: ScrollContainer = ScrollContainer.new()
+	desplazable.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	desplazable.follow_focus = true
+	cuerpo.add_child(desplazable)
 	_filas = VBoxContainer.new()
+	_filas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_filas.add_theme_constant_override("separation", 8)
-	_caja.add_child(_filas)
-	_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
-	_caja.add_child(_aviso)
+	desplazable.add_child(_filas)
+	_aviso = UI.parrafo("", Tema.ACENTO)
+	cuerpo.add_child(_aviso)
 	_rellenar()
 
 
@@ -48,31 +56,65 @@ static func texto_resumen(n: int) -> String:
 
 func _rellenar() -> void:
 	for h in _filas.get_children():
+		_filas.remove_child(h)
 		h.queue_free()
 	for n in range(1, Guardado.NUM_RANURAS + 1):
-		var fila: HBoxContainer = HBoxContainer.new()
-		fila.add_theme_constant_override("separation", 8)
-		_filas.add_child(fila)
-		var etiqueta: Label = Hud.crear_label(18, Color(0.6, 0.9, 0.6) if n == Guardado.ranura else Color(0.9, 0.9, 0.85))
-		etiqueta.text = texto_resumen(n)
-		etiqueta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		fila.add_child(etiqueta)
-		var existe: bool = Guardado.existe(n)
-		if modo == Modo.INICIO:
-			fila.add_child(_boton("Jugar" if existe else "Nueva", func(): _jugar(n)))
-		else:
-			fila.add_child(_boton("¿Sobrescribir?" if _confirmar == "guardar:%d" % n else "Guardar aquí", func(): _guardar(n)))
-			var cargar: Button = _boton("Cargar", func(): _cargar(n))
-			cargar.disabled = not existe
-			fila.add_child(cargar)
-		var borrar: Button = _boton("¿Seguro?" if _confirmar == "borrar:%d" % n else "Borrar", func(): _borrar(n))
-		borrar.disabled = not existe
-		fila.add_child(borrar)
+		_filas.add_child(_tarjeta(n))
 
 
-func _boton(texto: String, accion: Callable) -> Button:
-	var b: Button = Hud.crear_boton(texto, accion)
-	b.custom_minimum_size = Vector2(150, 40)
+func _tarjeta(n: int) -> Control:
+	var r: Dictionary = Guardado.resumen(n)
+	var existe: bool = Guardado.existe(n)
+	var t: PanelContainer = UI.tarjeta(n == Guardado.ranura)
+	var fila: HBoxContainer = HBoxContainer.new()
+	fila.add_theme_constant_override("separation", 14)
+	t.add_child(fila)
+	var numero: Label = UI.etiqueta(str(n), "Titulo", Tema.ACENTO if existe else Tema.TEXTO_TENUE, 30)
+	numero.custom_minimum_size.x = 40
+	numero.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	numero.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	fila.add_child(numero)
+	var textos: VBoxContainer = VBoxContainer.new()
+	textos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	textos.add_theme_constant_override("separation", 3)
+	fila.add_child(textos)
+	if not existe or r.is_empty():
+		textos.add_child(UI.etiqueta("Ranura vacía", "", Tema.TEXTO_SUAVE, 18))
+		textos.add_child(UI.nota("Aquí empezará una partida nueva."))
+	elif r.has("roto"):
+		textos.add_child(UI.etiqueta("Archivo dañado", "", Tema.PELIGRO, 18))
+		textos.add_child(UI.nota("Se puede borrar para liberar la ranura."))
+	else:
+		var cab: HBoxContainer = HBoxContainer.new()
+		cab.add_theme_constant_override("separation", 8)
+		textos.add_child(cab)
+		cab.add_child(UI.etiqueta("Día %d  ·  Nivel %d" % [r["dia"], r["nivel"]], "", Tema.TEXTO, 18))
+		if n == Guardado.ranura:
+			cab.add_child(UI.insignia("EN USO", Tema.ACENTO))
+		var linea: String = UI.dinero(int(r["dinero"]))
+		if str(r["fecha"]) != "":
+			linea += "   ·   " + str(r["fecha"]).replace("T", " ").substr(0, 16)
+		textos.add_child(UI.nota(linea))
+	var botones: HBoxContainer = HBoxContainer.new()
+	botones.add_theme_constant_override("separation", 8)
+	botones.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	fila.add_child(botones)
+	if modo == Modo.INICIO:
+		botones.add_child(_boton("Jugar" if existe else "Nueva", func(): _jugar(n), "BotonPrimario"))
+	else:
+		botones.add_child(_boton("¿Sobrescribir?" if _confirmar == "guardar:%d" % n else "Guardar aquí", func(): _guardar(n), "BotonPrimario"))
+		var cargar: Button = _boton("Cargar", func(): _cargar(n))
+		cargar.disabled = not existe
+		botones.add_child(cargar)
+	var borrar: Button = _boton("¿Seguro?" if _confirmar == "borrar:%d" % n else "Borrar", func(): _borrar(n), "BotonPeligro")
+	borrar.disabled = not existe
+	botones.add_child(borrar)
+	return t
+
+
+func _boton(texto: String, accion: Callable, variacion: String = "") -> Button:
+	var b: Button = UI.boton(texto, accion, variacion)
+	b.custom_minimum_size = Vector2(130, 40)
 	return b
 
 

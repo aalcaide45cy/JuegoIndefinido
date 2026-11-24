@@ -28,18 +28,22 @@ var _vista: TextureRect
 var _coords: Label
 var _x: SpinBox
 var _z: SpinBox
+var _texto: String = ""
+var _filtro: UI.Filtros
+var _sitios: VBoxContainer
 
 
 func construir() -> void:
-	var tam: Vector2 = get_viewport_rect().size
-	var padre: Control = get_parent() as Control
-	if padre != null and padre.size.y > 0.0:
-		tam = padre.size
-	_px = clampf(minf(tam.x - 520.0, tam.y - 180.0), 320.0, 900.0)
-	var caja: VBoxContainer = panel_centrado(Vector2(_px + 400.0, _px + 120.0))
-	cabecera(caja, "Teletransporte (clic en el mapa)")
+	_px = 500.0
+	var caja: VBoxContainer
+	if incrustada:
+		caja = VBoxContainer.new()
+		caja.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(caja)
+	else:
+		caja = marco("Teletransporte", "Clic en el mapa para ir", Vector2(1060, 640))
 	var fila: HBoxContainer = HBoxContainer.new()
-	fila.add_theme_constant_override("separation", 14)
+	fila.add_theme_constant_override("separation", 16)
 	fila.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caja.add_child(fila)
 
@@ -66,42 +70,72 @@ func construir() -> void:
 	var lado: VBoxContainer = VBoxContainer.new()
 	lado.custom_minimum_size = Vector2(340, 0)
 	lado.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lado.add_theme_constant_override("separation", 8)
 	fila.add_child(lado)
-	_coords = Hud.crear_label(16, Color(1, 0.92, 0.6))
-	_coords.text = "Mueve el ratón por el mapa."
+	_coords = UI.etiqueta("Mueve el ratón por el mapa.", "Dinero", null, 16)
 	lado.add_child(_coords)
 	var fila_xz: HBoxContainer = HBoxContainer.new()
+	fila_xz.add_theme_constant_override("separation", 6)
 	lado.add_child(fila_xz)
 	_x = _casilla("X")
 	_z = _casilla("Z")
-	fila_xz.add_child(_etiqueta("X"))
+	fila_xz.add_child(UI.etiqueta("X", "Subtitulo"))
 	fila_xz.add_child(_x)
-	fila_xz.add_child(_etiqueta("Z"))
+	fila_xz.add_child(UI.etiqueta("Z", "Subtitulo"))
 	fila_xz.add_child(_z)
-	fila_xz.add_child(Hud.crear_boton("Ir", func() -> void: _ir(_x.value, _z.value)))
+	fila_xz.add_child(UI.boton("Ir", func() -> void: _ir(_x.value, _z.value), "BotonPrimario"))
 	var pos: Vector3 = jugador.global_position if jugador != null else Vector3.ZERO
 	_x.value = snappedf(pos.x, 1.0)
 	_z.value = snappedf(pos.z, 1.0)
 
-	subtitulo(lado, "Ciudad original")
-	for s in SITIOS_CIUDAD:
-		lado.add_child(_boton_sitio(str(s[0]), float(s[1]), float(s[2])))
-	subtitulo(lado, "Pueblos y ciudades (ciudades primero)")
+	lado.add_child(UI.buscador("Buscar un sitio…", func(t: String) -> void:
+		_texto = t
+		_rellenar_sitios()))
+	_filtro = UI.Filtros.new()
+	_filtro.anadir("todo", "Todo")
+	_filtro.anadir("ciudad_original", "Ciudad original")
+	for t in ["Ciudad", "Pueblo", "Aldea"]:
+		_filtro.anadir(t, t + "s" if t != "Ciudad" else "Ciudades")
+	_filtro.cambiado.connect(func(_c: String) -> void: _rellenar_sitios())
+	lado.add_child(_filtro)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
 	lado.add_child(scroll)
-	var lista: VBoxContainer = VBoxContainer.new()
-	lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(lista)
-	var todos: Array = GeneradorMundo.todos_asentamientos()
-	todos.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+	_sitios = VBoxContainer.new()
+	_sitios.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sitios.add_theme_constant_override("separation", 3)
+	scroll.add_child(_sitios)
+	_rellenar_sitios()
+
+
+func _rellenar_sitios() -> void:
+	for h in _sitios.get_children():
+		_sitios.remove_child(h)
+		h.queue_free()
+	var todos: Array = []
+	for s in SITIOS_CIUDAD:
+		todos.append({"nombre": str(s[0]), "x": float(s[1]), "z": float(s[2]), "cat": "ciudad_original"})
+	var asent: Array = GeneradorMundo.todos_asentamientos()
+	asent.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if int(a["tipo"]) != int(b["tipo"]):
 			return int(a["tipo"]) > int(b["tipo"])
 		return str(a["nombre"]) < str(b["nombre"]))
-	for s in todos:
+	for s in asent:
 		var p: Vector2 = s["pos"]
-		lista.add_child(_boton_sitio("%s %s" % [GeneradorMundo.nombre_tipo(int(s["tipo"])), s["nombre"]], p.x, p.y))
+		var tipo: String = GeneradorMundo.nombre_tipo(int(s["tipo"]))
+		todos.append({"nombre": "%s %s" % [tipo, s["nombre"]], "x": p.x, "z": p.y, "cat": tipo})
+	var n: int = 0
+	for l in todos:
+		if _filtro.clave != "todo" and not (str(l["cat"]) == _filtro.clave or str(l["cat"]).begins_with(_filtro.clave)):
+			continue
+		if _texto != "" and not str(l["nombre"]).to_lower().contains(_texto):
+			continue
+		_sitios.add_child(_boton_sitio(str(l["nombre"]), float(l["x"]), float(l["z"])))
+		n += 1
+	if n == 0:
+		_sitios.add_child(UI.nota("Ningún sitio coincide."))
 
 
 func _process(_delta: float) -> void:
@@ -125,7 +159,7 @@ func _casilla(_nombre: String) -> SpinBox:
 
 
 func _boton_sitio(texto: String, x: float, z: float) -> Button:
-	var b: Button = Hud.crear_boton(texto, func() -> void: _ir(x, z))
+	var b: Button = UI.boton(texto, func() -> void: _ir(x, z), "BotonSuave")
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.clip_text = true
 	return b
@@ -181,7 +215,4 @@ func _ir(x: float, z: float) -> void:
 		jugador.set("velocity", Vector3.ZERO)
 	Juego.avisar("Teletransportado a X %d, Z %d." % [int(x), int(z)])
 	# Cierra también el panel de administrador que la abrió, para volver al juego.
-	if get_parent() is Ventana:
-		(get_parent() as Ventana).cerrar()
-	else:
-		cerrar()
+	cerrar_raiz()

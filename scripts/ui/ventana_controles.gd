@@ -11,8 +11,20 @@ var _esperando: String = ""        # Acción que espera tecla nueva ("" = ningun
 var _botones: Dictionary = {}      # acción -> Button
 
 
+const MANDO: Array = [
+	["Andar / conducir", "Stick izquierdo"], ["Mirar", "Stick derecho"], ["Disparar / golpear", "Gatillo derecho"],
+	["Apuntar (zoom)", "Gatillo izquierdo"], ["Saltar", "A"], ["Agacharse", "B"], ["Usar", "X"], ["Recargar", "Y"],
+	["Objeto anterior / siguiente", "LB / RB"], ["Correr", "Pulsar stick izquierdo"], ["Cambiar cámara", "Pulsar stick derecho"],
+	["Móvil", "Select"], ["Pausa y cerrar ventanas", "Start"], ["Mapa grande", "Cruceta arriba"],
+	["Inventario", "Cruceta abajo"], ["Montar objeto", "Cruceta izquierda"], ["Esquivar", "Cruceta derecha"],
+]
+
+
 func construir() -> void:
-	montar("Controles", Vector2(900, 760))
+	if incrustada:
+		montar_incrustada()
+	else:
+		montar("Controles", Vector2(900, 700))
 	_rellenar()
 
 
@@ -33,27 +45,27 @@ func _rellenar() -> void:
 		Controles.mando_activo = on
 		Controles.guardar())
 	var mandos: Array = Input.get_connected_joypads()
-	var info: Label = Hud.crear_label(15, Color(0.75, 0.8, 0.72))
-	info.text = ("Mando conectado: %s" % Input.get_joy_name(mandos[0])) if mandos.size() > 0 else "No hay ningún mando conectado."
-	lista.add_child(info)
+	nota_fila(("Mando conectado: %s" % Input.get_joy_name(mandos[0])) if mandos.size() > 0 else "No hay ningún mando conectado.")
 	titulo("Teclas")
 	for a in Controles.ACCIONES:
 		var accion: String = str(a[0])
 		var f: HBoxContainer = fila(str(a[1]))
-		var b: Button = Hud.crear_boton(Controles.nombre_teclas(accion), _empezar.bind(accion))
+		f.add_child(UI.espaciador())
+		var b: Button = UI.boton(Controles.nombre_teclas(accion), _empezar.bind(accion))
 		b.custom_minimum_size.x = 260
 		f.add_child(b)
 		_botones[accion] = b
-	var abajo: HBoxContainer = HBoxContainer.new()
-	abajo.add_child(Hud.crear_boton("Restablecer todo", func() -> void:
+	boton_fila("Restablecer todo", func() -> void:
 		Controles.restablecer()
 		_rellenar()
-		aviso.text = "Controles restablecidos."))
-	lista.add_child(abajo)
-	var ayuda: Label = Hud.crear_label(15, Color(0.75, 0.8, 0.72))
-	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ayuda.text = "Mando: stick izquierdo andar · stick derecho mirar · gatillo derecho disparar · gatillo izquierdo apuntar · A saltar · B agacharse · X usar · Y recargar · LB/RB objeto · pulsar stick izquierdo correr · Select móvil · Start pausa · cruceta: arriba mapa, abajo inventario, izquierda montar, derecha esquivar."
-	lista.add_child(ayuda)
+		aviso.text = "Controles restablecidos.", "BotonPeligro")
+	titulo("Mando (fijo)")
+	for m in MANDO:
+		var f: HBoxContainer = fila(str(m[0]))
+		f.add_child(UI.espaciador())
+		var cap: PanelContainer = UI.insignia(str(m[1]), Tema.AZUL)
+		f.add_child(cap)
+	filtrar(_filtro)
 
 
 func _empezar(accion: String) -> void:

@@ -30,13 +30,15 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var fuente: Font = ThemeDB.fallback_font
+	var fuente: Font = Tema.fuente("semibold")
 	# Fondo del panel.
 	var estilo: StyleBoxFlat = StyleBoxFlat.new()
-	estilo.bg_color = Color(0.05, 0.06, 0.07, 0.8)
-	estilo.border_color = Color(0.88, 0.74, 0.38, 0.8)
+	estilo.bg_color = Color(Tema.FONDO, 0.78)
+	estilo.border_color = Color(Tema.BORDE, 0.9)
 	estilo.set_border_width_all(1)
-	estilo.set_corner_radius_all(10)
+	estilo.set_corner_radius_all(12)
+	estilo.shadow_color = Color(0, 0, 0, 0.35)
+	estilo.shadow_size = 6
 	draw_style_box(estilo, Rect2(0, 0, ANCHO, ALTO))
 
 	# --- Vida: corazón y barra ---
@@ -58,7 +60,7 @@ func _draw() -> void:
 	# --- Dinero: moneda y cifra ---
 	_moneda(Vector2(24, 60))
 	draw_string_outline(fuente, Vector2(46, 69), "%d $" % Juego.dinero, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 5, Color.BLACK)
-	draw_string(fuente, Vector2(46, 69), "%d $" % Juego.dinero, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(1.0, 0.86, 0.35))
+	draw_string(fuente, Vector2(46, 69), "%d $" % Juego.dinero, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Tema.ACENTO)
 
 	# --- Clima: nombre del tiempo, a la derecha de la fila del dinero ---
 	var texto_clima: String = Clima.nombre()
@@ -119,7 +121,7 @@ func _corazon(c: Vector2, k: float) -> void:
 func _moneda(c: Vector2) -> void:
 	draw_circle(c, 11.0, Color(0.55, 0.4, 0.08))
 	draw_circle(c, 9.0, Color(1.0, 0.82, 0.25))
-	draw_string(ThemeDB.fallback_font, c + Vector2(-4.5, 5.5), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.5, 0.35, 0.05))
+	draw_string(Tema.fuente("bold"), c + Vector2(-4.5, 5.5), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.5, 0.35, 0.05))
 
 
 # Un escudo azul.

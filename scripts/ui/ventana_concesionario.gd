@@ -19,15 +19,14 @@ var _texto: Label
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(800, 600))
-	cabecera(caja, "Concesionario")
+	var caja: VBoxContainer = marco("Concesionario", "", Vector2(800, 600))
 	var pestanas: HBoxContainer = HBoxContainer.new()
 	pestanas.add_theme_constant_override("separation", 8)
 	caja.add_child(pestanas)
 	pestanas.add_child(Hud.crear_boton("Comprar", _cambiar_modo.bind("comprar")))
 	pestanas.add_child(Hud.crear_boton("Vender / negociar", _cambiar_modo.bind("vender")))
 	caja.add_child(Hud.crear_boton("Mi negocio: comprar para revender, alquilar vehículos, helicópteros y aviones...", _abrir_negocio))
-	subtitulo(caja, "Gasolina y reparaciones: ferretería. Los vehículos se guardan donde los dejes. H engancha remolques.")
+	caja.add_child(UI.nota("Gasolina y reparaciones: ferretería. Los vehículos se guardan donde los dejes. H engancha remolques."))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caja.add_child(scroll)
@@ -88,7 +87,7 @@ func _pintar() -> void:
 			if not cats.has(c) and (categorias.is_empty() or categorias.has(c)):
 				cats.append(c)
 		for c in cats:
-			var t: Label = Hud.crear_label(20, Color(0.6, 0.9, 0.6))
+			var t: Label = UI.etiqueta("", "Titulo", Tema.BRUMA, 18)
 			t.text = c.to_upper()
 			_lista.add_child(t)
 			for id_t in Vehiculo.TIPOS:

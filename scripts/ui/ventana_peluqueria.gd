@@ -21,7 +21,7 @@ var _boton: Button
 func construir() -> void:
 	_nuevo = Aspecto.valido(Juego.aspecto)
 	var caja: VBoxContainer = panel_centrado(Vector2(760, 470))
-	cabecera(caja, "%s  (Esc para cerrar)" % Juego.DatosPeluqueria.nombre(local))
+	cabecera(caja, Juego.DatosPeluqueria.nombre(local))
 	var fila: HBoxContainer = HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 18)
 	fila.size_flags_vertical = Control.SIZE_EXPAND_FILL

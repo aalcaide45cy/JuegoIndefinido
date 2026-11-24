@@ -13,6 +13,7 @@ extends RefCounted
 
 const DatosObjetos = preload("res://scripts/datos/objetos.gd")
 const DatosHabilidades = preload("res://scripts/datos/habilidades.gd")
+const Economia = preload("res://scripts/datos/economia.gd")
 
 const CATEGORIAS: Dictionary = {
 	"semilla": "Semillas", "material": "Cultivo", "herramienta": "Herramientas",
@@ -45,35 +46,126 @@ static func boton_grande(texto: String, al_pulsar: Callable) -> Button:
 	return boton
 
 
-# ==============================================================================
-# Menú de pausa (Esc): el juego se para mientras está abierto.
-class Pausa extends Ventana:
+# Base de Pausa e Inicio: lista de botones a la izquierda y, a la derecha, un resumen de tu
+# partida y los atajos de teclado/mando.
+class MenuLateral extends Ventana:
 	var jugador: Node3D = null
 	var _aviso: Label
+	var _botones: VBoxContainer
+	var _derecha: VBoxContainer
 
-	func construir() -> void:
+	# Monta el marco: título grande, botones (a rellenar por quien hereda) y la columna derecha.
+	func _montar(titulo_grande: String, lema: String) -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(380, 600))
-		var titulo: Label = Hud.crear_label(32, Color(0.6, 0.9, 0.6))
-		titulo.text = "Pausa"
-		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caja.add_child(titulo)
-		caja.add_child(Ventanas.boton_grande("Reanudar", cerrar))
-		caja.add_child(Ventanas.boton_grande("Guardar (ranura %d)" % Guardado.ranura, _guardar))
-		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
-		caja.add_child(Ventanas.boton_grande("Logros", _logros))
-		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
-		caja.add_child(Ventanas.boton_grande("Sonido y juego…", func(): add_child(VentanaSonido.new())))
-		caja.add_child(Ventanas.boton_grande("Controles…", func(): add_child(VentanaControles.new())))
-		caja.add_child(Ventanas.boton_grande("Salir del juego", _salir))
-		_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
-		_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caja.add_child(_aviso)
+		var panel: PanelContainer = _panel_base(Vector2(900, 560))
+		var fila: HBoxContainer = HBoxContainer.new()
+		fila.add_theme_constant_override("separation", 26)
+		panel.add_child(fila)
+		var izquierda: VBoxContainer = VBoxContainer.new()
+		izquierda.custom_minimum_size.x = 330
+		izquierda.add_theme_constant_override("separation", 8)
+		fila.add_child(izquierda)
+		var t: Label = UI.titulo(titulo_grande)
+		t.add_theme_font_size_override("font_size", 38)
+		izquierda.add_child(t)
+		if lema != "":
+			izquierda.add_child(UI.nota(lema))
+		izquierda.add_child(UI.espaciador_alto(10))
+		_botones = VBoxContainer.new()
+		_botones.add_theme_constant_override("separation", 7)
+		izquierda.add_child(_botones)
+		izquierda.add_child(UI.espaciador())
+		_aviso = UI.parrafo("", Tema.ACENTO, 15)
+		izquierda.add_child(_aviso)
+		var vertical: VSeparator = VSeparator.new()
+		fila.add_child(vertical)
+		_derecha = VBoxContainer.new()
+		_derecha.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_derecha.add_theme_constant_override("separation", 12)
+		fila.add_child(_derecha)
+
+	func _boton(texto: String, accion: Callable, variacion: String = "", icono: String = "") -> Button:
+		var b: Button = UI.boton(texto, accion, variacion, icono)
+		b.custom_minimum_size = Vector2(0, 44)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 18)
+		_botones.add_child(b)
+		return b
+
+	func _ajustes_y_logros() -> void:
+		_boton("Partidas…", _partidas, "", "save")
+		_boton("Logros", func(): add_child(VentanaLogros.new()), "", "trophy")
+		_boton("Ajustes…", func(): add_child(VentanaAjustes.new()), "", "gear")
+
+	func _partidas() -> void:
+		pass
+
+	# Tarjeta con tus datos (nivel, vida, dinero, hora).
+	func _tarjeta_personaje() -> void:
+		var t: PanelContainer = UI.tarjeta()
+		_derecha.add_child(t)
+		var c: VBoxContainer = VBoxContainer.new()
+		c.add_theme_constant_override("separation", 6)
+		t.add_child(c)
+		c.add_child(UI.seccion("Tu personaje"))
+		var datos: HBoxContainer = HBoxContainer.new()
+		datos.add_theme_constant_override("separation", 22)
+		c.add_child(datos)
+		datos.add_child(UI.etiqueta(UI.dinero(Juego.dinero), "Dinero", null, 24))
+		datos.add_child(UI.etiqueta("Nivel %d" % Juego.nivel, "Titulo", null, 22))
+		datos.add_child(UI.espaciador())
+		datos.add_child(UI.etiqueta("Día %d · %s" % [Juego.dia, Juego.texto_hora()], "Subtitulo"))
+		c.add_child(UI.etiqueta("Vida  %d / %d" % [int(Juego.vida), int(Juego.vida_max())], "Subtitulo"))
+		c.add_child(UI.barra(Juego.vida, Juego.vida_max(), Tema.PELIGRO, 12))
+		c.add_child(UI.etiqueta("Experiencia  %d / %d" % [Juego.xp, Juego.xp_necesaria()], "Subtitulo"))
+		c.add_child(UI.barra(Juego.xp, Juego.xp_necesaria(), Tema.ACENTO, 12))
+		if Juego.oficio != "":
+			c.add_child(UI.etiqueta("Oficio: %s" % Juego.DatosOficios.nombre(Juego.oficio), "Subtitulo"))
+
+	# Tarjeta con los atajos más usados (con las teclas que tengas puestas).
+	func _tarjeta_atajos() -> void:
+		var t: PanelContainer = UI.tarjeta()
+		t.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_derecha.add_child(t)
+		var c: VBoxContainer = VBoxContainer.new()
+		c.add_theme_constant_override("separation", 6)
+		t.add_child(c)
+		c.add_child(UI.seccion("Atajos"))
+		var rejilla: GridContainer = GridContainer.new()
+		rejilla.columns = 2
+		rejilla.add_theme_constant_override("h_separation", 26)
+		rejilla.add_theme_constant_override("v_separation", 7)
+		c.add_child(rejilla)
+		for a in [["inventario", "Inventario"], ["telefono", "Móvil: encargos, pedidos, taxi"], ["mapa_grande", "Mapa grande"],
+				["grimorio", "Grimorio de magia"], ["aspecto", "Ropa y peinado"], ["logros", "Logros"]]:
+			var fila: HBoxContainer = HBoxContainer.new()
+			fila.add_theme_constant_override("separation", 8)
+			var tecla: PanelContainer = UI.tecla(Controles.nombre_teclas(str(a[0])).split(" / ")[0])
+			fila.add_child(tecla)
+			fila.add_child(UI.etiqueta(str(a[1]), "", Tema.TEXTO_SUAVE, 15))
+			rejilla.add_child(fila)
+		var pad: Label = UI.nota("Con mando: Start pausa · Select móvil · cruceta ↑ mapa, ↓ inventario.")
+		c.add_child(UI.espaciador())
+		c.add_child(pad)
 
 	func cerrar() -> void:
 		get_tree().paused = false
 		super()
+
+
+# ==============================================================================
+# Menú de pausa (Esc): el juego se para mientras está abierto.
+class Pausa extends MenuLateral:
+
+	func construir() -> void:
+		_montar("Pausa", "Juego Indefinido")
+		_boton("Reanudar", cerrar, "BotonPrimario", "right")
+		_boton("Guardar (ranura %d)" % Guardado.ranura, _guardar, "", "save")
+		_ajustes_y_logros()
+		_boton("Salir del juego", _salir, "BotonPeligro", "exit")
+		_tarjeta_personaje()
+		_tarjeta_atajos()
 
 	func _guardar() -> void:
 		if Guardado.guardar(get_tree(), jugador):
@@ -88,9 +180,6 @@ class Pausa extends Ventana:
 		v.al_elegir = cerrar
 		add_child(v)
 
-	func _logros() -> void:
-		add_child(VentanaLogros.new())
-
 	func _salir() -> void:
 		get_tree().paused = false
 		get_tree().quit()
@@ -98,36 +187,45 @@ class Pausa extends Ventana:
 
 # ==============================================================================
 # Menú al arrancar: Continuar (última ranura), Nueva partida, elegir ranura o ver logros.
-class Inicio extends Ventana:
-	var jugador: Node3D = null
+class Inicio extends MenuLateral:
 
 	func construir() -> void:
-		process_mode = Node.PROCESS_MODE_ALWAYS
-		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(420, 620))
-		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
-		titulo.text = "Juego Indefinido"
-		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caja.add_child(titulo)
-		var lema: Label = Hud.crear_label(15, Color(0.75, 0.8, 0.72))
-		lema.text = "La magia está prohibida. Tú, no."
-		lema.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caja.add_child(lema)
+		se_cierra_con_atras = false
+		_montar("Juego Indefinido", "La magia está prohibida. Tú, no.")
 		var ultima: int = Guardado.ultima_ranura()
-		var continuar: Button = Ventanas.boton_grande("Continuar (ranura %d)" % ultima if ultima > 0 else "Continuar", _continuar)
+		var continuar: Button = _boton("Continuar (ranura %d)" % ultima if ultima > 0 else "Continuar", _continuar, "BotonPrimario", "right")
 		continuar.disabled = ultima == 0
-		caja.add_child(continuar)
-		caja.add_child(Ventanas.boton_grande("Nueva partida", _nueva))
-		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
-		caja.add_child(Ventanas.boton_grande("Logros", func(): add_child(VentanaLogros.new())))
-		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
-		caja.add_child(Ventanas.boton_grande("Sonido y juego…", func(): add_child(VentanaSonido.new())))
-		caja.add_child(Ventanas.boton_grande("Controles…", func(): add_child(VentanaControles.new())))
-		caja.add_child(Ventanas.boton_grande("Salir", _salir))
+		_boton("Nueva partida", _nueva, "", "plus")
+		_ajustes_y_logros()
+		_boton("Salir", _salir, "BotonPeligro", "exit")
+		_derecha_inicio(ultima)
+		_tarjeta_atajos()
 
-	func cerrar() -> void:
-		get_tree().paused = false
-		super()
+	# A la derecha: un resumen de la última partida (o una bienvenida si no hay ninguna).
+	func _derecha_inicio(ultima: int) -> void:
+		var t: PanelContainer = UI.tarjeta()
+		_derecha.add_child(t)
+		var c: VBoxContainer = VBoxContainer.new()
+		c.add_theme_constant_override("separation", 6)
+		t.add_child(c)
+		c.add_child(UI.seccion("Última partida" if ultima > 0 else "Bienvenido"))
+		if ultima > 0:
+			var r: Dictionary = Guardado.resumen(ultima)
+			if r.is_empty() or r.has("roto"):
+				c.add_child(UI.parrafo("La ranura %d no se puede leer." % ultima, Tema.PELIGRO))
+			else:
+				var datos: HBoxContainer = HBoxContainer.new()
+				datos.add_theme_constant_override("separation", 22)
+				c.add_child(datos)
+				datos.add_child(UI.etiqueta(UI.dinero(int(r["dinero"])), "Dinero", null, 24))
+				datos.add_child(UI.etiqueta("Nivel %d" % int(r["nivel"]), "Titulo", null, 22))
+				datos.add_child(UI.espaciador())
+				datos.add_child(UI.etiqueta("Día %d" % int(r["dia"]), "Subtitulo"))
+				if str(r["fecha"]) != "":
+					c.add_child(UI.nota("Guardada el %s" % str(r["fecha"]).replace("T", " ")))
+		else:
+			c.add_child(UI.parrafo("Eres un alquimista en una ciudad donde la magia está prohibida. Cultiva Hoja de Bruma, " +
+					"cocina pociones, monta negocios y esquiva a la guardia. Empieza con «Nueva partida».", Tema.TEXTO_SUAVE))
 
 	func _continuar() -> void:
 		if Guardado.cargar(get_tree(), jugador, Guardado.ultima_ranura()):
@@ -157,25 +255,64 @@ class Inicio extends Ventana:
 
 
 # ==============================================================================
+# Inventario (TAB): mochila con filtros y buscador a la izquierda y la ficha del objeto a la derecha.
 class Inventario extends Ventana:
-	var _estado: Label
+	var _estado: HBoxContainer
+	var _detalle: DetalleObjeto
+	var _panel: PanelInventario
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(600, 640))
-		var fila: HBoxContainer = cabecera(caja, "Inventario")
-		fila.add_child(Hud.crear_boton("Ordenar", func() -> void: Juego.ordenar(Juego.inventario, Juego.TAM_BARRA)))
-		fila.move_child(fila.get_child(fila.get_child_count() - 1), 2)
-		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
-		caja.add_child(_estado)
-		Ventanas.montar_inventario(self, caja, 58.0, _envio)
-		var ayuda: Label = Hud.crear_label(13, Color(0.65, 0.65, 0.62))
-		ayuda.text = "Arrastra para mover o apilar · Clic derecho: dividir · Mayús + clic: mochila ↔ barra"
-		caja.add_child(ayuda)
+		pistas_extra = [["x", "Mandar a barra / mochila"], ["y", "Dividir"]]
+		var cuerpo: VBoxContainer = marco("Inventario", "", Vector2(1060, 650))
+		_cabecera_extra()
+		var columnas: HBoxContainer = HBoxContainer.new()
+		columnas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		columnas.add_theme_constant_override("separation", 18)
+		cuerpo.add_child(columnas)
+		_panel = PanelInventario.new(Juego.inventario, Juego.TAM_BARRA, Juego.TAM_INVENTARIO, 9, 50.0, _envio, true, true)
+		_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		columnas.add_child(_panel)
+		var derecha: VBoxContainer = VBoxContainer.new()
+		derecha.custom_minimum_size.x = 310
+		derecha.add_theme_constant_override("separation", 8)
+		columnas.add_child(derecha)
+		_detalle = DetalleObjeto.new(310.0)
+		derecha.add_child(_detalle)
+		var botones: HBoxContainer = HBoxContainer.new()
+		botones.add_theme_constant_override("separation", 8)
+		derecha.add_child(botones)
+		var ordenar: Button = UI.boton("Ordenar mochila", func() -> void: Juego.ordenar(Juego.inventario, Juego.TAM_BARRA), "", "menuList")
+		ordenar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		botones.add_child(ordenar)
+		derecha.add_child(UI.nota("Arrastra para mover o apilar · Clic derecho: dividir · Mayús + clic: mochila ↔ barra"))
+		_panel.elegido.connect(_ver)
 		Juego.cambio.connect(_refrescar)
 		_refrescar()
+		for it in Juego.inventario:
+			if it != null:
+				_detalle.mostrar(str(it["id"]), Juego.cuenta(str(it["id"])), it)
+				break
+
+	# Dinero, nivel y vida en la cabecera, a la izquierda del botón de cerrar.
+	func _cabecera_extra() -> void:
+		_estado = HBoxContainer.new()
+		_estado.add_theme_constant_override("separation", 16)
+		_marco_cabecera.add_child(_estado)
+		_marco_cabecera.move_child(_estado, _marco_cabecera.get_child_count() - 2)
 
 	func _refrescar() -> void:
-		_estado.text = Ventanas.texto_estado()
+		for h in _estado.get_children():
+			h.queue_free()
+		_estado.add_child(UI.etiqueta(UI.dinero(Juego.dinero), "Dinero"))
+		_estado.add_child(UI.etiqueta("Nivel %d" % Juego.nivel, "Subtitulo"))
+		_estado.add_child(UI.etiqueta("Vida %d/%d" % [int(Juego.vida), int(Juego.vida_max())], "Subtitulo"))
+
+	func _ver(casilla: CasillaUI) -> void:
+		var it = casilla.lista[casilla.indice]
+		if it == null:
+			_detalle.mostrar("")
+		else:
+			_detalle.mostrar(str(it["id"]), Juego.cuenta(str(it["id"])), it)
 
 	func _envio(casilla: CasillaUI) -> void:
 		if casilla.indice < Juego.TAM_BARRA:
@@ -192,113 +329,257 @@ class Inventario extends Ventana:
 
 
 # ==============================================================================
+# Tienda: catálogo con categorías, buscador, orden y filtro a la izquierda (pestañas Comprar y
+# Vender) y, a la derecha, la ficha del objeto, tu inventario y la zona de venta.
 class Tienda extends Ventana:
 	var nombre_tienda: String = "Tienda"
 	var tienda: String = "herbolario"   # Qué vende (campo "tienda" en objetos.gd).
 
-	var _estado: Label
-	var _pestanas: TabContainer
-	var _listas: Dictionary = {}        # categoría -> VBoxContainer con sus filas
+	var _estado: HBoxContainer
+	var _pestanas: UI.Pestanas
+	var _categorias: UI.Filtros
+	var _lista_comprar: VBoxContainer
+	var _lista_vender: VBoxContainer
+	var _desplazable: ScrollContainer
+	var _orden: OptionButton
+	var _solo_puedo: CheckButton
+	var _texto: String = ""
+	var _detalle: DetalleObjeto
+	var _vacio: Label
 
 	func construir() -> void:
-		var panel: PanelContainer = Hud.crear_panel()
-		Hud.centrar(panel, Vector2(1180, 650), espacio_visible())
-		add_child(panel)
-		var raiz: VBoxContainer = VBoxContainer.new()
-		raiz.add_theme_constant_override("separation", 10)
-		panel.add_child(raiz)
-		cabecera(raiz, nombre_tienda)
-		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
-		raiz.add_child(_estado)
-
+		pistas_extra = [["pestanas", "Comprar / Vender"], ["x", "Vender"]]
+		var cuerpo: VBoxContainer = marco(nombre_tienda, "", Vector2(1180, 670))
+		_estado = HBoxContainer.new()
+		_estado.add_theme_constant_override("separation", 16)
+		_marco_cabecera.add_child(_estado)
+		_marco_cabecera.move_child(_estado, _marco_cabecera.get_child_count() - 2)
 		var columnas: HBoxContainer = HBoxContainer.new()
 		columnas.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		columnas.add_theme_constant_override("separation", 18)
-		raiz.add_child(columnas)
+		cuerpo.add_child(columnas)
 
-		# Izquierda: lo que vende, por pestañas.
-		var izquierda: VBoxContainer = VBoxContainer.new()
-		izquierda.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		columnas.add_child(izquierda)
-		subtitulo(izquierda, "Género del vendedor")
-		_pestanas = TabContainer.new()
-		_pestanas.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		_pestanas.add_theme_font_size_override("font_size", 15)
-		izquierda.add_child(_pestanas)
-		for id in DatosObjetos.de_tienda(tienda):
-			var categoria: String = CATEGORIAS[DatosObjetos.datos(id)["tipo"]]
-			if not _listas.has(categoria):
-				var desplazable: ScrollContainer = ScrollContainer.new()
-				desplazable.name = categoria
-				desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-				_pestanas.add_child(desplazable)
-				var lista: VBoxContainer = VBoxContainer.new()
-				lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				lista.add_theme_constant_override("separation", 6)
-				desplazable.add_child(lista)
-				_listas[categoria] = lista
+		# Izquierda: pestañas Comprar / Vender.
+		_pestanas = UI.Pestanas.new()
+		_pestanas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		columnas.add_child(_pestanas)
+		_pestanas.anadir("Comprar", _montar_comprar(), "shoppingCart")
+		_pestanas.anadir("Vender", _montar_vender(), "shoppingBasket")
+		_pestanas.cambiada.connect(func(_i: int) -> void: _refrescar())
 
-		# Zona para vender arrastrando.
-		var venta: ZonaVenta = ZonaVenta.new()
-		izquierda.add_child(venta)
-
-		# Derecha: tu inventario.
+		# Derecha: ficha, inventario compacto y zona de venta.
 		var derecha: VBoxContainer = VBoxContainer.new()
+		derecha.custom_minimum_size.x = 420
+		derecha.add_theme_constant_override("separation", 8)
 		columnas.add_child(derecha)
-		Ventanas.montar_inventario(self, derecha, 48.0, _envio)
-
+		_detalle = DetalleObjeto.new(420.0)
+		derecha.add_child(_detalle)
+		var mochila: PanelInventario = PanelInventario.new(Juego.inventario, Juego.TAM_BARRA, Juego.TAM_INVENTARIO, 9, 36.0, _envio, false, true, "Tu mochila")
+		mochila.elegido.connect(_ver_casilla)
+		derecha.add_child(mochila)
+		derecha.add_child(ZonaVenta.new())
 		Juego.cambio.connect(_refrescar)
 		_refrescar()
 
-	func _refrescar() -> void:
-		_estado.text = Ventanas.texto_estado()
-		for categoria in _listas:
-			for hijo in _listas[categoria].get_children():
-				hijo.queue_free()
+	func _montar_comprar() -> Control:
+		var caja: VBoxContainer = VBoxContainer.new()
+		caja.add_theme_constant_override("separation", 8)
+		var fila: HBoxContainer = HBoxContainer.new()
+		fila.add_theme_constant_override("separation", 8)
+		caja.add_child(fila)
+		fila.add_child(UI.buscador("Buscar en el catálogo…", func(t: String) -> void:
+			_texto = t
+			_refrescar()))
+		_orden = OptionButton.new()
+		for t in ["Orden: nombre", "Precio: menor primero", "Precio: mayor primero", "Nivel necesario"]:
+			_orden.add_item(t)
+		_orden.item_selected.connect(func(_i: int) -> void: _refrescar())
+		fila.add_child(_orden)
+		_categorias = UI.Filtros.new()
+		_categorias.anadir("todo", "Todo")
+		var vistas: Dictionary = {}
 		for id in DatosObjetos.de_tienda(tienda):
-			var categoria: String = CATEGORIAS[DatosObjetos.datos(id)["tipo"]]
-			_listas[categoria].add_child(_fila_producto(id))
+			var tipo: String = str(DatosObjetos.datos(id)["tipo"])
+			if not vistas.has(tipo):
+				vistas[tipo] = true
+				_categorias.anadir(tipo, str(CATEGORIAS.get(tipo, tipo)))
+		_categorias.cambiado.connect(func(_c: String) -> void: _refrescar())
+		caja.add_child(_categorias)
+		_solo_puedo = CheckButton.new()
+		_solo_puedo.text = "Solo lo que puedo comprar ahora"
+		_solo_puedo.toggled.connect(func(_on: bool) -> void: _refrescar())
+		caja.add_child(_solo_puedo)
+		_desplazable = ScrollContainer.new()
+		_desplazable.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		_desplazable.follow_focus = true
+		caja.add_child(_desplazable)
+		var interior: VBoxContainer = VBoxContainer.new()
+		interior.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_desplazable.add_child(interior)
+		_lista_comprar = VBoxContainer.new()
+		_lista_comprar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_lista_comprar.add_theme_constant_override("separation", 6)
+		interior.add_child(_lista_comprar)
+		_vacio = UI.nota("Nada coincide con tu búsqueda.")
+		_vacio.visible = false
+		interior.add_child(_vacio)
+		return caja
 
-	# Una fila del catálogo: icono, nombre, precio, requisitos y botón de comprar.
+	func _montar_vender() -> Control:
+		var caja: VBoxContainer = VBoxContainer.new()
+		caja.add_theme_constant_override("separation", 8)
+		caja.add_child(UI.nota("Esto es lo que llevas y esta tienda te compra (la mitad del precio; las cosechas, menos). " +
+				"También puedes arrastrar objetos a la zona de venta de la derecha."))
+		var desplazable: ScrollContainer = ScrollContainer.new()
+		desplazable.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		desplazable.follow_focus = true
+		caja.add_child(desplazable)
+		_lista_vender = VBoxContainer.new()
+		_lista_vender.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_lista_vender.add_theme_constant_override("separation", 6)
+		desplazable.add_child(_lista_vender)
+		return caja
+
+	func _refrescar() -> void:
+		for h in _estado.get_children():
+			h.queue_free()
+		_estado.add_child(UI.etiqueta(UI.dinero(Juego.dinero), "Dinero"))
+		_estado.add_child(UI.etiqueta("Nivel %d" % Juego.nivel, "Subtitulo"))
+		var pos: int = _desplazable.scroll_vertical
+		for h in _lista_comprar.get_children():
+			_lista_comprar.remove_child(h)
+			h.queue_free()
+		var ids: Array = []
+		for id in DatosObjetos.de_tienda(tienda):
+			var d: Dictionary = DatosObjetos.datos(id)
+			if _categorias.clave != "todo" and d["tipo"] != _categorias.clave:
+				continue
+			if _texto != "" and not str(d["nombre"]).to_lower().contains(_texto) and not str(d["descripcion"]).to_lower().contains(_texto):
+				continue
+			if _solo_puedo.button_pressed and (Juego.motivo_no_compra(id) != "" or Juego.dinero < int(d["precio"])):
+				continue
+			ids.append(id)
+		match _orden.selected:
+			0: ids.sort_custom(func(a, b) -> bool: return DatosObjetos.nombre(a) < DatosObjetos.nombre(b))
+			1: ids.sort_custom(func(a, b) -> bool: return int(DatosObjetos.datos(a)["precio"]) < int(DatosObjetos.datos(b)["precio"]))
+			2: ids.sort_custom(func(a, b) -> bool: return int(DatosObjetos.datos(a)["precio"]) > int(DatosObjetos.datos(b)["precio"]))
+			3: ids.sort_custom(func(a, b) -> bool: return int(DatosObjetos.datos(a)["nivel"]) < int(DatosObjetos.datos(b)["nivel"]))
+		for id in ids:
+			_lista_comprar.add_child(_fila_producto(id))
+		_vacio.visible = ids.is_empty()
+		_desplazable.set_deferred("scroll_vertical", pos)
+		# Pestaña Vender: lo que llevas y se puede vender.
+		if _lista_vender != null:
+			for h in _lista_vender.get_children():
+				_lista_vender.remove_child(h)
+				h.queue_free()
+			var hay: bool = false
+			for lista in [Juego.inventario]:
+				for i in lista.size():
+					var c = lista[i]
+					if c != null and int(DatosObjetos.datos(c["id"])["precio"]) > 0:
+						_lista_vender.add_child(_fila_venta(lista, i))
+						hay = true
+			if not hay:
+				_lista_vender.add_child(UI.nota("No llevas nada que se pueda vender."))
+		_pestanas.renombrar(0, "Comprar (%d)" % ids.size())
+
+	# Una fila del catálogo: icono, nombre, descripción, requisitos, precio y botones de comprar.
 	func _fila_producto(id: String) -> Control:
 		var datos: Dictionary = DatosObjetos.datos(id)
-		var fondo: PanelContainer = PanelContainer.new()
-		var estilo: StyleBoxFlat = StyleBoxFlat.new()
-		estilo.bg_color = Color(0.12, 0.13, 0.12)
-		estilo.set_corner_radius_all(6)
-		estilo.set_content_margin_all(6)
-		fondo.add_theme_stylebox_override("panel", estilo)
+		var motivo: String = Juego.motivo_no_compra(id)
+		var sin_dinero: bool = Juego.dinero < int(datos["precio"])
+		var fondo: PanelContainer = UI.tarjeta()
 		var fila: HBoxContainer = HBoxContainer.new()
-		fila.add_theme_constant_override("separation", 10)
+		fila.add_theme_constant_override("separation", 12)
 		fondo.add_child(fila)
-
-		var icono: IconoObjeto = IconoObjeto.new()
+		var icono: DetalleObjeto.IconoGrande = DetalleObjeto.IconoGrande.new()
 		icono.id = id
+		icono.custom_minimum_size = Vector2(56, 56)
 		fila.add_child(icono)
-
 		var textos: VBoxContainer = VBoxContainer.new()
 		textos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		textos.add_theme_constant_override("separation", 2)
 		fila.add_child(textos)
-		var titulo: Label = Hud.crear_label(16)
-		titulo.text = "%s   —   %d $" % [datos["nombre"], datos["precio"]]
-		if datos["pila"] > 1:
-			titulo.text += "   (montones de %d)" % DatosObjetos.pila(id)
-		textos.add_child(titulo)
-		var descripcion: Label = Hud.crear_label(13, Color(0.7, 0.72, 0.68))
-		descripcion.text = datos["descripcion"]
-		descripcion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		textos.add_child(descripcion)
-		var motivo: String = Juego.motivo_no_compra(id)
+		var nombre: Label = UI.etiqueta(str(datos["nombre"]), "", Tema.TEXTO if motivo == "" else Tema.TEXTO_SUAVE, 17)
+		nombre.add_theme_font_override("font", Tema.fuente("semibold"))
+		textos.add_child(nombre)
+		var desc: Label = UI.nota(str(datos["descripcion"]))
+		textos.add_child(desc)
 		if motivo != "":
-			var aviso: Label = Hud.crear_label(13, Color(1, 0.45, 0.4))
-			aviso.text = "🔒 " + motivo
-			textos.add_child(aviso)
-
-		var boton: Button = Hud.crear_boton("Comprar", func() -> void: Juego.avisar(Juego.comprar(id)))
-		boton.disabled = motivo != "" or Juego.dinero < datos["precio"]
-		boton.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		fila.add_child(boton)
+			textos.add_child(UI.etiqueta(motivo, "Peligro", null, 13))
+		var derecha: VBoxContainer = VBoxContainer.new()
+		derecha.add_theme_constant_override("separation", 4)
+		derecha.custom_minimum_size.x = 120
+		fila.add_child(derecha)
+		var precio: Label = UI.etiqueta(UI.dinero(int(datos["precio"])), "Dinero" if not sin_dinero else "Peligro", null, 19)
+		precio.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		derecha.add_child(precio)
+		var botones: HBoxContainer = HBoxContainer.new()
+		botones.add_theme_constant_override("separation", 4)
+		derecha.add_child(botones)
+		var comprar: Button = UI.boton("Comprar", func() -> void: Juego.avisar(Juego.comprar(id)), "BotonPrimario")
+		comprar.disabled = motivo != "" or sin_dinero
+		comprar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		botones.add_child(comprar)
+		var cinco: Button = UI.boton("×5", func() -> void: _comprar_varios(id, 5))
+		cinco.disabled = comprar.disabled or Juego.dinero < int(datos["precio"]) * 2
+		cinco.tooltip_text = "Comprar hasta 5 (se detiene si no te llega el dinero o no te cabe)"
+		botones.add_child(cinco)
+		var ver: Callable = func() -> void: _detalle.mostrar(id, Juego.cuenta(id))
+		comprar.focus_entered.connect(ver)
+		fondo.mouse_entered.connect(ver)
 		return fondo
+
+	func _comprar_varios(id: String, veces: int) -> void:
+		var hechas: int = 0
+		for i in veces:
+			var antes: int = Juego.dinero
+			Juego.comprar(id)
+			if Juego.dinero == antes:
+				break
+			hechas += 1
+		Juego.avisar("Has comprado %d × %s." % [hechas, DatosObjetos.nombre(id)])
+
+	# Una fila de la pestaña Vender.
+	func _fila_venta(lista: Array, i: int) -> Control:
+		var c = lista[i]
+		var id: String = str(c["id"])
+		var datos: Dictionary = DatosObjetos.datos(id)
+		var factor: float = Economia.VENTA_COSECHA if datos["tipo"] == "cosecha" else Economia.VENTA_TIENDA
+		var unidad: int = maxi(1, int(int(datos["precio"]) * factor))
+		var fondo: PanelContainer = UI.tarjeta()
+		var fila: HBoxContainer = HBoxContainer.new()
+		fila.add_theme_constant_override("separation", 12)
+		fondo.add_child(fila)
+		var icono: DetalleObjeto.IconoGrande = DetalleObjeto.IconoGrande.new()
+		icono.id = id
+		icono.custom_minimum_size = Vector2(48, 48)
+		fila.add_child(icono)
+		var nombre: Label = UI.etiqueta("%s  ×%d" % [datos["nombre"], int(c["cantidad"])], "", Tema.TEXTO, 17)
+		nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nombre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fila.add_child(nombre)
+		fila.add_child(UI.etiqueta("%s c/u" % UI.dinero(unidad), "Subtitulo"))
+		var total: Label = UI.etiqueta(UI.dinero(unidad * int(c["cantidad"])), "Dinero", null, 18)
+		total.custom_minimum_size.x = 90
+		total.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		fila.add_child(total)
+		var vender: Button = UI.boton("Vender todo", func() -> void: Juego.avisar(Juego.vender(lista, i)), "BotonAcento")
+		fila.add_child(vender)
+		var ver: Callable = func() -> void: _detalle.mostrar(id, Juego.cuenta(id), c)
+		vender.focus_entered.connect(ver)
+		fondo.mouse_entered.connect(ver)
+		return fondo
+
+	func _ver_casilla(casilla: CasillaUI) -> void:
+		var it = casilla.lista[casilla.indice]
+		if it == null:
+			_detalle.mostrar("")
+		else:
+			_detalle.mostrar(str(it["id"]), Juego.cuenta(str(it["id"])), it)
 
 	func _envio(casilla: CasillaUI) -> void:
 		Juego.avisar(Juego.vender(casilla.lista, casilla.indice))
@@ -623,67 +904,86 @@ class Instructor extends Ventana:
 	var _lista: VBoxContainer
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(720, 520))
-		cabecera(caja, "Academia Plomo y Pericia")
-		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
+		var caja: VBoxContainer = marco("Academia Plomo y Pericia", "Aprende habilidades para comprar armas y explosivos avanzados", Vector2(780, 560))
+		_estado = UI.etiqueta("", "Dinero")
 		caja.add_child(_estado)
-		subtitulo(caja, "Aprende una habilidad para poder comprar armas y explosivos avanzados.")
+		var desplazable: ScrollContainer = ScrollContainer.new()
+		desplazable.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		desplazable.follow_focus = true
+		caja.add_child(desplazable)
 		_lista = VBoxContainer.new()
-		_lista.add_theme_constant_override("separation", 8)
-		caja.add_child(_lista)
+		_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_lista.add_theme_constant_override("separation", 6)
+		desplazable.add_child(_lista)
 		Juego.cambio.connect(_refrescar)
 		_refrescar()
 
 	func _refrescar() -> void:
+		if not is_instance_valid(_lista):
+			return
 		_estado.text = Ventanas.texto_estado()
 		for hijo in _lista.get_children():
+			_lista.remove_child(hijo)
 			hijo.queue_free()
 		for id_hab in DatosHabilidades.LISTA:
 			var datos: Dictionary = DatosHabilidades.LISTA[id_hab]
+			var sabida: bool = Juego.habilidades.has(id_hab)
+			var t: PanelContainer = UI.tarjeta(sabida)
+			_lista.add_child(t)
 			var fila: HBoxContainer = HBoxContainer.new()
 			fila.add_theme_constant_override("separation", 12)
-			_lista.add_child(fila)
-			var texto: Label = Hud.crear_label(17)
-			texto.text = "%s   —   %d $   (nivel %d)" % [datos["nombre"], datos["precio"], datos["nivel"]]
-			texto.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			fila.add_child(texto)
-			var sabida: bool = Juego.habilidades.has(id_hab)
-			var boton: Button = Hud.crear_boton("Aprendida" if sabida else "Aprender",
-					func() -> void: Juego.avisar(Juego.aprender(id_hab)))
-			boton.disabled = sabida or Juego.nivel < datos["nivel"] or Juego.dinero < datos["precio"]
-			fila.add_child(boton)
+			t.add_child(fila)
+			var textos: VBoxContainer = VBoxContainer.new()
+			textos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			textos.add_theme_constant_override("separation", 2)
+			fila.add_child(textos)
+			textos.add_child(UI.etiqueta(str(datos["nombre"]), "", Tema.TEXTO if sabida or Juego.nivel >= int(datos["nivel"]) else Tema.TEXTO_SUAVE, 17))
+			var falta_nivel: bool = Juego.nivel < int(datos["nivel"])
+			textos.add_child(UI.etiqueta("Nivel %d necesario" % int(datos["nivel"]) if falta_nivel else "Nivel %d" % int(datos["nivel"]), "Nota", Tema.PELIGRO if falta_nivel else null))
+			if sabida:
+				fila.add_child(UI.insignia("APRENDIDA", Tema.ACENTO))
+			else:
+				fila.add_child(UI.etiqueta(UI.dinero(int(datos["precio"])), "Dinero"))
+				var boton: Button = UI.boton("Aprender", func() -> void: Juego.avisar(Juego.aprender(id_hab)), "BotonPrimario")
+				boton.disabled = falta_nivel or Juego.dinero < int(datos["precio"])
+				fila.add_child(boton)
 
 
 # ==============================================================================
 class Estanteria extends Ventana:
-	var _estado: Label
+	var _detalle: DetalleObjeto
 
 	func construir() -> void:
-		var panel: PanelContainer = Hud.crear_panel()
-		Hud.centrar(panel, Vector2(1100, 620), espacio_visible())
-		add_child(panel)
-		var raiz: VBoxContainer = VBoxContainer.new()
-		raiz.add_theme_constant_override("separation", 10)
-		panel.add_child(raiz)
-		cabecera(raiz, "Estantería de casa")
-		_estado = Hud.crear_label(15, Color(0.75, 0.8, 0.72))
-		_estado.text = "Arrastra entre la estantería y tu inventario · Mayús + clic: mandar al otro lado"
-		raiz.add_child(_estado)
+		pistas_extra = [["x", "Mandar al otro lado"], ["y", "Dividir"]]
+		var cuerpo: VBoxContainer = marco("Estantería de casa", "Guarda aquí lo que no quieras llevar encima", Vector2(1180, 660))
 		var columnas: HBoxContainer = HBoxContainer.new()
-		columnas.add_theme_constant_override("separation", 24)
-		raiz.add_child(columnas)
-
+		columnas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		columnas.add_theme_constant_override("separation", 18)
+		cuerpo.add_child(columnas)
 		var izquierda: VBoxContainer = VBoxContainer.new()
+		izquierda.add_theme_constant_override("separation", 8)
 		columnas.add_child(izquierda)
-		var fila: HBoxContainer = HBoxContainer.new()
-		izquierda.add_child(fila)
-		subtitulo(fila, "Estantería (%d casillas)   " % Juego.TAM_ESTANTERIA)
-		fila.add_child(Hud.crear_boton("Ordenar", func() -> void: Juego.ordenar(Juego.estanteria)))
-		rejilla(izquierda, Juego.estanteria, 0, Juego.TAM_ESTANTERIA, 9, 50.0, _a_inventario)
+		var estante: PanelInventario = PanelInventario.new(Juego.estanteria, 0, Juego.TAM_ESTANTERIA, 9, 46.0, _a_inventario, true, false, "Estantería")
+		estante.elegido.connect(_ver)
+		izquierda.add_child(estante)
+		izquierda.add_child(UI.boton("Ordenar estantería", func() -> void: Juego.ordenar(Juego.estanteria), "", "menuList"))
+		var centro: VBoxContainer = VBoxContainer.new()
+		centro.add_theme_constant_override("separation", 8)
+		centro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		columnas.add_child(centro)
+		var mochila: PanelInventario = PanelInventario.new(Juego.inventario, Juego.TAM_BARRA, Juego.TAM_INVENTARIO, 9, 46.0, _a_estanteria, true, true, "Tu mochila")
+		mochila.elegido.connect(_ver)
+		centro.add_child(mochila)
+		_detalle = DetalleObjeto.new(260.0)
+		columnas.add_child(_detalle)
 
-		var derecha: VBoxContainer = VBoxContainer.new()
-		columnas.add_child(derecha)
-		Ventanas.montar_inventario(self, derecha, 50.0, _a_estanteria)
+	func _ver(casilla: CasillaUI) -> void:
+		var it = casilla.lista[casilla.indice]
+		if it == null:
+			_detalle.mostrar("")
+		else:
+			_detalle.mostrar(str(it["id"]), Juego.cuenta(str(it["id"])), it)
 
 	func _a_inventario(casilla: CasillaUI) -> void:
 		Juego.mover_rapido(Juego.estanteria, casilla.indice, Juego.inventario)
@@ -694,210 +994,195 @@ class Estanteria extends Ventana:
 
 # ==============================================================================
 class Admin extends Ventana:
-	var _estado: Label
-	var _hora: HSlider
-	var _vida: HSlider
-	var _objetos: OptionButton
-	var _cantidad: SpinBox
-	var _casillas_habilidad: Dictionary = {}
-	var _texto_duracion: Label
 	var jugador: Node3D = null
-	var _lista_vehiculos: OptionButton
+	var _pestanas: UI.Pestanas
+	var _paginas: Array = []        # Las páginas con filas (se filtran con el buscador).
+	var _campo: LineEdit
+	var _resultado: Label
 
 	func construir() -> void:
-		var caja: VBoxContainer = panel_centrado(Vector2(640, 880))
-		cabecera(caja, "Panel de administrador (F1)")
-		caja.add_child(Hud.crear_boton("Teletransporte (mapa del mundo)…", _abrir_teletransporte))
-		caja.add_child(Hud.crear_boton("Aparecer cualquier cosa (armas, objetos, PNJ, dinero)…", _abrir_objetos))
-		caja.add_child(Hud.crear_boton("Asaltos a casas (ajustes y pruebas)…", _abrir_asaltos))
-		_construir_vehiculos(caja)
-		_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
-		caja.add_child(_estado)
+		pistas_extra = [["pestanas", "Cambiar de pestaña"]]
+		var cuerpo: VBoxContainer = marco("Panel de administrador", "Solo para probar el juego (F1)", Vector2(1120, 680))
+		_pestanas = UI.Pestanas.new()
+		cuerpo.add_child(_pestanas)
+		var jug: PaginaAdmin = _pagina("jugador")
+		_pestanas.anadir("Jugador", jug, "singleplayer")
+		var mun: PaginaAdmin = _pagina("mundo")
+		_pestanas.anadir("Mundo", mun, "contrast")
+		var obj: VentanaObjetosAdmin = VentanaObjetosAdmin.new()
+		obj.jugador = jugador
+		obj.incrustada = true
+		_pestanas.anadir("Objetos y NPC", obj, "shoppingBasket")
+		var tp: VentanaTeletransporte = VentanaTeletransporte.new()
+		tp.jugador = jugador
+		tp.incrustada = true
+		_pestanas.anadir("Teletransporte", tp, "target")
+		var veh: PaginaAdmin = _pagina("vehiculos")
+		_pestanas.anadir("Vehículos y efectos", veh, "wrench")
+		var asa: VentanaAsaltos = VentanaAsaltos.new()
+		asa.jugador = jugador
+		asa.incrustada = true
+		_pestanas.anadir("Asaltos", asa, "locked")
+		_paginas = [jug, mun, veh]
+		_resultado = UI.nota("", false)
+		_campo = UI.buscador("Buscar un ajuste…", _buscar)
+		_campo.custom_minimum_size.x = 220
+		_pestanas.hueco_extra().add_child(_resultado)
+		_pestanas.hueco_extra().add_child(_campo)
 
-		# Hora del día y velocidad del tiempo.
-		subtitulo(caja, "Hora del día")
-		_hora = HSlider.new()
-		_hora.min_value = 0.0
-		_hora.max_value = 23.99
-		_hora.step = 0.05
-		_hora.value = Juego.hora
-		_hora.value_changed.connect(func(v: float) -> void: Juego.hora = v)
-		caja.add_child(_hora)
-		var velocidades: HBoxContainer = HBoxContainer.new()
-		caja.add_child(velocidades)
-		for par in [["Pausa", 0.0], ["Normal", 1.0], ["x10", 10.0], ["x60", 60.0]]:
-			velocidades.add_child(Hud.crear_boton(par[0], _velocidad.bind(par[1])))
-		for par in [["Mañana", 8.0], ["Tarde", 17.0], ["Noche", 22.0]]:
-			velocidades.add_child(Hud.crear_boton(par[0], func() -> void:
-				Juego.hora = par[1]
-				_hora.set_value_no_signal(par[1])))
+	func _pagina(modo: String) -> PaginaAdmin:
+		var p: PaginaAdmin = PaginaAdmin.new()
+		p.modo = modo
+		p.jugador = jugador
+		p.incrustada = true
+		return p
 
-		# Clima y volumen del sonido.
-		subtitulo(caja, "Clima")
-		var tiempo: HBoxContainer = HBoxContainer.new()
-		caja.add_child(tiempo)
-		for id in Clima.TIPOS:
-			tiempo.add_child(Hud.crear_boton(String(Clima.TIPOS[id]["nombre"]), func() -> void:
-				Clima.poner(id, 6.0)))
-		subtitulo(caja, "Volumen de la música y del ambiente")
-		var vol_musica: HSlider = HSlider.new()
-		vol_musica.min_value = 0.0
-		vol_musica.max_value = 1.0
-		vol_musica.step = 0.05
-		vol_musica.value = Musica.volumen_musica
-		vol_musica.value_changed.connect(func(v: float) -> void:
-			Musica.volumen_musica = v
-			Musica.guardar_opciones())
-		caja.add_child(vol_musica)
-		var vol_ambiente: HSlider = HSlider.new()
-		vol_ambiente.min_value = 0.0
-		vol_ambiente.max_value = 1.0
-		vol_ambiente.step = 0.05
-		vol_ambiente.value = Musica.volumen_ambiente
-		vol_ambiente.value_changed.connect(func(v: float) -> void:
-			Musica.volumen_ambiente = v
-			Musica.guardar_opciones())
-		caja.add_child(vol_ambiente)
+	func _buscar(texto: String) -> void:
+		var total: int = 0
+		var primera: int = -1
+		for i in _paginas.size():
+			_paginas[i].filtrar(texto)
+			if texto != "":
+				var n: int = _paginas[i].coincidencias()
+				total += n
+				if n > 0 and primera < 0:
+					primera = _pestanas.indice_de(_paginas[i])
+		_resultado.text = "" if texto == "" else "%d resultados" % total
+		if primera >= 0 and texto != "" and not _paginas.has(_pestanas.contenido(_pestanas.actual)):
+			_pestanas.elegir(primera)
+		elif primera >= 0 and texto != "" and _pestanas.contenido(_pestanas.actual).coincidencias() == 0:
+			_pestanas.elegir(primera)
 
-		# Duración de un día entero, en minutos reales.
-		_texto_duracion = subtitulo(caja, "")
-		var duracion: HSlider = HSlider.new()
-		duracion.min_value = 2.0
-		duracion.max_value = 240.0
-		duracion.step = 1.0
-		duracion.value = Juego.duracion_dia_min
-		duracion.value_changed.connect(func(v: float) -> void:
-			Juego.duracion_dia_min = v
-			_actualizar_duracion())
-		caja.add_child(duracion)
-		_actualizar_duracion()
 
-		# Dinero.
-		subtitulo(caja, "Dinero")
-		var dinero: HBoxContainer = HBoxContainer.new()
-		caja.add_child(dinero)
-		for cantidad in [100, 1000, -100]:
-			var texto: String = ("+%d $" % cantidad) if cantidad > 0 else ("%d $" % cantidad)
-			dinero.add_child(Hud.crear_boton(texto, func() -> void:
+# Una página de filas del panel de administrador: "jugador", "mundo" o "vehiculos" (y efectos).
+class PaginaAdmin extends VentanaOpciones:
+	var modo: String = "jugador"
+	var jugador: Node3D = null
+	var _lista_vehiculos: OptionButton
+	var _hora: HSlider
+	var _vida: HSlider
+	var _texto_duracion: Label
+	var _resumen: Label
+
+	func _refrescar_resumen() -> void:
+		if is_instance_valid(_resumen):
+			_resumen.text = Ventanas.texto_estado()
+
+	func construir() -> void:
+		montar_incrustada()
+		match modo:
+			"jugador":
+				_pagina_jugador()
+			"mundo":
+				_pagina_mundo()
+			_:
+				_pagina_vehiculos()
+		filtrar("")
+
+	func _process(_delta: float) -> void:
+		if modo == "mundo" and _hora != null and not _hora.has_focus():
+			_hora.set_value_no_signal(Juego.hora)
+
+	func _pagina_jugador() -> void:
+		titulo("Estado")
+		var estado: HBoxContainer = fila("Resumen")
+		_resumen = UI.etiqueta(Ventanas.texto_estado(), "Dinero", null, 16)
+		estado.add_child(_resumen)
+		Juego.cambio.connect(_refrescar_resumen)
+		_vida = deslizador("Vida", Juego.vida, 0, Juego.vida_max(), 1.0, "%d", 1.0, func(v: float) -> void: Juego.cambiar_vida(v - Juego.vida))
+		boton_fila("Curar del todo", func() -> void:
+			Juego.cambiar_vida(Juego.vida_max())
+			_vida.set_value_no_signal(Juego.vida))
+		titulo("Dinero")
+		var f_dinero: HBoxContainer = fila("Dinero")
+		for cantidad in [100, 1000, 10000, -100]:
+			var t: String = ("+%s" % UI.dinero(cantidad)) if cantidad > 0 else UI.dinero(cantidad)
+			f_dinero.add_child(UI.boton(t, func() -> void:
 				Juego.dinero = maxi(0, Juego.dinero + cantidad)
 				Juego.cambio.emit()))
-
-		# Modo volar: W/A/S/D hacia donde miras, Espacio sube, C baja, Shift x3.
-		# La rueda del ratón cambia la velocidad mientras vuelas.
-		subtitulo(caja, "Modo volar (rueda del ratón = velocidad)")
-		var fila_vuelo: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila_vuelo)
-		var volar: CheckButton = CheckButton.new()
-		volar.text = "Volar"
-		volar.button_pressed = Juego.modo_volar
-		volar.focus_mode = Control.FOCUS_NONE
-		var texto_vuelo: Label = Hud.crear_label(16, Color(0.8, 0.9, 1.0))
-		var refrescar_vuelo: Callable = func() -> void:
-			texto_vuelo.text = "Vuelo: %d m/s (%d km/h)" % [int(Juego.velocidad_vuelo), int(Juego.velocidad_vuelo * 3.6)]
-		volar.toggled.connect(func(v: bool) -> void:
-			Juego.modo_volar = v
-			Juego.avisar("Modo volar activado. Rueda del ratón = velocidad." if v else "Modo volar desactivado.")
-			refrescar_vuelo.call())
-		fila_vuelo.add_child(volar)
-		fila_vuelo.add_child(Hud.crear_boton("Velocidad normal", func() -> void:
-			Juego.velocidad_vuelo = Juego.VELOCIDAD_VUELO_NORMAL
-			refrescar_vuelo.call()
-			Juego.avisar("Velocidad de vuelo normal: %d m/s" % int(Juego.VELOCIDAD_VUELO_NORMAL))))
-		fila_vuelo.add_child(texto_vuelo)
-		refrescar_vuelo.call()
-
-		# Policía.
-		var policia: CheckButton = CheckButton.new()
-		policia.text = "Policía activa"
-		policia.button_pressed = Juego.policia_activa
-		policia.focus_mode = Control.FOCUS_NONE
-		policia.toggled.connect(func(v: bool) -> void:
-			Juego.policia_activa = v
-			if not v:
-				Juego.alerta = 0.0)
-		caja.add_child(policia)
-		var sosp: HSlider = HSlider.new()
-		sosp.min_value = 0.0
-		sosp.max_value = 100.0
-		sosp.value = Juego.sospecha
-		sosp.value_changed.connect(func(v: float) -> void: Juego.sospecha = v)
-		subtitulo(caja, "Sospecha de la policía (0-100)")
-		caja.add_child(sosp)
-
-		# Vida.
-		subtitulo(caja, "Vida")
-		var fila_vida: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila_vida)
-		_vida = HSlider.new()
-		_vida.min_value = 0
-		_vida.max_value = Juego.vida_max()
-		_vida.value = Juego.vida
-		_vida.custom_minimum_size = Vector2(380, 0)
-		_vida.value_changed.connect(func(v: float) -> void: Juego.cambiar_vida(v - Juego.vida))
-		fila_vida.add_child(_vida)
-		fila_vida.add_child(Hud.crear_boton("Curar", func() -> void:
-			Juego.cambiar_vida(Juego.vida_max())
-			_vida.set_value_no_signal(Juego.vida)))
-
-		# Nivel y habilidades.
-		subtitulo(caja, "Nivel y habilidades")
-		var fila_nivel: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila_nivel)
-		fila_nivel.add_child(Hud.crear_boton("Nivel -1", func() -> void:
+		titulo("Nivel y habilidades")
+		var f_nivel: HBoxContainer = fila("Nivel")
+		f_nivel.add_child(UI.boton("Nivel −1", func() -> void:
 			Juego.nivel = maxi(1, Juego.nivel - 1)
 			Juego.cambio.emit()))
-		fila_nivel.add_child(Hud.crear_boton("Nivel +1", func() -> void:
+		f_nivel.add_child(UI.boton("Nivel +1", func() -> void:
 			Juego.nivel += 1
 			Juego.cambio.emit()))
-		var fila_hab: HFlowContainer = HFlowContainer.new()
-		caja.add_child(fila_hab)
 		for id_hab in DatosHabilidades.LISTA:
-			var marca: CheckBox = CheckBox.new()
-			marca.text = DatosHabilidades.nombre(id_hab)
-			marca.focus_mode = Control.FOCUS_NONE
-			marca.button_pressed = Juego.habilidades.has(id_hab)
-			marca.toggled.connect(func(activa: bool) -> void:
+			casilla(DatosHabilidades.nombre(id_hab), Juego.habilidades.has(id_hab), func(activa: bool) -> void:
 				if activa:
 					Juego.habilidades[id_hab] = true
 				else:
 					Juego.habilidades.erase(id_hab)
 				Juego.cambio.emit())
-			fila_hab.add_child(marca)
+		titulo("Movimiento")
+		casilla("Modo volar", Juego.modo_volar, func(v: bool) -> void:
+			Juego.modo_volar = v
+			Juego.avisar("Modo volar activado. Rueda del ratón = velocidad." if v else "Modo volar desactivado."),
+				"W/A/S/D hacia donde miras, Espacio sube, C baja, Mayús x3. La rueda del ratón cambia la velocidad.")
+		deslizador("Velocidad de vuelo (m/s)", Juego.velocidad_vuelo, 5.0, 300.0, 1.0, "%d", 1.0, func(v: float) -> void:
+			Juego.velocidad_vuelo = v)
+		titulo("Policía")
+		casilla("Policía activa", Juego.policia_activa, func(v: bool) -> void:
+			Juego.policia_activa = v
+			if not v:
+				Juego.alerta = 0.0)
+		deslizador("Sospecha de la policía", Juego.sospecha, 0.0, 100.0, 1.0, "%d", 1.0, func(v: float) -> void: Juego.sospecha = v)
 
-		# Dar objetos.
-		subtitulo(caja, "Darme un objeto")
-		var fila_dar: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila_dar)
-		_objetos = OptionButton.new()
-		_objetos.focus_mode = Control.FOCUS_NONE
-		for id in DatosObjetos.LISTA:
-			_objetos.add_item(DatosObjetos.nombre(id))
-			_objetos.set_item_metadata(_objetos.item_count - 1, id)
-		fila_dar.add_child(_objetos)
-		_cantidad = SpinBox.new()
-		_cantidad.min_value = 1
-		_cantidad.max_value = 100
-		_cantidad.value = 1
-		fila_dar.add_child(_cantidad)
-		fila_dar.add_child(Hud.crear_boton("Dar", _dar))
+	func _pagina_mundo() -> void:
+		titulo("Hora del día")
+		_hora = deslizador("Hora", Juego.hora, 0.0, 23.99, 0.05, "%d h", 1.0, func(v: float) -> void: Juego.hora = v)
+		var f_vel: HBoxContainer = fila("Velocidad del tiempo")
+		for par in [["Pausa", 0.0], ["Normal", 1.0], ["x10", 10.0], ["x60", 60.0]]:
+			f_vel.add_child(UI.boton(par[0], func() -> void:
+				Juego.velocidad_tiempo = par[1]
+				Juego.avisar("Velocidad del tiempo: %s" % ("pausa" if par[1] == 0.0 else "x%d" % int(par[1])))))
+		var f_mom: HBoxContainer = fila("Ir a")
+		for par in [["Mañana", 8.0], ["Tarde", 17.0], ["Noche", 22.0]]:
+			f_mom.add_child(UI.boton(par[0], func() -> void:
+				Juego.hora = par[1]
+				_hora.set_value_no_signal(par[1])))
+		deslizador("Duración de un día (minutos reales)", Juego.duracion_dia_min, 2.0, 240.0, 1.0, "%d min", 1.0, func(v: float) -> void:
+			Juego.duracion_dia_min = v, "Lo normal son %d." % int(Juego.DURACION_DIA_POR_DEFECTO))
+		titulo("Clima")
+		var f_clima: HBoxContainer = fila("Tiempo")
+		for id in Clima.TIPOS:
+			f_clima.add_child(UI.boton(String(Clima.TIPOS[id]["nombre"]), func() -> void: Clima.poner(id, 6.0)))
+		titulo("Sonido")
+		deslizador("Música", Musica.volumen_musica, 0.0, 1.0, 0.05, "%d %%", 100.0, func(v: float) -> void:
+			Musica.volumen_musica = v
+			Musica.guardar_opciones())
+		deslizador("Ambiente", Musica.volumen_ambiente, 0.0, 1.0, 0.05, "%d %%", 100.0, func(v: float) -> void:
+			Musica.volumen_ambiente = v
+			Musica.guardar_opciones())
 
-		# Efectos de pociones (para probarlos) y recetas.
-		subtitulo(caja, "Efectos y recetas")
-		var fila_efecto: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila_efecto)
+	func _pagina_vehiculos() -> void:
+		titulo("Vehículo")
+		nota_fila("Aparece a 1 m de ti, mirando hacia donde miras.")
+		var f_veh: HBoxContainer = fila("Tipo de vehículo")
+		_lista_vehiculos = OptionButton.new()
+		_lista_vehiculos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for tipo_v in Vehiculo.TIPOS:
+			_lista_vehiculos.add_item(str(Vehiculo.TIPOS[tipo_v]["nombre"]))
+			_lista_vehiculos.set_item_metadata(_lista_vehiculos.item_count - 1, tipo_v)
+		f_veh.add_child(_lista_vehiculos)
+		f_veh.add_child(UI.boton("Aparecer", _aparecer_vehiculo, "BotonPrimario"))
+		titulo("Efectos de pociones")
+		var f_efecto: HBoxContainer = fila("Efecto")
 		var lista_efectos: OptionButton = OptionButton.new()
-		lista_efectos.focus_mode = Control.FOCUS_NONE
+		lista_efectos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for id_e in Juego.DatosEfectos.LISTA:
 			lista_efectos.add_item(Juego.DatosEfectos.nombre(id_e))
 			lista_efectos.set_item_metadata(lista_efectos.item_count - 1, id_e)
-		fila_efecto.add_child(lista_efectos)
-		fila_efecto.add_child(Hud.crear_boton("Aplicar 2 min", func() -> void:
+		f_efecto.add_child(lista_efectos)
+		f_efecto.add_child(UI.boton("Aplicar 2 min", func() -> void:
 			var id_e: String = lista_efectos.get_item_metadata(lista_efectos.selected)
 			Juego.aplicar_efecto(id_e, 120.0, 1.0)))
-		fila_efecto.add_child(Hud.crear_boton("Quitar todos", func() -> void:
+		f_efecto.add_child(UI.boton("Quitar todos", func() -> void:
 			Juego.efectos_activos.clear()
 			Juego.efectos_cambiados.emit()))
-		fila_efecto.add_child(Hud.crear_boton("3 pociones al azar", func() -> void:
+		titulo("Recetas")
+		boton_fila("Darme 3 pociones al azar (y descubrir su receta)", func() -> void:
 			var ids_i: Array = GameData.Mezclas.INGREDIENTES.keys()
 			var n: int = randi_range(2, GameData.Mezclas.max_ingredientes(Juego.nivel))
 			var mezcla: Array = []
@@ -906,39 +1191,9 @@ class Admin extends Ventana:
 			var id_p: String = GameData.buscar_pocion(mezcla)
 			Juego.anadir("pocion_" + id_p, 3)
 			Juego.descubrir_receta(id_p)
-			Juego.avisar("Te has dado 3 x %s." % GameData.pocion(id_p)["nombre"])))
-
-		Juego.cambio.connect(_refrescar)
-		_refrescar()
-
-	func _abrir_objetos() -> void:
-		var v: VentanaObjetosAdmin = VentanaObjetosAdmin.new()
-		v.jugador = jugador
-		add_child(v)
-
-	func _abrir_asaltos() -> void:
-		var v: VentanaAsaltos = VentanaAsaltos.new()
-		v.jugador = jugador
-		add_child(v)
-
-	func _abrir_teletransporte() -> void:
-		var v: VentanaTeletransporte = VentanaTeletransporte.new()
-		v.jugador = jugador
-		add_child(v)
+			Juego.avisar("Te has dado 3 x %s." % GameData.pocion(id_p)["nombre"]))
 
 	# Aparecer un vehículo delante de ti, mirando hacia donde miras.
-	func _construir_vehiculos(caja: VBoxContainer) -> void:
-		subtitulo(caja, "Aparecer un vehículo delante de mí (a 1 m, hacia donde miras)")
-		var fila: HBoxContainer = HBoxContainer.new()
-		caja.add_child(fila)
-		_lista_vehiculos = OptionButton.new()
-		_lista_vehiculos.focus_mode = Control.FOCUS_NONE
-		for tipo_v in Vehiculo.TIPOS:
-			_lista_vehiculos.add_item(str(Vehiculo.TIPOS[tipo_v]["nombre"]))
-			_lista_vehiculos.set_item_metadata(_lista_vehiculos.item_count - 1, tipo_v)
-		fila.add_child(_lista_vehiculos)
-		fila.add_child(Hud.crear_boton("Aparecer", _aparecer_vehiculo))
-
 	func _aparecer_vehiculo() -> void:
 		var gestor: Node = get_tree().get_first_node_in_group("gestor_vehiculos")
 		if gestor == null or jugador == null or _lista_vehiculos.selected < 0:
@@ -958,24 +1213,3 @@ class Admin extends Ventana:
 		p.y = float(golpe["position"].y) + 0.15 if not golpe.is_empty() else jugador.global_position.y
 		var id_v: String = gestor.entregar(tipo_v, p, giro)
 		Juego.avisar("Vehículo creado: %s (es tuyo, id %s)." % [Vehiculo.TIPOS[tipo_v]["nombre"], id_v])
-
-	func _process(_delta: float) -> void:
-		if not _hora.has_focus():
-			_hora.set_value_no_signal(Juego.hora)
-
-	func _refrescar() -> void:
-		_estado.text = "%s    ·    Día %d, %s" % [Ventanas.texto_estado(), Juego.dia, Juego.texto_hora()]
-
-	func _actualizar_duracion() -> void:
-		_texto_duracion.text = "Duración de un día entero: %d minutos reales (normal: %d)" % [
-				int(Juego.duracion_dia_min), int(Juego.DURACION_DIA_POR_DEFECTO)]
-
-	func _velocidad(v: float) -> void:
-		Juego.velocidad_tiempo = v
-		Juego.avisar("Velocidad del tiempo: %s" % ("pausa" if v == 0.0 else "x%d" % int(v)))
-
-	func _dar() -> void:
-		var id: String = _objetos.get_item_metadata(_objetos.selected)
-		var sobra: int = Juego.anadir(id, int(_cantidad.value))
-		Juego.avisar("Te has dado %s.%s" % [DatosObjetos.nombre(id),
-				"" if sobra == 0 else " (No cabían %d.)" % sobra])

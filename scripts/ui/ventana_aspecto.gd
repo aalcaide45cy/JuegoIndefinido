@@ -16,7 +16,7 @@ var _valores: Dictionary = {}   # clave -> Label con el nombre de la opción ele
 
 func construir() -> void:
 	var caja: VBoxContainer = panel_centrado(Vector2(780, 500))
-	cabecera(caja, "Aspecto  (O o Esc para cerrar)")
+	cabecera(caja, "Aspecto")
 	var fila: HBoxContainer = HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 18)
 	fila.size_flags_vertical = Control.SIZE_EXPAND_FILL
