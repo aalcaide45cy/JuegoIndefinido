@@ -38,6 +38,7 @@ const NOM_ESCALADO: Array = ["Bilineal", "FSR 1", "FSR 2 (Forward+)"]
 const NOM_VSYNC: Array = ["Desactivada", "Activada", "Adaptativa", "Buzón (baja latencia)"]
 const LIMITES_FPS: Array = [0, 30, 60, 90, 120, 144, 165, 240]
 const NOM_GORE: Array = ["Apagada (sin sangre)", "Reducida", "Completa"]
+const NOM_DESTRUCCION: Array = ["Baja (pocos trozos)", "Media", "Alta (muchos trozos y chispas)"]
 const NOM_MODO: Array = ["Ventana", "Pantalla completa (sin bordes)", "Pantalla completa (exclusiva)"]
 const RESOLUCIONES: Array = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080),
 		Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
@@ -50,20 +51,21 @@ const BASE: Dictionary = {
 	"aa": 1, "ssao": true, "ssr": false, "glow": true, "niebla_vol": false, "sdfgi": false,
 	"escalado": 0, "escala": 1.0, "fov": 70.0, "brillo": 1.0, "contador_fps": false,
 	"gore": 2, "gritos": true,   # Violencia: 0 apagada, 1 reducida, 2 completa.
+	"destruccion": 2,            # Trozos, chispas y polvo al romper cosas: 0 baja, 1 media, 2 alta.
 }
 
 # Las opciones de calidad que fija cada preset (las demás —ventana, vsync, FOV...— no se tocan).
 const PRESETS: Dictionary = {
-	"Bajo": {"sombras": 0, "dist_dibujado": 0, "trozos": 0, "vegetacion": 1, "peatones": 1, "trafico": 1,
+	"Bajo": {"destruccion": 0, "sombras": 0, "dist_dibujado": 0, "trozos": 0, "vegetacion": 1, "peatones": 1, "trafico": 1,
 			"aa": 0, "ssao": false, "ssr": false, "glow": false, "niebla_vol": false, "sdfgi": false,
 			"escalado": 0, "escala": 0.75},
-	"Medio": {"sombras": 2, "dist_dibujado": 1, "trozos": 1, "vegetacion": 2, "peatones": 2, "trafico": 2,
+	"Medio": {"destruccion": 1, "sombras": 2, "dist_dibujado": 1, "trozos": 1, "vegetacion": 2, "peatones": 2, "trafico": 2,
 			"aa": 1, "ssao": false, "ssr": false, "glow": true, "niebla_vol": false, "sdfgi": false,
 			"escalado": 0, "escala": 1.0},
-	"Alto": {"sombras": 3, "dist_dibujado": 2, "trozos": 2, "vegetacion": 4, "peatones": 3, "trafico": 3,
+	"Alto": {"destruccion": 2, "sombras": 3, "dist_dibujado": 2, "trozos": 2, "vegetacion": 4, "peatones": 3, "trafico": 3,
 			"aa": 1, "ssao": true, "ssr": false, "glow": true, "niebla_vol": false, "sdfgi": false,
 			"escalado": 0, "escala": 1.0},
-	"Ultra": {"sombras": 4, "dist_dibujado": 3, "trozos": 3, "vegetacion": 4, "peatones": 4, "trafico": 4,
+	"Ultra": {"destruccion": 2, "sombras": 4, "dist_dibujado": 3, "trozos": 3, "vegetacion": 4, "peatones": 4, "trafico": 4,
 			"aa": 3, "ssao": true, "ssr": true, "glow": true, "niebla_vol": true, "sdfgi": true,
 			"escalado": 0, "escala": 1.0},
 }

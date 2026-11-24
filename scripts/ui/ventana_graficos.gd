@@ -113,6 +113,7 @@ func _rellenar() -> void:
 	_titulo("Violencia")
 	_opcion("Sangre y desmembramientos", G.NOM_GORE, int(G.v["gore"]), func(i: int) -> void: G.poner("gore", i, false))
 	_casilla("Gritos de la gente", "gritos")
+	_opcion("Destrucción (trozos, chispas, polvo)", G.NOM_DESTRUCCION, int(G.v.get("destruccion", 2)), func(i: int) -> void: G.poner("destruccion", i, false))
 	_scroll.set_deferred("scroll_vertical", pos)
 
 
