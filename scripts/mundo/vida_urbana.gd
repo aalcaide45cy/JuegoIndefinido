@@ -91,7 +91,8 @@ func _red_asentamiento(s: Dictionary) -> Dictionary:
 	var tipo: int = int(s["tipo"])
 	var centro: Vector2 = s["pos"]
 	var red: Dictionary = {"id": id, "pos": {}, "vec": {}, "luz": {}, "y": float(s["base"]),
-			"ancho": GeneradorMundo.CALLE_ANCHO, "coches": tipo >= 1, "tipo": tipo}
+			"ancho": GeneradorMundo.CALLE_ANCHO, "coches": tipo >= 1, "tipo": tipo,
+			"centro": centro, "acera": GeneradorMundo.acera_de(s)}
 	for k in range(-n, n + 1):
 		for l in range(-n, n + 1):
 			var c: Vector2i = Vector2i(k, l)
@@ -577,6 +578,19 @@ func _punto_tramo(a: Agente) -> Vector2:
 
 
 # Pone al agente en su sitio y lo orienta. "ya" = sin suavizar (al nacer).
+# ¿El punto cae dentro de una manzana (acera elevada) y no en la calzada? Solo en redes con acera.
+func _sobre_acera(red: Dictionary, punto: Vector2) -> bool:
+	if float(red.get("acera", 0.0)) <= 0.0:
+		return false
+	var centro: Vector2 = red["centro"]
+	var interior: float = GeneradorMundo.BLOQUE - GeneradorMundo.CALLE_ANCHO
+	var u: float = fposmod(punto.x - centro.x - GeneradorMundo.CALLE_ANCHO / 2.0, GeneradorMundo.BLOQUE)
+	var v: float = fposmod(punto.y - centro.y - GeneradorMundo.CALLE_ANCHO / 2.0, GeneradorMundo.BLOQUE)
+	# 0,4 m de margen junto al bordillo: el cuerpo (no solo los pies) no debe tocarlo al bajar o subir.
+	var m: float = 0.4
+	return (u < interior + m or u > GeneradorMundo.BLOQUE - m) and (v < interior + m or v > GeneradorMundo.BLOQUE - m)
+
+
 func _colocar(a: Agente, ya: bool = false, delta: float = 0.0) -> void:
 	var pa: Vector2 = a.red["pos"][a.desde]
 	var pb: Vector2 = a.red["pos"][a.hacia]
@@ -610,6 +624,10 @@ func _colocar(a: Agente, ya: bool = false, delta: float = 0.0) -> void:
 		y += 0.17   # Las calzadas de los pueblos van 0,15 m por encima del suelo.
 	elif a.es_coche:
 		y += 0.05
+	elif a.red["id"] != "ciudad":
+		# Peatones: en pueblos y ciudades la acera sube 0,3 m (GeneradorMundo._aceras); al cruzar van
+		# por la calzada (+0,15 m). Sin esto se "hundían" en la acera.
+		y += 0.3 if _sobre_acera(a.red, punto) else 0.15
 	a.global_position = Vector3(punto.x, y, punto.y)
 	if ya:
 		a.rotation.y = yaw

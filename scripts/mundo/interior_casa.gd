@@ -93,6 +93,8 @@ const SERV: Dictionary = {
 	"prestamista": {"entrada": "oficina_prestamista", "resto": ["oficina", "boveda"], "alto": [], "frac": 0.5},
 	"mercado_negro": {"entrada": "mercadillo", "resto": ["almacen_ilegal", "oficina"], "alto": [], "frac": 0.6},
 }
+# Para los servicios sin programa propio (peluquería, barbería, negocios nuevos...).
+const SERV_GENERICO: Dictionary = {"entrada": "oficina", "resto": ["bodega", "aseo"], "alto": ["oficina", "aseo"], "frac": 0.55}
 
 
 static func _estilo(c: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
@@ -177,7 +179,7 @@ static func _planta(P: PlanoInterior, c: Dictionary, est: Dictionary, e: Diction
 		else:
 			R = Rect2(-W / 2.0, 0.0, fr.position.x + W / 2.0, D)
 	var tipo: String = est["tipo"]
-	var prog: Dictionary = SERV.get(str(c.get("servicio", "")), {}) as Dictionary
+	var prog: Dictionary = SERV.get(str(c.get("servicio", "")), SERV_GENERICO) as Dictionary
 	var frac: float = float(prog.get("frac", 0.45))
 	var F: float = R.size.y
 	if R.size.y >= 7.5:
