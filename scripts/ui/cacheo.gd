@@ -22,13 +22,19 @@ var _acabado: bool = false
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(560, 520))
-	cabecera(caja, "¡Cacheo!")
-	subtitulo(caja, "El guardia revisa tus cosas. Esconde lo ilegal antes de que acabe el tiempo.")
-	_etiqueta = Hud.crear_label(24, Color(1.0, 0.7, 0.4))
+	var caja: VBoxContainer = marco("¡Cacheo!", "El guardia revisa tus cosas", Vector2(560, 520))
+	caja.add_child(UI.nota("Esconde lo ilegal antes de que acabe el tiempo."))
+	_etiqueta = UI.etiqueta("", "Titulo", Tema.PELIGRO, 26)
 	caja.add_child(_etiqueta)
+	var desplazable: ScrollContainer = ScrollContainer.new()
+	desplazable.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	desplazable.follow_focus = true
+	caja.add_child(desplazable)
 	_lista = VBoxContainer.new()
-	caja.add_child(_lista)
+	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lista.add_theme_constant_override("separation", 6)
+	desplazable.add_child(_lista)
 	_pintar()
 
 
@@ -62,11 +68,11 @@ func _pintar() -> void:
 			texto += "   (escondido)"
 		elif e == "visible":
 			texto += "   (¡lo ven!)"
-		var b: Button = Hud.crear_boton("Esconder: " + texto, _esconder.bind(i))
+		var b: Button = UI.boton("Esconder: " + texto, _esconder.bind(i), "BotonSuave")
 		b.disabled = e != ""
 		_lista.add_child(b)
 	if not hay:
-		subtitulo(_lista, "No llevas nada ilegal. Con suerte te dejan ir.")
+		_lista.add_child(UI.nota("No llevas nada ilegal. Con suerte te dejan ir."))
 
 
 func _esconder(i: int) -> void:

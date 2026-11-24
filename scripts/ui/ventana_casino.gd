@@ -25,61 +25,74 @@ var _texto_mano: Label
 var _btn_pedir: Button
 var _btn_plantar: Button
 var _btn_repartir: Button
+var _botones_ficha: Dictionary = {}
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func construir() -> void:
 	_rng.randomize()
-	var caja: VBoxContainer = panel_centrado(Vector2(840, 640))
-	cabecera(caja, "Casino")
-	_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
+	var caja: VBoxContainer = marco("Casino", "Solo dinero del juego. La casa gana a la larga: juega con cabeza.", Vector2(840, 600))
+	_estado = UI.etiqueta("", "Dinero")
 	caja.add_child(_estado)
-	subtitulo(caja, "Solo dinero del juego. La casa gana a la larga: juega con cabeza.")
 	_fichas = HBoxContainer.new()
 	_fichas.add_theme_constant_override("separation", 8)
 	caja.add_child(_fichas)
 	for f in Casino.FICHAS:
-		var b: Button = Hud.crear_boton("Ficha %d $" % f, _elegir_ficha.bind(int(f)))
+		var b: Button = UI.boton("Ficha %d $" % f, _elegir_ficha.bind(int(f)), "Chip")
+		b.toggle_mode = true
+		_botones_ficha[int(f)] = b
 		_fichas.add_child(b)
-	subtitulo(caja, "Ruleta (un solo cero): elige una apuesta")
+	var pestanas: UI.Pestanas = UI.Pestanas.new()
+	caja.add_child(pestanas)
+	# --- Ruleta ---
+	var ruleta: VBoxContainer = VBoxContainer.new()
+	ruleta.add_theme_constant_override("separation", 10)
+	pestanas.anadir("Ruleta", ruleta)
+	ruleta.add_child(UI.nota("Un solo cero. Elige una apuesta: se juega la ficha elegida arriba."))
 	var fila1: HBoxContainer = HBoxContainer.new()
 	fila1.add_theme_constant_override("separation", 6)
-	caja.add_child(fila1)
+	ruleta.add_child(fila1)
 	for par in [["Rojo", "rojo"], ["Negro", "negro"], ["Par", "par"], ["Impar", "impar"], ["1-18", "falta"], ["19-36", "pasa"]]:
-		fila1.add_child(Hud.crear_boton(par[0], _girar.bind(par[1], 0)))
+		fila1.add_child(UI.boton(par[0], _girar.bind(par[1], 0)))
 	var fila2: HBoxContainer = HBoxContainer.new()
 	fila2.add_theme_constant_override("separation", 6)
-	caja.add_child(fila2)
+	ruleta.add_child(fila2)
 	for par in [["1ª docena", "docena1"], ["2ª docena", "docena2"], ["3ª docena", "docena3"]]:
-		fila2.add_child(Hud.crear_boton(par[0], _girar.bind(par[1], 0)))
+		fila2.add_child(UI.boton(par[0], _girar.bind(par[1], 0)))
 	_valor_pleno = SpinBox.new()
 	_valor_pleno.min_value = 0
 	_valor_pleno.max_value = 36
 	fila2.add_child(_valor_pleno)
-	fila2.add_child(Hud.crear_boton("Pleno (x35)", func() -> void: _girar("pleno", int(_valor_pleno.value))))
-	subtitulo(caja, "Blackjack (3:2 con blackjack natural, el crupier se planta en 17)")
-	_texto_mano = Hud.crear_label(18)
-	_texto_mano.text = "Pulsa «Repartir» para apostar la ficha elegida."
-	caja.add_child(_texto_mano)
+	fila2.add_child(UI.boton("Pleno (x35)", func() -> void: _girar("pleno", int(_valor_pleno.value))))
+	# --- Blackjack ---
+	var mesa: VBoxContainer = VBoxContainer.new()
+	mesa.add_theme_constant_override("separation", 10)
+	pestanas.anadir("Blackjack", mesa)
+	mesa.add_child(UI.nota("3:2 con blackjack natural; el crupier se planta en 17."))
+	_texto_mano = UI.etiqueta("Pulsa «Repartir» para apostar la ficha elegida.", "", Tema.TEXTO, 18)
+	mesa.add_child(_texto_mano)
 	var fila3: HBoxContainer = HBoxContainer.new()
 	fila3.add_theme_constant_override("separation", 8)
-	caja.add_child(fila3)
-	_btn_repartir = Hud.crear_boton("Repartir", _repartir)
-	_btn_pedir = Hud.crear_boton("Pedir carta", _pedir)
-	_btn_plantar = Hud.crear_boton("Plantarse", _plantarse)
+	mesa.add_child(fila3)
+	_btn_repartir = UI.boton("Repartir", _repartir, "BotonPrimario")
+	_btn_pedir = UI.boton("Pedir carta", _pedir)
+	_btn_plantar = UI.boton("Plantarse", _plantarse)
 	fila3.add_child(_btn_repartir)
 	fila3.add_child(_btn_pedir)
 	fila3.add_child(_btn_plantar)
-	_resultado = Hud.crear_label(20, Color(0.85, 0.95, 0.8))
+	_resultado = UI.etiqueta("", "", Tema.BRUMA, 20)
 	caja.add_child(_resultado)
-	caja.add_child(Hud.crear_boton("Salir del casino", cerrar))
 	Juego.cambio.connect(_refrescar)
 	_refrescar()
 
 
 func _refrescar() -> void:
+	if not is_instance_valid(_estado):
+		return
+	for f in _botones_ficha:
+		(_botones_ficha[f] as Button).set_pressed_no_signal(int(f) == _ficha)
 	var noche: String = "Esta noche: %s%d $" % ["+" if neto_noche >= 0 else "", neto_noche]
-	_estado.text = "Dinero %d $  ·  Ficha %d $  ·  %s" % [Juego.dinero, _ficha, noche]
+	_estado.text = "%s   ·   Ficha %d $   ·   %s" % [UI.dinero(Juego.dinero), _ficha, noche]
 	_btn_pedir.disabled = not _bj_activo
 	_btn_plantar.disabled = not _bj_activo
 	_btn_repartir.disabled = _bj_activo

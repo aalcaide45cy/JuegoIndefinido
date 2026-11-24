@@ -674,6 +674,7 @@ class VentanaCaldero extends Ventana:
 	var _botones_receta: Dictionary = {}
 	var _cocinando: bool = false
 	var _pocion_al_fuego: String = ""   # Qué se está removiendo ahora mismo.
+	var _busqueda: String = ""
 
 	func construir() -> void:
 		_slots.resize(GameData.Mezclas.max_ingredientes(Juego.nivel))   # Más casillas al subir de nivel (6 y 9).
@@ -696,6 +697,9 @@ class VentanaCaldero extends Ventana:
 		_titulo_recetas = subtitulo(izquierda, "")
 		_titulo_recetas.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_titulo_recetas.custom_minimum_size = Vector2(470, 40)
+		izquierda.add_child(UI.buscador("Buscar receta…", func(t: String) -> void:
+			_busqueda = t
+			_reconstruir_recetas()))
 		var desplazable: ScrollContainer = ScrollContainer.new()
 		desplazable.custom_minimum_size = Vector2(480, 130)
 		desplazable.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -758,7 +762,9 @@ class VentanaCaldero extends Ventana:
 			return GameData.pocion(a)["nombre"] < GameData.pocion(b)["nombre"])
 		ids.append_array(descubiertas)
 		for id_pocion in ids:
-			var boton: Button = Hud.crear_boton(GameData.pocion(id_pocion)["nombre"], _elegir.bind(id_pocion))
+			if _busqueda != "" and not str(GameData.pocion(id_pocion)["nombre"]).to_lower().contains(_busqueda):
+				continue
+			var boton: Button = UI.boton(GameData.pocion(id_pocion)["nombre"], _elegir.bind(id_pocion), "BotonSuave")
 			boton.toggle_mode = true
 			boton.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			boton.set_pressed_no_signal(id_pocion == _receta)

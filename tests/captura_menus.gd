@@ -1,5 +1,5 @@
 # Saca una captura de CADA menú del juego (sirve para comparar "antes" y "después"):
-#   xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_menus.tscn -- /carpeta [prefijo]
+#   xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_menus.tscn -- /carpeta [prefijo] [solo1,solo2]
 # Si algún menú no se puede abrir, lo apunta como FALLO y sigue con el siguiente.
 extends Node
 
@@ -10,9 +10,16 @@ var prefijo: String = "menu"
 var hud: Hud
 var fallos: PackedStringArray = []
 var n: int = 0
+var solo: PackedStringArray = []   # Si no está vacío, solo se fotografían los menús cuyo nombre contenga alguno.
 
 
 func _foto(nombre: String) -> void:
+	if not solo.is_empty():
+		var vale: bool = false
+		for t in solo:
+			vale = vale or nombre.contains(t)
+		if not vale:
+			return
 	for i in 4:
 		await get_tree().process_frame
 	n += 1
@@ -42,6 +49,8 @@ func _ready() -> void:
 		carpeta = args[0]
 	if args.size() > 1:
 		prefijo = args[1]
+	if args.size() > 2:
+		solo = args[2].split(",")
 	var raiz: Node = get_tree().root
 	var escena: Node = load("res://scenes/mundo.tscn").instantiate()
 	raiz.add_child(escena)
@@ -112,7 +121,7 @@ func _ready() -> void:
 	await _foto("admin_buscar")
 	admin.cerrar()
 	await get_tree().process_frame
-	for p in 5:
+	for p in 6:
 		var tel: Telefono = Telefono.new()
 		tel._pestana = p
 		await _ventana("telefono_%d" % p, tel)
@@ -127,6 +136,9 @@ func _ready() -> void:
 	await _ventana("casino", VentanaCasino.new())
 	await _ventana("medico", VentanaMedico.new())
 	await _ventana("cacheo", Cacheo.new())
+	var mach: MinijuegoMachacar = MinijuegoMachacar.new()
+	mach.hierba = "hierba_bruma"
+	await _ventana("minijuego_mortero", mach)
 	await _ventana("inmobiliaria", Inmobiliaria.new())
 	await _ventana("bolsa_trabajo", BolsaTrabajo.new())
 	var conc: VentanaConcesionario = VentanaConcesionario.new()

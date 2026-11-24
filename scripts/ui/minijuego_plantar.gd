@@ -61,7 +61,7 @@ func _ready() -> void:
 	caja.add_theme_constant_override("separation", 10)
 	panel.add_child(caja)
 
-	_titulo = Hud.crear_label(26, Color(0.6, 0.9, 0.6))
+	_titulo = UI.etiqueta("", "Titulo", Tema.BRUMA, 26)
 	caja.add_child(_titulo)
 	_explicacion = Hud.crear_label(17)
 	_explicacion.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -249,7 +249,7 @@ func _nota_media() -> float:
 
 
 func _boton(texto: String, al_pulsar: Callable) -> void:
-	var b: Button = Hud.crear_boton(texto, al_pulsar)
+	var b: Button = UI.boton(texto, al_pulsar, "BotonSuave")
 	_botones.add_child(b)
 
 

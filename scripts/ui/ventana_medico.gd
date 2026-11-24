@@ -18,14 +18,16 @@ const DURACION_REGENERACION: float = 60.0
 
 var _estado: Label
 var _lista: VBoxContainer
+var _barra_vida: ProgressBar
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(720, 460))
-	cabecera(caja, "Consulta del médico")
-	_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
+	var caja: VBoxContainer = marco("Consulta del médico", "«Sin preguntas, sin recetas y sin facturas.»", Vector2(720, 520))
+	_estado = UI.etiqueta("", "Dinero")
 	caja.add_child(_estado)
-	subtitulo(caja, "«Sin preguntas, sin recetas y sin facturas.» Elige un tratamiento:")
+	_barra_vida = UI.barra(Juego.vida, Juego.vida_max(), Tema.PELIGRO, 14, "")
+	caja.add_child(_barra_vida)
+	caja.add_child(UI.seccion("Tratamientos"))
 	_lista = VBoxContainer.new()
 	_lista.add_theme_constant_override("separation", 8)
 	caja.add_child(_lista)
@@ -48,8 +50,13 @@ static func tiene_efectos_malos() -> bool:
 
 
 func _refrescar() -> void:
-	_estado.text = "Vida %d/%d  ·  Dinero %d $" % [int(Juego.vida), int(Juego.vida_max()), Juego.dinero]
+	if not is_instance_valid(_lista):
+		return
+	_estado.text = "Vida %d/%d   ·   %s" % [int(Juego.vida), int(Juego.vida_max()), UI.dinero(Juego.dinero)]
+	_barra_vida.max_value = Juego.vida_max()
+	_barra_vida.value = Juego.vida
 	for hijo in _lista.get_children():
+		_lista.remove_child(hijo)
 		hijo.queue_free()
 	var curar: int = precio_curar()
 	var malos: bool = tiene_efectos_malos()
@@ -59,20 +66,28 @@ func _refrescar() -> void:
 	_fila("Revisión completa", "Cura todo, desintoxica y deja un minuto de regeneración.", completa,
 			curar > 0 or malos, _revision)
 	var refuerzo_ok: bool = Juego.nivel >= NIVEL_REFUERZO
-	_fila("Refuerzo de hierro (nivel %d)" % NIVEL_REFUERZO, "Resistencia al daño durante 5 minutos.",
+	_fila("Refuerzo de hierro", "Resistencia al daño durante 5 minutos. Requiere nivel %d." % NIVEL_REFUERZO,
 			PRECIO_REFUERZO, refuerzo_ok, _refuerzo)
 
 
 func _fila(titulo: String, descripcion: String, precio: int, util: bool, accion: Callable) -> void:
+	var t: PanelContainer = UI.tarjeta()
+	_lista.add_child(t)
 	var fila: HBoxContainer = HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 12)
-	_lista.add_child(fila)
-	var texto: Label = Hud.crear_label(16)
-	texto.text = "%s   —   %d $\n%s" % [titulo, precio, descripcion]
-	texto.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	fila.add_child(texto)
-	var boton: Button = Hud.crear_boton("Pagar", accion.bind(precio))
+	t.add_child(fila)
+	var textos: VBoxContainer = VBoxContainer.new()
+	textos.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	textos.add_theme_constant_override("separation", 2)
+	fila.add_child(textos)
+	textos.add_child(UI.etiqueta(titulo, "", Tema.TEXTO if util else Tema.TEXTO_SUAVE, 17))
+	textos.add_child(UI.nota(descripcion))
+	var p: Label = UI.etiqueta(UI.dinero(precio), "Dinero")
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	fila.add_child(p)
+	var boton: Button = UI.boton("Pagar", accion.bind(precio), "BotonPrimario")
 	boton.disabled = not util or Juego.dinero < precio
+	boton.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	fila.add_child(boton)
 
 
