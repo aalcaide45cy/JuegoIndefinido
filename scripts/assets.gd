@@ -22,6 +22,90 @@ const MEDIEVAL: String = "quaternius/medieval-village-megakit/"   # Muros, tejad
 const ARMAS: String = "quaternius/toon-shooter-game-kit/Guns/"    # Pistola, escopeta, AK...
 const ENTORNO: String = "quaternius/toon-shooter-game-kit/Environment/"
 const PERSONAJES: String = "quaternius/universal-base-characters/"
+# Universal Animation Library (CC0): 43 animaciones para el esqueleto de PERSONAJES.
+const UAL: String = "res://assets/quaternius/universal-animation-library/UAL1_Standard.glb"
+const BASES_PERSONA: PackedStringArray = ["Superhero_Male_FullBody", "Superhero_Female_FullBody"]
+
+# Nombres de animación que usa el juego -> nombres equivalentes en los otros paquetes.
+# Así "Walk", "HitReact" o "Death" valen tanto para los muñecos del Toon Shooter como
+# para las personas con la Universal Animation Library.
+const ALIAS_ANIM: Dictionary = {
+	"Idle": ["Idle"], "Walk": ["Walk"], "Run": ["Jog_Fwd", "Sprint"], "Sprint": ["Sprint", "Run"],
+	"HitReact": ["Hit_Chest"], "HitHead": ["Hit_Head", "HitReact", "Hit_Chest"],
+	"Death": ["Death01"], "Punch": ["Punch_Cross", "Punch_Jab"],
+	"Duck": ["Crouch_Idle"], "Jump": ["Jump_Start", "Roll"], "Roll": ["Roll", "Jump"],
+	"Wave": ["Interact", "Idle_Talking"], "Yes": ["Idle_Talking"], "No": ["Idle_Talking"],
+	"Idle_Shoot": ["Pistol_Aim_Neutral", "Pistol_Idle"], "Walk_Shoot": ["Walk"],
+	"Run_Shoot": ["Jog_Fwd"], "Run_Gun": ["Jog_Fwd"], "Shoot": ["Pistol_Shoot", "Idle_Shoot"],
+	"Talk": ["Idle_Talking", "Idle"], "Sit": ["Sitting_Idle"],
+}
+
+static var _lib_ual: AnimationLibrary = null
+
+
+# Candidatos para un nombre de animación (el propio, con prefijo de Quaternius y sus alias).
+static func nombres_anim(nombre: String) -> Array:
+	var r: Array = [nombre, "CharacterArmature|" + nombre]
+	for a in ALIAS_ANIM.get(nombre, []):
+		r.append(a)
+		r.append("CharacterArmature|" + String(a))
+	return r
+
+
+# Persona de proporciones humanas (Universal Base Characters) con las 43 animaciones de
+# la Universal Animation Library. Mismo uso que personaje(): mira a -Z, pies en el suelo,
+# meta "animaciones" con su AnimationPlayer. "arma": "Pistol", "Revolver", "Knife"... (en la mano derecha).
+static func persona(base: String = "", arma: String = "", animacion: String = "Idle") -> Node3D:
+	if base == "":
+		base = BASES_PERSONA[randi() % BASES_PERSONA.size()]
+	var m: Node3D = modelo(PERSONAJES + "base-characters/" + base)
+	if m == null:
+		return null
+	if _lib_ual == null and ResourceLoader.exists(UAL):
+		var fuente: Node = (load(UAL) as PackedScene).instantiate()
+		var ap: AnimationPlayer = _buscar_animaciones(fuente)
+		if ap != null and ap.has_animation_library(""):
+			_lib_ual = ap.get_animation_library("")
+		fuente.free()
+	var envoltorio: Node3D = Node3D.new()
+	m.rotation.y = PI
+	envoltorio.add_child(m)
+	if _lib_ual != null:
+		var reproductor: AnimationPlayer = AnimationPlayer.new()
+		reproductor.name = "AnimationPlayer"
+		m.add_child(reproductor)
+		reproductor.add_animation_library("", _lib_ual)
+		envoltorio.set_meta("animaciones", reproductor)
+		poner_animacion(envoltorio, animacion)
+	if arma != "":
+		var esq_l: Array = m.find_children("*", "Skeleton3D", true, false)
+		var pieza: Node3D = modelo(ARMAS + arma)
+		if not esq_l.is_empty() and pieza != null:
+			var mano: BoneAttachment3D = BoneAttachment3D.new()
+			mano.bone_name = "hand_r"
+			(esq_l[0] as Skeleton3D).add_child(mano)
+			pieza.name = arma
+			# Las armas del kit vienen muy grandes (la pistola mide ~0,8 m): se dejan
+			# a tamaño real. El cañón del modelo mira a -X y la culata está en el
+			# origen; la mano tiene los dedos en +Y y el dorso hacia +Z.
+			var largo: float = _largo_modelo(pieza)
+			var tam: float = 0.55 if arma in ["Shotgun", "AK", "SMG", "Sniper", "Sniper_2", "GrenadeLauncher", "RocketLauncher", "ShortCannon"] else 0.24
+			var esc: float = tam / largo if largo > 0.01 else 0.3
+			pieza.transform = Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, -1, 0), Vector3(-1, 0, 0)).scaled(Vector3.ONE * esc), Vector3(0, 0.085, 0.0))
+			mano.add_child(pieza)
+	return envoltorio
+
+
+# Lado más largo de las mallas de un modelo (en sus propias unidades).
+static func _largo_modelo(n: Node, t: Transform3D = Transform3D.IDENTITY) -> float:
+	var tt: Transform3D = t * (n as Node3D).transform if n is Node3D else t
+	var largo: float = 0.0
+	if n is MeshInstance3D:
+		var a: AABB = tt * (n as MeshInstance3D).get_aabb()
+		largo = a.get_longest_axis_size()
+	for c in n.get_children():
+		largo = maxf(largo, _largo_modelo(c, tt))
+	return largo
 
 
 # Ruta de un modelo. Si el nombre lleva una carpeta (como "quaternius/..."), se
@@ -121,13 +205,13 @@ static func poner_animacion(personaje_nodo: Node3D, nombre: String, ritmo: float
 	if r == null or not is_instance_valid(r):
 		return
 	r.speed_scale = ritmo
-	for candidato in [nombre, "CharacterArmature|" + nombre]:
+	for candidato in nombres_anim(nombre):
 		if r.has_animation(candidato):
 			if r.current_animation != candidato:
 				var anim: Animation = r.get_animation(candidato)
 				if anim != null:
 					anim.loop_mode = Animation.LOOP_LINEAR
-				r.play(candidato)
+				r.play(candidato, 0.2)   # Mezcla suave en vez de saltar de golpe.
 			return
 
 

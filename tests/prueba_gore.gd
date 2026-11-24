@@ -33,7 +33,7 @@ func _ready() -> void:
 	Gore.charco(escena, pos, 0.8)
 	Gore.trozos(escena, pos, 5)
 	Gore.muerte(escena, pos, Vector3.UP, 2.0)
-	comprobar(Gore._charcos.size() == antes + 2, "gore completo: 2 charcos")
+	comprobar(Gore._charcos.size() == antes + 1, "gore completo: charco (el de la muerte lo pone Cuerpo bajo el cadáver)")
 	comprobar(Gore._trozos.size() >= 5, "gore completo: hay trozos")
 	for i in 60:
 		Gore.charco(escena, pos, 0.5)

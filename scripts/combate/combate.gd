@@ -103,7 +103,12 @@ static func explosion(padre: Node3D, pos: Vector3, radio: float, dano: float) ->
 			continue
 		var d: float = cosa.global_position.distance_to(pos)
 		if d < radio:
-			cosa.recibir_dano(dano * (1.0 - d / radio))
+			# Por Cuerpo: a las personas la onda las lanza y puede arrancarles miembros.
+			var hacia: Vector3 = cosa.global_position + Vector3.UP * 0.9 - pos
+			Cuerpo.impactar(cosa, pos, hacia.normalized() if hacia.length() > 0.01 else Vector3.UP,
+					dano * (1.0 - d / radio), "explosion", {"punto": cosa.global_position + Vector3.UP * 0.9,
+					"fuerza": clampf(dano * (1.0 - d / radio) / 6.0, 4.0, 16.0)})
+	Cuerpo.onda(pos, radio * 1.5, clampf(dano / 8.0, 3.0, 14.0))   # Cadáveres y miembros sueltos salen volando.
 	for nodo in arbol.get_nodes_in_group("jugador"):
 		var d: float = (nodo as Node3D).global_position.distance_to(pos)
 		if d < radio:
