@@ -391,11 +391,11 @@ func recibir_dano(cantidad: float) -> void:
 	if _vida <= 0.0:
 		_caer(dir)
 		return
-	if cantidad >= 18.0:
+	if Cuerpo.debe_caer(self, cantidad, 30.0):
 		_impulso = Vector3(dir.x, 0.0, dir.z) * 5.0
 		_derribar(4.0 if _vida < VIDA_MAXIMA * 0.25 else 2.0)   # Casi KO: tarda más en levantarse.
 	else:
-		_t_anim = maxf(0.3, AnimCombate.una_vez(_modelo, "HitReact", "Run"))
+		_t_anim = maxf(0.3, AnimCombate.una_vez(_modelo, Cuerpo.reaccion(self), "Run"))
 	await get_tree().create_timer(0.15).timeout
 	_material.emission_enabled = false
 

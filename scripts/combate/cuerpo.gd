@@ -59,6 +59,15 @@ const RAGDOLL: Array = [
 	["LowerLeg.R", "Foot.R", 0.085, 4.0, "bisagra"],
 ]
 
+# Nombres del rig del Toon Shooter -> rig de las personas (estilo Unreal).
+const ALIAS_HUESOS: Dictionary = {
+	"Body": "pelvis", "Hips": "pelvis", "Abdomen": "spine_01", "Torso": "spine_03", "Neck": "neck_01",
+	"UpperArm.L": "upperarm_l", "LowerArm.L": "lowerarm_l", "Middle1.L": "middle_01_l",
+	"UpperArm.R": "upperarm_r", "LowerArm.R": "lowerarm_r", "Middle1.R": "middle_01_r",
+	"UpperLeg.L": "thigh_l", "LowerLeg.L": "calf_l", "Foot.L": "foot_l",
+	"UpperLeg.R": "thigh_r", "LowerLeg.R": "calf_r", "Foot.R": "foot_r",
+}
+
 static var _activos: Array = []    # Esqueletos con ragdoll simulando ahora.
 static var _miembros: Array = []   # Miembros sueltos (RigidBody3D).
 static var _mat_munon: StandardMaterial3D = null
@@ -86,6 +95,11 @@ static func hueso(esq: Skeleton3D, base: String) -> int:
 	var i: int = esq.find_bone(base)
 	if i >= 0:
 		return i
+	# Esqueleto de las personas (Universal Base Characters / Universal Animation Library).
+	if ALIAS_HUESOS.has(base):
+		i = esq.find_bone(ALIAS_HUESOS[base])
+		if i >= 0:
+			return i
 	for suf in ["_2", "_1", "_3", "_001"]:
 		i = esq.find_bone(base + suf)
 		if i >= 0:
@@ -345,7 +359,11 @@ static func impactar(collider: Object, desde: Vector3, dir: Vector3, dano: float
 	var choque: Vector3 = extra.get("punto", desde + dir.normalized() * desde.distance_to(q3.global_position))
 	var info: Dictionary = {}
 	if not es_persona(quien, modelo):
-		quien.recibir_dano(dano)
+		# Coches con física (hilo de vehículos): abollan la chapa y pinchan la rueda donde da.
+		if quien.has_method("recibir_impacto") and tipo != "explosion":
+			quien.recibir_impacto(choque, dir.normalized(), dano)
+		else:
+			quien.recibir_dano(dano)
 		return {"persona": false}
 	if collider is PhysicalBone3D and (collider as Node).has_meta("zona"):
 		info = {"zona": (collider as Node).get_meta("zona"), "hueso": (collider as Node).get_meta("base"),
@@ -390,6 +408,26 @@ static func impactar(collider: Object, desde: Vector3, dir: Vector3, dano: float
 			quien.recibir_dano(15.0)
 		resultado["mato"] = esta_muerto(quien)
 	return resultado
+
+
+# ¿Este golpe lo tira al suelo? Un tiro en la pierna a veces (se le dobla), un golpe
+# muy bruto siempre; un balazo normal en el pecho no: lo encaja y sigue (o huye).
+static func debe_caer(quien: Node, cantidad: float, umbral: float = 26.0) -> bool:
+	var zona: String = ""
+	if reciente(quien, 120):
+		zona = String((quien.get_meta("ult_impacto") as Dictionary).get("zona", ""))
+	if zona.begins_with("pierna"):
+		return cantidad >= 8.0 and randf() < 0.6
+	if zona == "" and cantidad >= 14.0:
+		return cantidad >= umbral or randf() < 0.35   # Puñetazos y patadas fuertes (sin zona).
+	return cantidad >= umbral
+
+
+# Animación de golpe según dónde le han dado.
+static func reaccion(quien: Node) -> String:
+	if reciente(quien, 120) and String((quien.get_meta("ult_impacto") as Dictionary).get("zona", "")) == "cabeza":
+		return "HitHead"
+	return "HitReact"
 
 
 # true si este golpe acaba de pasar por Cuerpo.impactar (para no poner la sangre dos veces).
@@ -885,6 +923,8 @@ static func _construir_ragdoll(esq: Skeleton3D, quien: Node) -> PhysicalBoneSimu
 		if i < 0 or cortados.has(i):
 			continue
 		var objetivo: int = hueso(esq, def[1]) if def[1] != "" else -1
+		if objetivo == i:
+			objetivo = hueso(esq, "Abdomen")   # En el rig de personas "Hips" y "Body" son el mismo hueso.
 		# Punto al que apunta el hueso, en su propio espacio (con la pose de reposo).
 		var punta_local: Vector3 = Vector3(0, 0.3, 0)
 		if objetivo >= 0:

@@ -365,6 +365,20 @@ static func lascas(padre: Node, pos: Vector3, normal: Vector3, color: Color, cua
 	padre.get_tree().create_timer(1.0).timeout.connect(p.queue_free)
 
 
+# Si está el sistema de física del escenario (otro hilo: FisicaEscenario), le pasa el
+# impacto para que mueva o rompa el objeto. true si lo ha gestionado él.
+static var _fisica: Variant = null
+static func fisica_bala(choque: Dictionary, dir: Vector3, dano: float) -> bool:
+	if _fisica == null:
+		_fisica = false
+		for c in ProjectSettings.get_global_class_list():
+			if String(c.get("class", "")) == "FisicaEscenario":
+				_fisica = load(String(c["path"]))
+	if _fisica is Script:
+		return bool((_fisica as Script).call("impacto_bala", choque, dir, dano))
+	return false
+
+
 # ------------------------------- Marcador de acierto ----------------------------
 
 static func marcador(arbol: SceneTree, tipo: String = "toque") -> void:

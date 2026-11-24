@@ -11,6 +11,7 @@ class Muneco extends CharacterBody3D:
 	var vida: float = 100.0
 	var _muerto: bool = false
 	var personaje: String = "Character_Soldier"
+	var humano: bool = false
 	func _ready() -> void:
 		add_to_group("personas")
 		var f: CollisionShape3D = CollisionShape3D.new()
@@ -20,7 +21,10 @@ class Muneco extends CharacterBody3D:
 		f.shape = c
 		f.position.y = 0.85
 		add_child(f)
-		modelo = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/" + personaje, "", "Idle")
+		if humano:
+			modelo = Assets.persona(personaje, "Pistol", "Idle")
+		else:
+			modelo = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/" + personaje, "", "Idle")
 		add_child(modelo)
 	func recibir_dano(c: float) -> void:
 		if _muerto:
@@ -94,6 +98,31 @@ func _ready() -> void:
 	cam = Camera3D.new()
 	add_child(cam)
 	cam.fov = 60.0
+	cam.look_at_from_position(Vector3(1.8, 1.7, -3.2), Vector3(0, 1.0, 0.5))
+
+	# 0) Personas nuevas: reacción a un tiro en el pecho, en la cabeza y muerte con ragdoll.
+	var hs: Array = []
+	for k in 3:
+		var hm: Muneco = Muneco.new()
+		hm.humano = true
+		hm.personaje = "Superhero_Male_FullBody" if k != 1 else "Superhero_Female_FullBody"
+		add_child(hm)
+		hm.global_position = Vector3(-1.6 + k * 1.6, 0, 0.6)
+		hs.append(hm)
+	cam.look_at_from_position(Vector3(0, 1.6, -3.6), Vector3(0, 1.0, 0.6))
+	await _esperar(0.8)
+	await _foto("persona_0_de_pie")
+	AnimCombate.una_vez(hs[0].modelo, "HitReact", "Idle")
+	AnimCombate.una_vez(hs[1].modelo, "HitHead", "Idle")
+	var pecho: Vector3 = hs[2].global_position + Vector3(0, 1.3, 0)
+	Cuerpo.impactar(hs[2], pecho + Vector3(0, 0.1, -4), Vector3(0, -0.02, 1).normalized(), 200.0, "bala", {"punto": pecho, "distancia": 4.0})
+	Gore.herida(hs[0], hs[0].global_position + Vector3(0, 1.3, 0), Vector3(0, 0, 1), "bala", 1.0)
+	await _esperar(0.25)
+	await _foto("persona_1_reaccion_pecho_cabeza_y_muerte")
+	await _esperar(2.5)
+	await _foto("persona_2_ragdoll")
+	for hm2 in hs:
+		hm2.queue_free()
 	cam.look_at_from_position(Vector3(1.8, 1.7, -3.2), Vector3(0, 1.0, 0.5))
 
 	# 1) Tiro en el brazo con rifle: el brazo sale volando, el resto sigue en pie.

@@ -223,13 +223,14 @@ class Agente extends AnimatableBody3D:
 			Juego.sospecha = minf(100.0, Juego.sospecha + 10.0)
 			Juego.avisar("Has herido a un ciudadano. La policía lo sabrá.")
 			morir(dir_golpe, cantidad / 12.0, true)
-		elif cantidad >= 14.0:
-			estado = VidaUrbana.P_HERIDO   # Golpe fuerte: lo tira al suelo un rato.
+		elif Cuerpo.debe_caer(self, cantidad):
+			estado = VidaUrbana.P_HERIDO   # Tiro en la pierna o golpe muy fuerte: al suelo un rato.
 			herido_t = 4.0
 			vel = 0.0
 			tumbar(dir_golpe * clampf(cantidad / 8.0, 1.5, 4.0))
 		else:
-			t_reaccion = AnimCombate.una_vez(modelo, "HitReact", "Walk")
+			# Encaja el golpe (en el pecho o en la cabeza) y sale corriendo.
+			t_reaccion = AnimCombate.una_vez(modelo, Cuerpo.reaccion(self), "Run")
 
 	# Atropello: daño según la velocidad y el cuerpo sale despedido con física (ragdoll).
 	func derribar(dir3: Vector3, v: float, culpa_jugador: bool) -> void:

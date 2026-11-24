@@ -17,6 +17,7 @@ class Muneco extends CharacterBody3D:
 	var modelo: Node3D
 	var vida: float = 100.0
 	var _muerto: bool = false
+	var humano: bool = false
 	func _ready() -> void:
 		add_to_group("personas")
 		var f: CollisionShape3D = CollisionShape3D.new()
@@ -26,7 +27,10 @@ class Muneco extends CharacterBody3D:
 		f.shape = c
 		f.position.y = 0.85
 		add_child(f)
-		modelo = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/Character_Soldier", "Pistol", "Idle")
+		if humano:
+			modelo = Assets.persona("Superhero_Male_FullBody", "Pistol", "Idle")
+		else:
+			modelo = Assets.personaje("quaternius/toon-shooter-game-kit/Characters/Character_Soldier", "Pistol", "Idle")
 		add_child(modelo)
 	func recibir_dano(c: float) -> void:
 		if _muerto:
@@ -155,6 +159,27 @@ func _ready() -> void:
 	var r2: Dictionary = Cuerpo.impactar(e, Vector3(6, 1.55, -5), Vector3(0, 0, 1), 90.0, "bala", {"punto": Vector3(6, 1.55, -0.3), "distancia": 5.0})
 	comprobar(r2.get("corte", "") == "", "con violencia reducida no hay cortes")
 	Graficos.v["gore"] = 2
+	# Persona (Universal Base Characters + Universal Animation Library).
+	var h: Muneco = Muneco.new()
+	h.humano = true
+	add_child(h)
+	h.global_position = Vector3(10, 0, 0)
+	for i in 5:
+		await get_tree().process_frame
+	var ap: AnimationPlayer = h.modelo.get_meta("animaciones")
+	comprobar(ap != null and ap.has_animation("Hit_Chest"), "la persona tiene las animaciones nuevas")
+	Assets.poner_animacion(h.modelo, "Run")
+	comprobar(ap.current_animation == "Jog_Fwd", "el alias Run usa Jog_Fwd (%s)" % ap.current_animation)
+	comprobar(AnimCombate.una_vez(h.modelo, "HitHead", "Idle") > 0.0, "reacción a un tiro en la cabeza")
+	var zh: Dictionary = Cuerpo.zona_de(h, h.modelo, Vector3(10, 1.65, -5), Vector3(0, 0, 1), Vector3.ZERO)
+	comprobar(zh.get("zona") == "cabeza", "persona: zona cabeza a 1,65 m (%s)" % zh)
+	zh = Cuerpo.zona_de(h, h.modelo, Vector3(10, 1.2, -5), Vector3(0, 0, 1), Vector3.ZERO)
+	comprobar(zh.get("zona") == "torso", "persona: torso a 1,2 m (%s)" % zh)
+	comprobar(Cuerpo.desmembrar(h, h.modelo, "LowerArm.R", Vector3.RIGHT, 50.0), "persona: se corta el antebrazo")
+	h.recibir_dano(500.0)
+	await get_tree().create_timer(2.5).timeout
+	var ch: Vector3 = Cuerpo.centro(h, h.modelo)
+	comprobar(ch.y < 0.5, "persona: cae al suelo con ragdoll (y=%.2f)" % ch.y)
 	# Peatón de la ciudad: atropello mortal y atropello que solo lo tumba.
 	for caso in [[16.0, true], [5.0, false]]:
 		var ag = VidaUrbana.Agente.new()

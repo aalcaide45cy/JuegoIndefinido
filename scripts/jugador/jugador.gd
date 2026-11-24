@@ -76,6 +76,7 @@ func _ready() -> void:
 	_crear_cuerpo()
 	_crear_camara()
 	_aplicar_camara()
+	Precarga.iniciar(self)   # Sangre y efectos listos desde el principio (sin tirón en la primera muerte).
 	if not Juego.menu_abierto:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Juego.cambio.connect(_actualizar_mano)
@@ -516,6 +517,8 @@ func _bala(dir: Vector3, dano: float, tipo: String, con_trazadora: bool) -> Stri
 			continue
 		if con_trazadora:
 			EfectosArma.trazadora(_escena(), _boca(), r.get("punto", pos))
+		if r.is_empty() and EfectosArma.fisica_bala(choque, dir, dano):
+			return ""   # Objeto con física del escenario: él se encarga de moverlo y de sus chispas.
 		if r.is_empty() or not r.get("persona", false):
 			EfectosArma.impacto(_escena(), choque, dir)
 			if not (cosa is RigidBody3D or cosa is CharacterBody3D or cosa is AnimatableBody3D or cosa is Vehiculo):
