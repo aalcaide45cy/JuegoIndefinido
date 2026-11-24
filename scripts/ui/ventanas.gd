@@ -54,7 +54,7 @@ class Pausa extends Ventana:
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(380, 480))
+		var caja: VBoxContainer = panel_centrado(Vector2(380, 600))
 		var titulo: Label = Hud.crear_label(32, Color(0.6, 0.9, 0.6))
 		titulo.text = "Pausa"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -64,6 +64,8 @@ class Pausa extends Ventana:
 		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
 		caja.add_child(Ventanas.boton_grande("Logros", _logros))
 		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
+		caja.add_child(Ventanas.boton_grande("Sonido y juego…", func(): add_child(VentanaSonido.new())))
+		caja.add_child(Ventanas.boton_grande("Controles…", func(): add_child(VentanaControles.new())))
 		caja.add_child(Ventanas.boton_grande("Salir del juego", _salir))
 		_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
 		_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -102,7 +104,7 @@ class Inicio extends Ventana:
 	func construir() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		get_tree().paused = true
-		var caja: VBoxContainer = panel_centrado(Vector2(420, 500))
+		var caja: VBoxContainer = panel_centrado(Vector2(420, 620))
 		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
 		titulo.text = "Elixir Clandestino"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -119,6 +121,8 @@ class Inicio extends Ventana:
 		caja.add_child(Ventanas.boton_grande("Partidas…", _partidas))
 		caja.add_child(Ventanas.boton_grande("Logros", func(): add_child(VentanaLogros.new())))
 		caja.add_child(Ventanas.boton_grande("Gráficos…", func(): add_child(VentanaGraficos.new())))
+		caja.add_child(Ventanas.boton_grande("Sonido y juego…", func(): add_child(VentanaSonido.new())))
+		caja.add_child(Ventanas.boton_grande("Controles…", func(): add_child(VentanaControles.new())))
 		caja.add_child(Ventanas.boton_grande("Salir", _salir))
 
 	func cerrar() -> void:

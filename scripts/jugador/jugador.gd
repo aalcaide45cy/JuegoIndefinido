@@ -92,8 +92,10 @@ func _unhandled_input(evento: InputEvent) -> void:
 		return
 	if evento is InputEventMouseMotion and raton_capturado:
 		var movimiento: InputEventMouseMotion = evento
-		_giro -= movimiento.relative.x * SENSIBILIDAD_RATON
-		_inclinacion -= movimiento.relative.y * SENSIBILIDAD_RATON
+		# Sensibilidad e invertir eje: Esc > Controles (autocarga Controles).
+		var sens: float = SENSIBILIDAD_RATON * Controles.sensibilidad_raton
+		_giro -= movimiento.relative.x * sens
+		_inclinacion -= movimiento.relative.y * sens * (-1.0 if Controles.invertir_y else 1.0)
 		_inclinacion = clampf(_inclinacion, -1.3, 1.0)
 	elif Juego.modo_volar and evento is InputEventMouseButton and evento.pressed and raton_capturado \
 			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):

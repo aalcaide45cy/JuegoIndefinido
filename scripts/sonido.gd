@@ -21,6 +21,8 @@ static func tocar(origen: Node, nombre: String, volumen_db: float = -6.0) -> voi
 	var p: AudioStreamPlayer = AudioStreamPlayer.new()
 	p.stream = flujo
 	p.volume_db = volumen_db
+	if AudioServer.get_bus_index("Efectos") != -1:
+		p.bus = &"Efectos"   # Su volumen se cambia en Esc > Sonido y juego.
 	origen.get_tree().root.add_child(p)
 	p.finished.connect(p.queue_free)
 	p.play()

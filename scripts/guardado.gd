@@ -84,6 +84,8 @@ static func borrar(n: int) -> bool:
 	n = _ranura(n)
 	if FileAccess.file_exists(ruta(n)):
 		DirAccess.remove_absolute(ruta(n))
+	if FileAccess.file_exists(ruta(n) + ".bak"):
+		DirAccess.remove_absolute(ruta(n) + ".bak")
 	return not FileAccess.file_exists(ruta(n))
 
 
@@ -181,6 +183,9 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		return false
 	archivo.store_string(JSON.stringify(datos, "\t"))
 	archivo.close()
+	# Copia de seguridad: la partida anterior queda como .bak (cargar() la usa si la buena está rota).
+	if FileAccess.file_exists(ruta(n)):
+		DirAccess.copy_absolute(ruta(n), ruta(n) + ".bak")
 	if DirAccess.rename_absolute(temporal, ruta(n)) != OK:
 		DirAccess.remove_absolute(temporal)
 		return false
@@ -228,17 +233,28 @@ static func _migrar_mundo(datos: Dictionary) -> void:
 
 
 # Carga la partida. Devuelve true si salió bien.
+static func _leer_json(r: String) -> Variant:
+	if not FileAccess.file_exists(r):
+		return null
+	var archivo: FileAccess = FileAccess.open(r, FileAccess.READ)
+	if archivo == null:
+		return null
+	var datos = JSON.parse_string(archivo.get_as_text())
+	archivo.close()
+	return datos
+
+
 static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 	n = _ranura(n)
 	if not existe(n):
 		return false
-	var archivo: FileAccess = FileAccess.open(ruta(n), FileAccess.READ)
-	if archivo == null:
-		return false
-	var datos = JSON.parse_string(archivo.get_as_text())
-	archivo.close()
+	var datos = _leer_json(ruta(n))
 	if not datos is Dictionary:
-		return false
+		# El archivo está roto (apagón, disco lleno...): se prueba con la copia de seguridad.
+		datos = _leer_json(ruta(n) + ".bak")
+		if not datos is Dictionary:
+			return false
+		Juego.avisar("La partida estaba dañada: se ha cargado la copia de seguridad anterior.")
 
 	_migrar_mundo(datos)
 	Juego.reiniciar()

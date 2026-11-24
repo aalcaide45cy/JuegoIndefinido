@@ -5,6 +5,7 @@
 # Exportaciones del juego (los .exe y similares se generan al exportar)
 /export/
 /builds/
+/exportar/
 *.tmp
 
 # Archivos del sistema operativo

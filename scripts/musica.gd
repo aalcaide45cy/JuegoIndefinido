@@ -20,6 +20,7 @@ extends Node
 const RUTA_OPCIONES: String = "user://opciones.cfg"
 const BUS_MUSICA: String = "Musica"
 const BUS_AMBIENTE: String = "Ambiente"
+const BUS_EFECTOS: String = "Efectos"
 
 # Centros de las zonas (x, z) y su tipo de sonido.
 const ZONAS: Array = [
@@ -35,6 +36,8 @@ const DISTANCIA_CAMPO: float = 100.0   # A más de esto de todos los barrios, es
 
 static var volumen_musica: float = 0.7      # 0-1 (lo cambia el panel F1).
 static var volumen_ambiente: float = 0.8
+static var volumen_general: float = 1.0     # Bus Master (Esc > Sonido y juego).
+static var volumen_efectos: float = 0.9     # Bus "Efectos": los sonidos de sonido.gd.
 
 var _capas: Dictionary = {}                 # nombre -> AudioStreamPlayer
 var _pendientes: Array = ["musica_dia", "musica_noche", "tension", "ciudad", "industrial",
@@ -51,8 +54,11 @@ func _ready() -> void:
 
 static func guardar_opciones() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
+	cfg.load(RUTA_OPCIONES)   # Conserva otras secciones del archivo (autoguardado...).
 	cfg.set_value("sonido", "musica", volumen_musica)
 	cfg.set_value("sonido", "ambiente", volumen_ambiente)
+	cfg.set_value("sonido", "general", volumen_general)
+	cfg.set_value("sonido", "efectos", volumen_efectos)
 	cfg.save(RUTA_OPCIONES)
 
 
@@ -62,9 +68,26 @@ static func cargar_opciones() -> void:
 		return
 	volumen_musica = clampf(float(cfg.get_value("sonido", "musica", 0.7)), 0.0, 1.0)
 	volumen_ambiente = clampf(float(cfg.get_value("sonido", "ambiente", 0.8)), 0.0, 1.0)
+	volumen_general = clampf(float(cfg.get_value("sonido", "general", 1.0)), 0.0, 1.0)
+	volumen_efectos = clampf(float(cfg.get_value("sonido", "efectos", 0.9)), 0.0, 1.0)
+
+
+# Crea el bus de efectos si falta y pone el volumen general y el de efectos.
+static func aplicar_buses() -> void:
+	if AudioServer.get_bus_index(BUS_EFECTOS) == -1:
+		AudioServer.add_bus()
+		var idx: int = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, BUS_EFECTOS)
+		AudioServer.set_bus_send(idx, "Master")
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(volumen_general, 0.0001)))
+	AudioServer.set_bus_mute(0, volumen_general <= 0.001)
+	var e: int = AudioServer.get_bus_index(BUS_EFECTOS)
+	AudioServer.set_bus_volume_db(e, linear_to_db(maxf(volumen_efectos, 0.0001)))
+	AudioServer.set_bus_mute(e, volumen_efectos <= 0.001)
 
 
 func _crear_buses() -> void:
+	aplicar_buses()
 	for nombre in [BUS_MUSICA, BUS_AMBIENTE]:
 		if AudioServer.get_bus_index(nombre) == -1:
 			AudioServer.add_bus()

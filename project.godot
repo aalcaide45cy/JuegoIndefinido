@@ -21,6 +21,8 @@ config/icon="res://icon.svg"
 Juego="*res://scripts/juego.gd"
 Logros="*res://scripts/logros.gd"
 Graficos="*res://scripts/graficos.gd"
+Controles="*res://scripts/controles.gd"
+Autoguardado="*res://scripts/autoguardado.gd"
 
 [display]
 
