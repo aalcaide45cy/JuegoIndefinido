@@ -1,0 +1,4 @@
+Pack de Quaternius (https://quaternius.com), descargado de itch.io el 2026-11-16.
+Licencia: CC0 1.0 Universal (dominio publico), segun la pagina del pack en itch.io
+y en quaternius.com. https://creativecommons.org/publicdomain/zero/1.0/
+El zip no trae archivo de licencia propio. Solo se han copiado los modelos FBX.
