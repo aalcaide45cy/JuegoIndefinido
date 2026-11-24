@@ -13,7 +13,7 @@ func _suelo() -> void:
 	var cuerpo: StaticBody3D = StaticBody3D.new()
 	var forma: CollisionShape3D = CollisionShape3D.new()
 	var caja: BoxShape3D = BoxShape3D.new()
-	caja.size = Vector3(2000, 2, 2000)
+	caja.size = Vector3(8000, 2, 8000)
 	forma.shape = caja
 	forma.position.y = -1.0
 	cuerpo.add_child(forma)
@@ -125,7 +125,7 @@ func _probar(tipo: String) -> void:
 		t += dt
 		giro_total += wrapf(f.rotation.y - yaw_ant, -PI, PI)
 		yaw_ant = f.rotation.y
-		balanceo = maxf(balanceo, rad_to_deg(asin(clampf(f.global_transform.basis.x.y, -1, 1))))
+		balanceo = maxf(balanceo, absf(rad_to_deg(asin(clampf(f.global_transform.basis.x.y, -1, 1)))))
 	var w: float = giro_total / 4.0
 	var radio: float = absf(f.linear_velocity.length() / maxf(absf(w), 0.001))
 	print("curva a %.0f km/h: giro %.0f°/s, radio %.1f m, balanceo max %.1f°, volcado=%s" % [
@@ -180,6 +180,20 @@ func _probar(tipo: String) -> void:
 	print("choque: golpes=%s salud=%.0f abollado=%s" % [str(golpes), v.salud, str(Deformacion.abollado(v._carroceria))])
 	if golpes.is_empty():
 		fallos.append("%s: no detecta el choque" % tipo)
+	# Pinchazo: un tiro en la rueda delantera izquierda y luego acelerar recto.
+	await _crear(tipo, Vector3(-300, 0.6, 0))
+	f = v.fisica
+	await _esperar(1.0)
+	var rueda: Vector3 = (f.ruedas[0]["pivote"] as Node3D).global_position
+	v.recibir_impacto(rueda, Vector3.RIGHT, 20.0)
+	await _esperar(2.5)
+	var y_rueda: float = (f.ruedas[0]["pivote"] as Node3D).global_position.y
+	f.entrada = 1.0
+	await _esperar(4.0)
+	var deriva: float = rad_to_deg(f.rotation.y)
+	print("pinchazo: pinchadas=%d altura rueda %.2f -> %.2f, desvío tras 4 s %.0f°, salud %.0f" % [f.ruedas_pinchadas(), rueda.y, y_rueda, deriva, v.salud])
+	if f.ruedas_pinchadas() != 1 or y_rueda > rueda.y - 0.05:
+		fallos.append("%s: el pinchazo no baja la rueda" % tipo)
 
 
 func _ready() -> void:

@@ -46,7 +46,7 @@ static func _generar(nombre: String) -> AudioStream:
 	var tabla: Dictionary = {
 		"disparo": [0.18, 0.0, 14.0], "explosion": [0.9, 0.0, 4.0],
 		"golpe": [0.12, 140.0, 20.0], "compra": [0.25, 880.0, 9.0],
-		"alerta": [0.5, 520.0, 3.0],
+		"alerta": [0.5, 520.0, 3.0], "claxon": [0.45, 415.0, 0.8],
 	}
 	if nombre == "trueno":
 		return _trueno()

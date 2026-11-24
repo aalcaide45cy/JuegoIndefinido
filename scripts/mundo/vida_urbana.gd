@@ -190,6 +190,19 @@ class Agente extends AnimatableBody3D:
 	var curva_dir_in: Vector2 = Vector2.RIGHT
 	var curva_dir_out: Vector2 = Vector2.RIGHT
 	var radios: Array = []
+	# --- Conducción natural (modelo IDM: cada conductor con su carácter) ---
+	var tipo_coche: String = "sedan"
+	var acc: float = 0.0               # Aceleración actual (m/s²), suavizada.
+	var t_hueco: float = 1.4           # Segundos de distancia que deja con el de delante.
+	var acel_max: float = 2.2          # Lo fuerte que acelera (m/s²).
+	var freno_comodo: float = 2.8      # Lo fuerte que frena sin asustarse (m/s²).
+	var hueco_min: float = 2.0         # Metros que deja parado detrás de otro.
+	var reaccion: float = 0.4          # Lo que tarda en arrancar cuando el de delante sale (s).
+	var t_arranque: float = 0.0
+	var t_bocina: float = 0.0
+	var yaw_antes: float = 0.0
+	var pivotes: Array = []            # Ruedas delanteras (viran en las curvas).
+	var efectos: EfectosVehiculo = null
 	# --- Peatones ---
 	var estado: int = 0
 	var s: int = 1                     # Lado de la acera respecto al sentido del tramo.
@@ -208,7 +221,15 @@ class Agente extends AnimatableBody3D:
 
 	# Golpe, disparo o explosión del jugador: sangre, grito, reacción y, si es fuerte, derribo.
 	func recibir_dano(cantidad: float) -> void:
-		if es_coche or has_meta("muerto"):
+		if es_coche:
+			# Un tiro o una explosión: el coche pasa a ser un vehículo con física y recibe el daño.
+			var vu: Node = get_parent()
+			if vu != null and vu.has_method("convertir_en_fisico"):
+				var v = vu.convertir_en_fisico(self)
+				if v != null:
+					v.dano_en_chasis(cantidad)
+			return
+		if has_meta("muerto"):
 			return
 		vida -= cantidad
 		huyendo = true
@@ -474,9 +495,10 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 		a.sync_to_physics = false
 		if coche:
 			_vestir_coche(a)
-			a.vmax = 11.0 if float(red["ancho"]) >= 8.0 else 8.0
+			a.vmax = (11.0 if float(red["ancho"]) >= 8.0 else 8.0) * randf_range(0.85, 1.15)
 			a.lado = float(red["ancho"]) * 0.25
 			a.atento = randf() > 0.06
+			_caracter(a)
 		else:
 			_vestir_peaton(a)
 			a.vmax = 1.3
@@ -512,12 +534,22 @@ func _vestir_coche(a: Agente) -> void:
 	forma.shape = caja
 	forma.position.y = 0.75
 	a.add_child(forma)
-	var nuevo: Dictionary = ModeloVehiculo.crear(str(elegido[0]), a.largo, false)
+	a.tipo_coche = str(elegido[0])
+	var nuevo: Dictionary = ModeloVehiculo.crear(str(elegido[0]), a.largo, true)
 	if not nuevo.is_empty():
-		a.add_child(nuevo["nodo"])
-		a.modelo = nuevo["nodo"]
+		var cuerpo: Node3D = Node3D.new()   # Se inclina al frenar y en las curvas (suspensión).
+		a.add_child(cuerpo)
+		cuerpo.add_child(nuevo["nodo"])
+		a.modelo = cuerpo
 		a.giros = nuevo["giros"]
 		a.radios = nuevo["radios"]
+		a.pivotes = nuevo["pivotes"]
+		var ancho: float = float(nuevo["ancho"])
+		var alto: float = float(nuevo["alto"])
+		a.efectos = EfectosVehiculo.new()
+		a.efectos.con_luz_real = false
+		cuerpo.add_child(a.efectos)
+		a.efectos.montar(AABB(Vector3(-ancho / 2.0, 0.0, -a.largo / 2.0), Vector3(ancho, alto, a.largo)), [])
 		return
 	var nombre: String = "kenney/car-kit/" + str(COCHES_KENNEY.get(str(elegido[0]), str(elegido[0])))
 	var m: Node3D = Assets.modelo(nombre) if Assets.existe(nombre) else null
@@ -877,8 +909,8 @@ func _mover_coche(a: Agente, delta: float) -> void:
 	var libre: Array = _distancia_libre(a, dir)
 	var quien: Node3D = libre[1]
 	if quien != null:
-		objetivo = minf(objetivo, _frenar_para(float(libre[0]), 2.0, 5.5))
-		if objetivo < 0.5:
+		# (La frenada por el de delante la hace _acelerar con el modelo IDM; esto solo anota el motivo.)
+		if minf(objetivo, _frenar_para(float(libre[0]), 2.0, 5.5)) < 0.5:
 			a.bloqueo = str(quien.name) + ("(coche)" if quien is Agente and quien.es_coche else "")
 			var legitimo: bool = quien is Agente and not (quien as Agente).es_coche
 			motivo = maxi(motivo, 1 if legitimo else 2)
@@ -893,7 +925,8 @@ func _mover_coche(a: Agente, delta: float) -> void:
 			a.set_meta("muerto", true)   # Se retira (lo borra _gestionar).
 	elif a.vel >= 0.3 or motivo != 2:
 		a.espera = maxf(0.0, a.espera - delta * 2.0)
-	a.vel = move_toward(a.vel, objetivo, (7.0 if objetivo < a.vel else 3.0) * delta)
+	_acelerar(a, objetivo, quien, float(libre[0]), delta)
+	_animar_coche(a, quien, motivo, delta)
 	for i in a.giros.size():
 		(a.giros[i] as Node3D).rotation.x -= a.vel * delta / maxf(0.05, float(a.radios[i]))
 	var dist_j: float = (a.global_position - _jugador.global_position).length()
@@ -921,6 +954,147 @@ func _mover_coche(a: Agente, delta: float) -> void:
 				a.d = sobra
 	_colocar(a, false, delta)
 	_comprobar_atropello(a, dir)
+
+
+# Carácter del conductor: unos van pegados y arrancan rápido, otros dejan sitio y van con calma.
+func _caracter(a: Agente) -> void:
+	var r: float = randf()
+	if r < 0.2:   # Prisas
+		a.t_hueco = randf_range(0.8, 1.1)
+		a.acel_max = randf_range(2.8, 3.6)
+		a.freno_comodo = randf_range(3.2, 4.0)
+		a.hueco_min = randf_range(1.2, 1.7)
+		a.reaccion = randf_range(0.15, 0.3)
+		a.vmax *= 1.12
+	elif r < 0.8:   # Normal
+		a.t_hueco = randf_range(1.2, 1.6)
+		a.acel_max = randf_range(1.8, 2.6)
+		a.freno_comodo = randf_range(2.5, 3.2)
+		a.hueco_min = randf_range(1.8, 2.4)
+		a.reaccion = randf_range(0.3, 0.6)
+	else:   # Prudente
+		a.t_hueco = randf_range(1.7, 2.2)
+		a.acel_max = randf_range(1.3, 1.8)
+		a.freno_comodo = randf_range(2.0, 2.6)
+		a.hueco_min = randf_range(2.4, 3.2)
+		a.reaccion = randf_range(0.5, 0.9)
+		a.vmax *= 0.9
+
+
+# Velocidad del que va delante (para que no frene igual tras un coche que se aleja que tras uno parado).
+func _vel_de(o: Node3D) -> float:
+	if o == null or not is_instance_valid(o):
+		return 0.0
+	if o is Agente:
+		return (o as Agente).vel
+	if o.has_method("velocidad_actual"):
+		return absf(float(o.call("velocidad_actual")))
+	return 0.0
+
+
+# Aceleración con el modelo IDM (Intelligent Driver Model, el que usan los simuladores de tráfico):
+# acelera suave hasta su velocidad, mantiene un hueco en SEGUNDOS con el de delante y frena según
+# lo rápido que se acerca. Además tarda un poco en reaccionar al arrancar (efecto acordeón en los
+# semáforos) y no cambia de golpe de acelerar a frenar.
+func _acelerar(a: Agente, objetivo: float, quien: Node3D, libre: float, delta: float) -> void:
+	var v: float = a.vel
+	var acc: float
+	if objetivo < v - 0.05:
+		acc = -clampf((v - objetivo) * 2.2 + 0.4, 0.5, 8.0)
+	else:
+		acc = a.acel_max * (1.0 - pow(v / maxf(objetivo, 0.5), 4.0))
+	if quien != null:
+		var dv: float = v - _vel_de(quien)
+		var s_ideal: float = a.hueco_min + maxf(0.0, v * a.t_hueco + v * dv / (2.0 * sqrt(a.acel_max * a.freno_comodo)))
+		var acc_lider: float = a.acel_max * (1.0 - pow(s_ideal / maxf(libre, 0.3), 2.0))
+		acc = minf(acc, maxf(acc_lider, -9.0))
+	# Reacción al arrancar.
+	if v < 0.2 and acc > 0.0:
+		a.t_arranque += delta
+		if a.t_arranque < a.reaccion:
+			acc = 0.0
+	elif v > 0.5:
+		a.t_arranque = 0.0
+	# Tirones suaves: la aceleración cambia como mucho 6 m/s² por segundo (salvo frenazos).
+	var limite: float = 6.0 if acc > a.acc or acc > -4.0 else 30.0
+	a.acc = move_toward(a.acc, acc, limite * delta)
+	a.vel = maxf(0.0, a.vel + a.acc * delta)
+	if a.vel <= 0.0 and a.acc < 0.0:
+		a.acc = 0.0
+	a.set_meta("vel_choque", Vector3(a.dir2.x, 0.0, a.dir2.y) * a.vel)
+
+
+# Lo que se ve: el coche cabecea al frenar y acelerar, se inclina en las curvas, gira las ruedas
+# delanteras, enciende las luces de freno, pone el intermitente antes de girar y pita si llevas
+# rato tapándole el paso.
+func _animar_coche(a: Agente, quien: Node3D, motivo: int, delta: float) -> void:
+	var giro_vel: float = wrapf(a.rotation.y - a.yaw_antes, -PI, PI) / maxf(delta, 0.001)
+	a.yaw_antes = a.rotation.y
+	if a.modelo != null:
+		var k: float = 1.0 - exp(-6.0 * delta)
+		a.modelo.rotation.x = lerpf(a.modelo.rotation.x, clampf(a.acc * 0.011, -0.06, 0.035), k)
+		a.modelo.rotation.z = lerpf(a.modelo.rotation.z, clampf(-a.vel * giro_vel * 0.014, -0.07, 0.07), k)
+	var viraje: float = clampf(atan(giro_vel * a.largo * 0.6 / maxf(a.vel, 1.0)), -0.6, 0.6)
+	for p in a.pivotes:
+		(p as Node3D).rotation.y = lerpf((p as Node3D).rotation.y, viraje, 1.0 - exp(-10.0 * delta))
+	if a.efectos == null:
+		return
+	var inter: int = 0
+	if a.desvio > 0.3:
+		inter = 1
+	elif a.sig_ok and a.curva.size() == 4:
+		var pa: Vector2 = a.red["pos"][a.desde]
+		var pb: Vector2 = a.red["pos"][a.hacia]
+		var restante: float = pa.distance_to(pb) - a.d
+		if a.en_giro or restante < 40.0:
+			var c: float = a.curva_dir_in.x * a.curva_dir_out.y - a.curva_dir_in.y * a.curva_dir_out.x
+			if absf(c) > 0.3:
+				inter = 1 if c < 0.0 else -1   # (x, z) visto desde arriba: negativo = a la izquierda.
+	if a.en_giro and a.curva_t > 0.85:
+		inter = 0
+	a.efectos.intermitente = inter
+	var frena: bool = a.acc < -0.8 or (a.vel < 0.3 and motivo > 0)
+	a.efectos.actualizar(delta, frena, false, Juego.es_de_noche(), [], 100.0)
+	# Bocina: si el que le tapa eres tú (a pie o en coche) y lleva un rato parado.
+	var tu: bool = quien != null and (quien == _jugador or (quien.has_method("velocidad_actual") and quien.get("conductor") != null))
+	if tu and a.vel < 0.5:
+		a.t_bocina += delta
+		if a.t_bocina > 3.0:
+			a.t_bocina = -randf_range(3.0, 6.0)
+			Sonido.tocar(a, "claxon", -8.0)
+	elif not tu:
+		a.t_bocina = 0.0
+
+
+# El jugador choca contra un coche del tráfico (o le dispara): a partir de ahí es un Vehiculo con
+# física de verdad (se empuja, gira, se abolla y se le pueden pinchar las ruedas). Se queda con
+# las luces de emergencia puestas y desaparece cuando te alejas.
+func convertir_en_fisico(a: Agente) -> Vehiculo:
+	if not is_instance_valid(a) or not a.es_coche or a.has_meta("convertido"):
+		return null
+	if not Vehiculo.TIPOS.has(a.tipo_coche):
+		return null
+	a.set_meta("convertido", true)
+	var v: Vehiculo = Vehiculo.new()
+	v.tipo = a.tipo_coche
+	v.id = ""
+	v.temporal = true
+	v.gasolina = randf_range(20.0, 80.0)
+	var padre: Node = get_tree().get_first_node_in_group("gestor_vehiculos")
+	if padre == null:
+		padre = get_parent()
+	padre.add_child(v)
+	var yaw: float = a.rotation.y
+	v.global_position = a.global_position + Vector3.UP * 0.05
+	v.chasis.rotation.y = yaw
+	if v.fisica != null:
+		v.fisica.linear_velocity = Vector3(a.dir2.x, 0.0, a.dir2.y) * a.vel
+		v.fisica.freno_mano = true
+	if v.efectos != null:
+		v.efectos.intermitente = 2
+	_coches.erase(a)
+	a.queue_free()
+	return v
 
 
 # Si el coche se mueve y tiene a alguien delante, lo atropella.

@@ -39,6 +39,7 @@ var objetivo: Interactuable = null
 var primera_persona: bool = true   # Empieza en primera persona; V cambia.
 
 var _giro: float = 0.0        # Izquierda/derecha de la cámara (radianes).
+var _t_raton: float = 0.0     # Segundos desde que moviste el ratón (conduciendo, la cámara vuelve detrás del coche).
 var _inclinacion: float = -0.2  # Arriba/abajo de la cámara.
 var _bloqueado: bool = false   # Para quietos momentáneos (por ejemplo, escenas).
 
@@ -94,6 +95,7 @@ func _unhandled_input(evento: InputEvent) -> void:
 		var movimiento: InputEventMouseMotion = evento
 		_giro -= movimiento.relative.x * SENSIBILIDAD_RATON
 		_inclinacion -= movimiento.relative.y * SENSIBILIDAD_RATON
+		_t_raton = 0.0
 		_inclinacion = clampf(_inclinacion, -1.3, 1.0)
 	elif Juego.modo_volar and evento is InputEventMouseButton and evento.pressed and raton_capturado \
 			and (evento.button_index == MOUSE_BUTTON_WHEEL_UP or evento.button_index == MOUSE_BUTTON_WHEEL_DOWN):
@@ -183,6 +185,8 @@ func _physics_process(delta: float) -> void:
 		var datos_mano: Dictionary = _datos_mano()
 		if datos_mano.get("forma", "") == "rifle":
 			_atacar()
+	if vehiculo != null:
+		_camara_conduciendo(delta)
 	_pivote.rotation.y = _giro
 	_brazo.rotation.x = _inclinacion
 	if vehiculo != null:
@@ -715,6 +719,21 @@ func subir_a(v: Interactuable) -> void:
 		_brazo.add_excluded_object(chasis.get_rid())
 
 
+# Cámara de persecución: si no tocas el ratón un momento, se pone detrás del coche (o mira hacia
+# atrás en marcha atrás); se abre con la velocidad y tiembla con los golpes (Vehiculo.sacudida).
+func _camara_conduciendo(delta: float) -> void:
+	_t_raton += delta
+	var rapidez: float = absf(float(vehiculo.call("velocidad_actual"))) if vehiculo.has_method("velocidad_actual") else 0.0
+	if _t_raton > 1.2 and rapidez > 2.0 and vehiculo.has_method("rumbo_camara"):
+		_giro = lerp_angle(_giro, float(vehiculo.call("rumbo_camara")), 1.0 - exp(-2.5 * delta))
+		_inclinacion = lerpf(_inclinacion, -0.2, 1.0 - exp(-1.5 * delta))
+	if not _zoom:
+		_camara.fov = lerpf(_camara.fov, 70.0 + clampf(rapidez * 0.3, 0.0, 16.0), 1.0 - exp(-3.0 * delta))
+	var temblor: float = float(vehiculo.get("sacudida")) if vehiculo.get("sacudida") != null else 0.0
+	_camara.h_offset = randf_range(-1.0, 1.0) * temblor * 0.12
+	_camara.v_offset = randf_range(-1.0, 1.0) * temblor * 0.12
+
+
 # Mientras conduces, la cámara atraviesa los demás vehículos y los guardias (si no, se queda pegada
 # a un coche aparcado o a una persona y tapa la pantalla).
 func _excluir_en_camara() -> void:
@@ -733,6 +752,8 @@ func bajar_de(v: Interactuable, destino: Vector3) -> void:
 	if chasis != null:
 		_brazo.remove_excluded_object(chasis.get_rid())
 	vehiculo = null
+	_camara.h_offset = 0.0
+	_camara.v_offset = 0.0
 	_brazo.clear_excluded_objects()
 	_brazo.add_excluded_object(get_rid())
 	global_position = destino

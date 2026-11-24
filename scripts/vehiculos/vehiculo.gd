@@ -351,6 +351,12 @@ func _poner_salud(valor: float) -> void:
 		Deformacion.restaurar(_carroceria)
 		destruido = false
 		_t_fuego = -1.0
+		remove_meta("ardiendo")
+		if fisica != null:
+			for r in fisica.ruedas:
+				r["pinchar"] = false
+				r["pinchada"] = 0.0
+				(r["pivote"] as Node3D).scale = Vector3.ONE
 		if fisica != null:
 			fisica.factor_motor = 1.0
 			fisica.tiron = 0.0
@@ -696,6 +702,8 @@ func _marcas() -> void:
 	for i in fisica.ruedas.size():
 		var r: Dictionary = fisica.ruedas[i]
 		var clave: int = get_instance_id() * 16 + i
+		if r["suelo"] and float(r["pinchada"]) > 0.8 and absf(fisica.velocidad) > 6.0 and randf() < 0.15:
+			EfectosVehiculo.estallido(self, r["punto"], Vector3.UP, "chispas", 2.0)   # Llanta contra el asfalto.
 		if r["suelo"] and float(r["desliz"]) > 5.0:
 			MarcasFrenada.poner(get_tree(), clave, r["punto"], r["normal"], float(r["radio"]) * 0.7,
 					float(r["desliz"]))
@@ -812,6 +820,10 @@ func _al_golpear(punto: Vector3, normal: Vector3, fuerza: float, otro: Object) -
 func _arder(delta: float) -> void:
 	if _t_fuego < 0.0 or destruido:
 		return
+	if not has_meta("ardiendo"):
+		set_meta("ardiendo", true)
+		var caja: AABB = _caja_carroceria()
+		Destruccion.fuego_en(self, chasis.global_transform * Vector3(0, caja.end.y * 0.8, caja.position.z + 0.8), 30.0)
 	_t_fuego -= delta
 	if _t_fuego <= 0.0:
 		_t_fuego = -1.0
@@ -966,20 +978,65 @@ func recibir_dano(cantidad: float) -> void:
 	if destruido:
 		return
 	salud = maxf(0.0, salud - cantidad)
+	if cantidad >= 30.0 and fisica != null:
+		# Una explosión cerca revienta alguna rueda.
+		for i in fisica.ruedas.size():
+			if randf() < 0.4:
+				fisica.pinchar(i)
 	if salud <= 0.0:
-		reventar()
+		if cantidad >= 40.0:
+			reventar()   # Explosión o golpe enorme: revienta ya.
+		elif _t_fuego < 0.0:
+			_t_fuego = 6.0   # Si no, arde unos segundos y luego revienta.
+			if efectos != null:
+				efectos.intermitente = 0
 
 
 # Impacto con punto y dirección (balas, golpes): pequeña abolladura, chispas y, si es fuerte,
-# cristales. Las armas pueden llamar a esto en lugar de recibir_dano.
+# cristales. Si da cerca de una rueda, la pincha; si da en la parte de atrás (depósito), hace
+# más daño. Las armas pueden llamar a esto en lugar de recibir_dano.
 func recibir_impacto(punto: Vector3, direccion: Vector3, dano: float) -> void:
 	if destruido:
 		return
-	Deformacion.abollar(_carroceria, punto, direccion.normalized(), clampf(dano * 0.4, 3.0, 8.0))
-	EfectosVehiculo.estallido(self, punto, -direccion.normalized(), "chispas", 3.0)
-	if dano > 15.0:
-		EfectosVehiculo.estallido(self, punto, -direccion.normalized(), "cristal", 6.0)
-	recibir_dano(dano)
+	var dir: Vector3 = direccion.normalized() if direccion.length() > 0.01 else Vector3.DOWN
+	Deformacion.abollar(_carroceria, punto, dir, clampf(dano * 0.4, 3.0, 8.0))
+	EfectosVehiculo.estallido(self, punto, -dir, "chispas", 3.0)
+	if dano > 15.0 or randf() < 0.25:
+		EfectosVehiculo.estallido(self, punto, -dir, "cristal", 5.0)
+	Sonido.tocar(self, "golpe", -10.0)
+	var extra: float = 1.0
+	if fisica != null:
+		for i in fisica.ruedas.size():
+			var r: Dictionary = fisica.ruedas[i]
+			var centro: Vector3 = (r["pivote"] as Node3D).global_position
+			if centro.distance_to(punto) < float(r["radio"]) * 1.5:
+				if not r["pinchar"]:
+					fisica.pinchar(i)
+					Sonido.tocar(self, "golpe", -6.0)
+				extra = 0.3   # Un tiro en la rueda apenas daña el motor.
+		var local: Vector3 = fisica.global_transform.affine_inverse() * punto
+		if local.z > _largo * 0.25:
+			extra *= 1.6   # Depósito de gasolina: los tiros por detrás acaban antes en explosión.
+	recibir_dano(dano * extra)
+
+
+# Daño en el chasis sin punto (las armas que solo llaman a recibir_dano): se supone que el tiro
+# viene de la cámara del jugador y se busca dónde ha dado.
+func dano_en_chasis(cantidad: float) -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null or fisica == null:
+		recibir_dano(cantidad)
+		return
+	var origen: Vector3 = cam.global_position
+	var dir: Vector3 = -cam.global_basis.z
+	var consulta: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(origen, origen + dir * 200.0)
+	var golpe: Dictionary = get_world_3d().direct_space_state.intersect_ray(consulta)
+	var punto: Vector3 = fisica.global_position + Vector3.UP * 0.8
+	if not golpe.is_empty() and golpe["collider"] == fisica:
+		punto = golpe["position"]
+	else:
+		dir = (punto - origen).normalized()
+	recibir_impacto(punto, dir, cantidad)
 
 
 func reventar() -> void:

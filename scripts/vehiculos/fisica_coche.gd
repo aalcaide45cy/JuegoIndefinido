@@ -48,7 +48,7 @@ const PERFILES: Dictionary = {
 	"tractor": {"masa": 3800.0, "traccion": "4x4", "agarre": 1.15, "marchas": 4, "rpm_max": 2400.0,
 			"frec": 1.2, "recorrido": 0.2, "cdg": 0.95, "aero": 0.8},
 	"excavadora": {"masa": 9000.0, "traccion": "4x4", "agarre": 1.1, "marchas": 3, "rpm_max": 2200.0,
-			"frec": 1.0, "recorrido": 0.16, "cdg": 1.1, "aero": 0.9},
+			"frec": 1.0, "recorrido": 0.16, "cdg": 0.7, "aero": 0.9},
 	"trailer": {"masa": 8000.0, "traccion": "tras", "agarre": 0.95, "marchas": 10, "rpm_max": 2400.0,
 			"frec": 1.15, "recorrido": 0.22, "cdg": 1.2, "aero": 0.9},
 	"deportivo": {"masa": 1300.0, "traccion": "tras", "agarre": 1.3, "marchas": 6, "rpm_max": 8200.0,
@@ -120,11 +120,16 @@ func preparar(datos: Array, largo: float) -> void:
 		ruedas.append({"pivote": piv, "giro": r["giro"], "radio": float(r["radio"]), "del": delantera,
 				"motriz": motriz, "reposo": piv.position, "x": _recorrido, "suelo": false,
 				"punto": Vector3.ZERO, "normal": Vector3.UP, "carga": 0.0, "w": 0.0, "desliz": 0.0,
-				"lado": signf(piv.position.x)})
+				"lado": signf(piv.position.x), "pinchada": 0.0, "pinchar": false})
 	# Potencia: buena aceleración abajo y la velocidad punta justo en vmax.
 	_potencia = mass * acel * vmax * 0.36
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	center_of_mass = Vector3(0.0, float(_p["cdg"]), 0.0)
+	# Centro de gravedad entre los ejes (si no, un vehículo con las ruedas descentradas, como la
+	# excavadora, carga un eje el doble y cabecea).
+	var z_medio: float = 0.0
+	for r in ruedas:
+		z_medio += (r["reposo"] as Vector3).z / float(ruedas.size())
+	center_of_mass = Vector3(0.0, float(_p["cdg"]), z_medio * 0.85)
 	# Inercia algo mayor que la de una caja: el coche no "baila" tanto al girar.
 	var ancho: float = 2.0
 	for r in ruedas:
@@ -132,6 +137,7 @@ func preparar(datos: Array, largo: float) -> void:
 	inertia = Vector3(mass * (ancho * ancho + 1.6) / 12.0 * 1.4,
 			mass * (ancho * ancho + largo * largo) / 12.0 * 1.1,
 			mass * (largo * largo + 1.6) / 12.0 * 1.2)
+	collision_mask = 1 | 4   # Capa 3 (valor 4): objetos del escenario con física (farolas, bancos...).
 	contact_monitor = true
 	max_contacts_reported = 6
 	can_sleep = true
@@ -272,7 +278,7 @@ func _fuerza_motor(rapidez: float) -> float:
 
 func _suspension(r: Dictionary, espacio: PhysicsDirectSpaceState3D, b: Basis, delta: float) -> void:
 	var reposo: Vector3 = r["reposo"]
-	var radio: float = r["radio"]
+	var radio: float = float(r["radio"]) * (1.0 - 0.4 * float(r["pinchada"]))   # Pinchada: va sobre la llanta.
 	var ancla: Vector3 = global_transform * (reposo + Vector3.UP * _recorrido)
 	var abajo: Vector3 = -b.y
 	var largo_rayo: float = _recorrido * 2.0 + radio
@@ -311,12 +317,15 @@ func _suspension(r: Dictionary, espacio: PhysicsDirectSpaceState3D, b: Basis, de
 		f += _k * 6.0 * (0.03 - x)   # Tope de la suspensión: no atraviesa el suelo en una caída.
 	f = maxf(0.0, f)
 	r["carga"] = f
-	apply_force(b.y * f, ancla - global_position)
+	# El muelle empuja perpendicular al suelo (no según la inclinación de la carrocería): si no, un
+	# coche que cabecea se empuja solo hacia delante.
+	var n: Vector3 = (hit["normal"] as Vector3)
+	apply_force(n * f * maxf(0.0, n.dot(b.y)), ancla - global_position)
 
 
 # Barras estabilizadoras: reparten la compresión entre la rueda izquierda y la derecha de cada eje.
 func _estabilizadoras(b: Basis) -> void:
-	var k_barra: float = _k * 0.7
+	var k_barra: float = _k * 0.45
 	for i in range(0, ruedas.size() - 1, 2):
 		var a: Dictionary = ruedas[i]
 		var c: Dictionary = ruedas[i + 1]
@@ -360,6 +369,8 @@ func _neumatico(r: Dictionary, b: Basis, cdg: Vector3, delta: float, motor: floa
 	if (freno_mano and detras) or aparcado:
 		mu *= 0.55 if not aparcado else 1.0   # Freno de mano: la parte de atrás suelta y el coche cruza.
 		bloqueada = true
+	var pinchada: float = float(r["pinchada"])
+	mu *= 1.0 - 0.35 * pinchada
 	var max_f: float = mu * carga
 	# --- Fuerza longitudinal ---
 	var fx: float = 0.0
@@ -367,15 +378,26 @@ func _neumatico(r: Dictionary, b: Basis, cdg: Vector3, delta: float, motor: floa
 		fx = clampf(-v_long * _masa_rueda / delta, -max_f * 0.9, max_f * 0.9)
 	else:
 		if r["motriz"]:
-			fx += motor
+			# Control de tracción: por encima de 25 km/h la rueda no patina más de la cuenta (solo
+			# se queman ruedas al arrancar a fondo).
+			if absf(v_long) > 7.0 and absf(motor) > max_f:
+				fx += signf(motor) * max_f * 1.02
+			else:
+				fx += motor
 		if freno > 0.0:
 			var reparto: float = 0.62 if r["del"] else 0.38
 			var fb: float = freno * reparto / float(maxi(1, ruedas.size() / 2))
 			fx += clampf(-v_long * _masa_rueda / delta, -fb, fb)
+		elif absf(motor) < 1.0 and absf(v_long) < 0.8 and conducido:
+			fx += clampf(-v_long * _masa_rueda / delta, -max_f * 0.5, max_f * 0.5)   # Parado: no se escurre.
 		elif absf(motor) < 1.0:
 			# Rodadura y freno motor al soltar el pedal.
 			var resistencia: float = carga * (0.015 + (0.05 if conducido else 0.0))
 			fx += clampf(-v_long * _masa_rueda / delta, -resistencia, resistencia)
+	if pinchada > 0.0:
+		# Rueda pinchada: frena mucho (la goma se arrastra) y tira el coche hacia ese lado.
+		var arrastre: float = carga * 0.06 * pinchada
+		fx += clampf(-v_long * _masa_rueda / delta, -arrastre, arrastre)
 	# --- Fuerza lateral (curva de agarre por ángulo de deriva) ---
 	var deriva: float = atan2(v_lat, maxf(absf(v_long), 2.5))
 	var fy: float = -max_f * sin(1.45 * atan(9.0 * deriva))
@@ -441,10 +463,44 @@ func enderezar() -> void:
 	angular_velocity = Vector3.ZERO
 
 
+# Pincha una rueda (bala, explosión): se desinfla en un par de segundos.
+func pinchar(i: int) -> void:
+	if i < 0 or i >= ruedas.size():
+		return
+	ruedas[i]["pinchar"] = true
+	sleeping = false
+
+
+func ruedas_pinchadas() -> int:
+	var n: int = 0
+	for r in ruedas:
+		if r["pinchar"]:
+			n += 1
+	return n
+
+
+# Las balas y golpes que dan en el chasis se pasan al vehículo (Vehiculo), que es quien lleva el daño.
+func recibir_dano(cantidad: float) -> void:
+	var v: Node = get_parent()
+	if v != null and v.has_method("dano_en_chasis"):
+		v.dano_en_chasis(cantidad)
+
+
+func recibir_impacto(punto: Vector3, direccion: Vector3, dano: float) -> void:
+	var v: Node = get_parent()
+	if v != null and v.has_method("recibir_impacto"):
+		v.recibir_impacto(punto, direccion, dano)
+
+
 # Coloca las ruedas visibles donde está la suspensión y las hace rodar y virar.
 func _ruedas_visuales(delta: float) -> void:
 	for r in ruedas:
+		if r["pinchar"] and float(r["pinchada"]) < 1.0:
+			r["pinchada"] = minf(1.0, float(r["pinchada"]) + delta * 0.5)
 		var piv: Node3D = r["pivote"]
+		if float(r["pinchada"]) > 0.0:
+			var pz: float = float(r["pinchada"])
+			piv.scale = Vector3(1.0, 1.0 - 0.32 * pz, 1.0 + 0.04 * pz)   # Goma aplastada.
 		var reposo: Vector3 = r["reposo"]
 		var y_obj: float = reposo.y + _recorrido - float(r["x"])
 		piv.position.y = lerpf(piv.position.y, y_obj, clampf(delta * 30.0, 0.0, 1.0))

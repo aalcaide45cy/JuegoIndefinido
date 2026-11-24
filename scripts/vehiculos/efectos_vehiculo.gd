@@ -47,6 +47,20 @@ static func _materiales() -> void:
 	_mat_humo.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mat_humo.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	_mat_humo.vertex_color_use_as_albedo = true
+	# Bola de humo suave (degradado redondo): sin esto las partículas son cuadrados blancos.
+	var grad: Gradient = Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 1))
+	grad.set_color(1, Color(1, 1, 1, 0))
+	grad.add_point(0.45, Color(1, 1, 1, 0.55))
+	var tex: GradientTexture2D = GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	_mat_humo.albedo_texture = tex
+	_mat_humo.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	_mat_humo_negro = _mat_humo.duplicate()
 	_mat_humo_negro.albedo_color = Color(0.12, 0.12, 0.12, 0.6)
 	_mat_chispa = StandardMaterial3D.new()
@@ -86,8 +100,8 @@ func montar(caja_carroceria: AABB, ruedas_pos: Array, tipo: String = "") -> void
 	var cx: float = caja.get_center().x
 	for lado in [-1.0, 1.0]:
 		var x: float = cx + lado * x_lado
-		_faros.append(_pastilla(Vector3(x, y_luz, z_frente), Vector3(0.36, 0.14, 0.05), _mat_faro))
-		_frenos.append(_pastilla(Vector3(x, y_luz + 0.04, z_cola), Vector3(0.3, 0.12, 0.05), _mat_freno))
+		_faros.append(_pastilla(Vector3(x, y_luz, z_frente), Vector3(0.34, 0.12, 0.02), _mat_faro))
+		_frenos.append(_pastilla(Vector3(x, y_luz + 0.04, z_cola), Vector3(0.28, 0.1, 0.02), _mat_freno))
 		_atras.append(_pastilla(Vector3(x - lado * 0.24, y_luz - 0.02, z_cola), Vector3(0.1, 0.08, 0.05), _mat_atras))
 		var i: int = 0 if lado < 0.0 else 1
 		_intermitentes[i].append(_pastilla(Vector3(cx + lado * (x_lado + 0.12), y_luz, z_frente + 0.02),
@@ -159,9 +173,13 @@ static func _crear_humo(mat: Material, cantidad: int, vida: float) -> CPUParticl
 # Lo llama el vehículo cada fotograma.
 #   frenando, atras: luces · noche: faros · deslices: deslizamiento por rueda (m/s)
 func actualizar(delta: float, frenando: bool, atras: bool, noche: bool, deslices: Array, salud: float) -> void:
+	# Las pastillas de luz solo se ven encendidas: apagadas, el modelo ya lleva pintados sus faros.
 	_mat_freno.emission_energy_multiplier = 4.0 if frenando else (0.9 if noche else 0.0)
 	_mat_atras.emission_energy_multiplier = 2.5 if atras else 0.0
-	_mat_faro.emission_energy_multiplier = 3.0 if noche else 0.25
+	_mat_faro.emission_energy_multiplier = 3.0 if noche else 0.0
+	_ver(_frenos, frenando or noche)
+	_ver(_atras, atras)
+	_ver(_faros, noche)
 	if _luz_faro != null:
 		_luz_faro.visible = noche
 	_t_inter += delta
@@ -169,6 +187,7 @@ func actualizar(delta: float, frenando: bool, atras: bool, noche: bool, deslices
 	for i in 2:
 		var activo: bool = intermitente == 2 or (intermitente == 1 and i == 0) or (intermitente == -1 and i == 1)
 		(_mat_inter[i] as StandardMaterial3D).emission_energy_multiplier = 3.5 if (activo and on) else 0.0
+		_ver(_intermitentes[i], activo and on)
 	for i in mini(_humos.size(), deslices.size()):
 		var h: CPUParticles3D = _humos[i]
 		var d: float = float(deslices[i])
@@ -178,6 +197,12 @@ func actualizar(delta: float, frenando: bool, atras: bool, noche: bool, deslices
 		if sale:
 			h.initial_velocity_max = 1.2 + d * 0.08
 	_humo_del_motor(salud)
+
+
+func _ver(lista: Array, si: bool) -> void:
+	for n in lista:
+		if (n as Node3D).visible != si:
+			(n as Node3D).visible = si
 
 
 func _humo_del_motor(salud: float) -> void:
