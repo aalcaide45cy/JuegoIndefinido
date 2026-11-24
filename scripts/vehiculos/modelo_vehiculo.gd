@@ -67,6 +67,9 @@ static func existe(clave: String) -> bool:
 #   pivotes   Array[Node3D]  ruedas del primer eje, que viran (rotar en Y) — vacío si
 #             con_direccion es false
 #   rotores   Array[Dictionary]  {"nodo": Node3D, "eje": Vector3} (hélices)
+#   ruedas    Array[Dictionary]  {pivote, giro, radio, del} de todas las ruedas, en pares
+#             izquierda/derecha por eje (para la suspensión de FisicaCoche)
+#   escala    Node3D con la carrocería (sin ruedas): lo que se abolla en los choques
 static func crear(clave: String, largo: float, con_direccion: bool = true) -> Dictionary:
 	if not existe(clave):
 		return {}
@@ -93,6 +96,7 @@ static func crear(clave: String, largo: float, con_direccion: bool = true) -> Di
 	var radios: Array = []
 	var pivotes: Array = []
 	var rotores: Array = []
+	var ruedas: Array = []         # [{pivote, giro, radio, del}] por eje y lado (izquierda, derecha)
 	var primero: bool = true
 	for eje in d.get("ejes", []):
 		var radio: float = float(eje[1]) * largo
@@ -118,13 +122,14 @@ static func crear(clave: String, largo: float, con_direccion: bool = true) -> Di
 			raiz.add_child(pivote)
 			giros.append(spin)
 			radios.append(radio)
+			ruedas.append({"pivote": pivote, "giro": spin, "radio": radio, "del": primero})
 			if primero and con_direccion:
 				pivotes.append(pivote)
 		primero = false
 	for r in d.get("rotores", []):
 		rotores.append(_rotor(raiz, largo, alto, float(d["suelo"]), r))
 	return {"nodo": raiz, "ancho": ancho, "alto": alto, "giros": giros, "radios": radios,
-			"pivotes": pivotes, "rotores": rotores}
+			"pivotes": pivotes, "rotores": rotores, "ruedas": ruedas, "escala": escala}
 
 
 # Una hélice: dos palas en cruz (o una sola en el morro del avión), colgada de un nodo que gira.
