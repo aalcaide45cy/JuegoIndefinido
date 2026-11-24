@@ -214,7 +214,8 @@ class Agente extends AnimatableBody3D:
 		huyendo = true
 		BarraVida.de(self, 2.1, "neutral").mostrar(maxf(vida, 0.0) / vida_max)
 		var centro: Vector3 = global_position + Vector3(0, 1.1, 0)
-		Gore.salpicar(self, centro, dir_golpe, clampf(cantidad / 12.0, 0.5, 2.0))
+		if not Cuerpo.reciente(self):   # Si viene de Cuerpo.impactar, la sangre ya está puesta en su sitio.
+			Gore.salpicar(self, centro, dir_golpe, clampf(cantidad / 12.0, 0.5, 2.0))
 		Gore.grito(self, centro)
 		Sonido.tocar(self, "golpe", -4.0)
 		asustar_testigos(16.0, true)
@@ -226,16 +227,19 @@ class Agente extends AnimatableBody3D:
 			estado = VidaUrbana.P_HERIDO   # Golpe fuerte: lo tira al suelo un rato.
 			herido_t = 4.0
 			vel = 0.0
-			tumbar()
+			tumbar(dir_golpe * clampf(cantidad / 8.0, 1.5, 4.0))
 		else:
 			t_reaccion = AnimCombate.una_vez(modelo, "HitReact", "Walk")
 
-	# Atropello: daño según la velocidad, salpicadura y salir despedido.
+	# Atropello: daño según la velocidad y el cuerpo sale despedido con física (ragdoll).
 	func derribar(dir3: Vector3, v: float, culpa_jugador: bool) -> void:
 		if has_meta("muerto"):
+			# Un cadáver atropellado: se le empuja (y a mucha velocidad puede perder algo).
+			Cuerpo.impactar(self, global_position, dir3, v * 3.5, "atropello", {"fuerza": v * 0.9})
 			return
 		dir_golpe = dir3
-		vida -= v * 3.5
+		var dano: float = v * 3.5
+		vida -= dano
 		huyendo = false
 		BarraVida.de(self, 2.1, "neutral").mostrar(maxf(vida, 0.0) / vida_max)
 		var centro: Vector3 = global_position + Vector3(0, 1.0, 0)
@@ -243,45 +247,68 @@ class Agente extends AnimatableBody3D:
 		Gore.grito(self, centro)
 		Sonido.tocar(self, "golpe", 0.0)
 		asustar_testigos(22.0, culpa_jugador)
-		lanzar(dir3, v)
+		# El coche empuja hacia delante y hacia arriba: a más velocidad, más lejos y más alto.
+		var impulso: Vector3 = dir3 * v * 0.85 + Vector3.UP * clampf(v * 0.3, 1.0, 6.0)
+		set_meta("ult_impacto", {"dir": impulso.normalized(), "punto": centro, "tipo": "atropello",
+				"zona": "torso", "fuerza": impulso.length(), "ms": Time.get_ticks_msec()})
 		if vida <= 0.0:
-			morir(dir3, v / 5.0, culpa_jugador, false)
+			morir(dir3, impulso.length(), culpa_jugador, false)
+			# A gran velocidad el golpe puede arrancar algún miembro.
+			if v > 15.0:
+				Cuerpo.impactar(self, global_position, dir3, dano, "atropello", {"fuerza": impulso.length()})
 		else:
 			estado = VidaUrbana.P_HERIDO
 			herido_t = 14.0
 			vel = 0.0
-			tumbar()
-			Gore.charco(self, global_position + dir3 * clampf(v * 0.5, 1.0, 6.0), 0.5)
+			tumbar(impulso)
 
-	func tumbar() -> void:
-		if modelo != null:
+	# Al suelo con física. Si sobrevive, se levanta cuando acabe herido_t (y nadie mire de cerca).
+	func tumbar(impulso: Vector3 = Vector3.ZERO) -> void:
+		if modelo == null:
+			return
+		if impulso.length() < 0.01:
+			impulso = -global_basis.z * 1.5
+		collision_layer = 0   # Que su propia cápsula no choque con su cuerpo al caer.
+		if not Cuerpo.derribo(self, modelo, impulso):
 			modelo.rotation.x = -PI / 2.0
 			modelo.position.y = 0.25
 			Assets.poner_animacion(modelo, "Idle")
+		_vigilar_levantarse()
 
-	# Sale despedido en la dirección del golpe (el cuerpo vuela en arco y se queda tumbado).
+	# Mientras está en el suelo: si alguien está mirando de cerca, sigue tumbado un poco más
+	# (así no se le ve "teletransportarse" de donde cayó a su sitio al levantarse).
+	func _vigilar_levantarse() -> void:
+		while is_inside_tree() and not has_meta("muerto") and estado == VidaUrbana.P_HERIDO:
+			await get_tree().create_timer(0.4).timeout
+			if not is_instance_valid(self) or not is_inside_tree() or has_meta("muerto"):
+				return
+			if estado != VidaUrbana.P_HERIDO:
+				break
+			if herido_t < 0.8:
+				var cam: Camera3D = get_viewport().get_camera_3d()
+				var donde: Vector3 = Cuerpo.centro(self, modelo)
+				if cam != null and cam.global_position.distance_to(donde) < 25.0 \
+						and (-cam.global_basis.z).dot((donde - cam.global_position).normalized()) > 0.3:
+					herido_t = 1.5
+		if is_instance_valid(self) and is_inside_tree() and not has_meta("muerto"):
+			Cuerpo.levantar(self, modelo, "Walk")
+			collision_layer = 1
+
+	# Ya no se usa el vuelo con animación: lo hace el ragdoll. Se deja por compatibilidad.
 	func lanzar(dir3: Vector3, v: float) -> void:
-		if modelo == null:
-			return
-		var dist: float = clampf(v * 0.5, 1.0, 6.0)
-		var fin: Vector3 = global_basis.inverse() * (dir3 * dist)
-		var altura: float = clampf(v * 0.12, 0.4, 1.6)
-		var anim: Tween = create_tween()
-		anim.tween_method(func(t: float) -> void:
-			if is_instance_valid(modelo):
-				modelo.position = fin * t + Vector3.UP * (sin(PI * t) * altura + 0.25 * t), 0.0, 1.0, 0.5)
+		Cuerpo.derribo(self, modelo, dir3 * v * 0.85 + Vector3.UP * clampf(v * 0.3, 1.0, 6.0))
 
-	func morir(dir3: Vector3, fuerza: float, culpa_jugador: bool, con_animacion: bool = true) -> void:
+	func morir(dir3: Vector3, fuerza: float, culpa_jugador: bool, _con_animacion: bool = true) -> void:
 		remove_from_group("danable")
 		remove_from_group("peatones")
 		set_meta("muerto", true)
 		set_meta("muerto_ms", Time.get_ticks_msec())
 		collision_layer = 0
-		if con_animacion and modelo != null and AnimCombate.una_vez(modelo, "Death") > 0.0:
-			pass   # Se desploma con la animación de muerte y se queda en el suelo.
-		else:
-			tumbar()
-		Gore.muerte(self, global_position + dir3 * (clampf(fuerza, 0.0, 3.0) if not con_animacion else 0.0), dir3, fuerza)
+		Gore.muerte(self, global_position, dir3, fuerza)
+		if modelo == null or not Cuerpo.al_morir(self, modelo, dir3, clampf(fuerza, 1.5, 20.0)):
+			if modelo != null:
+				modelo.rotation.x = -PI / 2.0
+				modelo.position.y = 0.25
 
 	# La gente de alrededor huye gritando; con culpa del jugador, alguno llama a la policía.
 	func asustar_testigos(radio: float, culpa_jugador: bool) -> void:

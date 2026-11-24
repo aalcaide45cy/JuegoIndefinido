@@ -86,7 +86,8 @@ func _morir() -> void:
 	Juego.cambiar_rep("ley", 3)
 	Juego.cambiar_rep("hampa", -4)
 	Juego.avisar("El matón cae. Le registras los bolsillos: %d $." % botin)
-	rotation.x = -PI / 2.0
+	if not Cuerpo.al_morir(self, Cuerpo.modelo_de(self), Vector3.ZERO, 2.5):
+		rotation.x = -PI / 2.0
 	var t: SceneTreeTimer = get_tree().create_timer(6.0)
 	t.timeout.connect(queue_free)
 
@@ -99,7 +100,8 @@ func _caer_jefe() -> void:
 	if territorio != "":
 		Juego.territorios[territorio] = "jugador"
 	Juego.avisar("¡El jefe de barrio cae! Ahora el barrio es tuyo: %d $ de cuota al día." % Bandas.CUOTA_TERRITORIO)
-	rotation.x = -PI / 2.0
+	if not Cuerpo.al_morir(self, Cuerpo.modelo_de(self), Vector3.ZERO, 2.5):
+		rotation.x = -PI / 2.0
 	get_tree().create_timer(8.0).timeout.connect(queue_free)
 
 

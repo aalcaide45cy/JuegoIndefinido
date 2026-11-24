@@ -64,6 +64,8 @@ const VELOCIDAD_ESQUIVA: float = 13.0
 const COSTE_ESQUIVA: float = 25.0
 var _enfriamiento: float = 0.0   # Segundos hasta poder atacar otra vez.
 var _zoom: bool = false          # Mira del francotirador.
+var _bloom: float = 0.0          # Imprecisión que suma cada disparo seguido (se recupera sola).
+var _ms_ultimo_disparo: int = 0
 var _muerto: bool = false
 var agachado: bool = false       # Mantén C o Ctrl: te ven menos y vas más despacio.
 var en_sombra: bool = false      # De noche y lejos de las farolas.
@@ -384,15 +386,28 @@ func _animar_mano(retroceso: float) -> void:
 	animacion.tween_property(_mano, "position", base, 0.12)
 
 
-# Un destello de luz de un instante en la boca del arma.
-func _fogonazo() -> void:
-	var luz: OmniLight3D = OmniLight3D.new()
-	luz.light_color = Color(1.0, 0.8, 0.4)
-	luz.light_energy = 3.0
-	luz.omni_range = 9.0
-	luz.position = _origen() + _adelante() * 1.2
-	_escena().add_child(luz)
-	get_tree().create_timer(0.06).timeout.connect(luz.queue_free)
+# Dónde está la boca del arma ahora mismo (mano en primera o tercera persona).
+func _boca() -> Vector3:
+	if _mano != null and is_instance_valid(_mano) and _mano.is_inside_tree():
+		return _mano.global_position + _adelante() * 0.38 + _camara.global_basis.y * 0.03
+	return _origen() + _adelante() * 0.6 + _camara.global_basis.x * 0.12 - _camara.global_basis.y * 0.08
+
+
+# Fogonazo, humo y casquillo (ver efectos_arma.gd).
+func _fogonazo(forma: String = "pistola") -> void:
+	var boca: Vector3 = _boca()
+	EfectosArma.boca(_escena(), boca, _adelante(), forma)
+	EfectosArma.casquillo(_escena(), boca - _adelante() * 0.3, _camara.global_basis.x, _camara.global_basis.y, forma)
+
+
+# Retroceso: la mira sube y se va un poco a un lado; más cuanto más gorda es el arma.
+func _retroceso(forma: String) -> void:
+	var subida: float = {"pistola": 0.02, "escopeta": 0.065, "rifle": 0.013, "francotirador": 0.09,
+			"lanzagranadas": 0.05}.get(forma, 0.02)
+	if agachado:
+		subida *= 0.7
+	_inclinacion = clampf(_inclinacion + subida, -1.3, 1.0)
+	_giro += randf_range(-subida, subida) * 0.45
 
 
 # Cuánto daño haces según tus efectos (Fuerza, Temblor...).
@@ -425,8 +440,14 @@ func _golpear(datos: Dictionary) -> void:
 	if choque.is_empty():
 		return
 	var cosa = choque["collider"]
-	if cosa != null and cosa.has_method("recibir_dano"):
-		cosa.recibir_dano(float(datos["dano"]) * _mult_dano() * _mult_fuerza() * mult)
+	var forma: String = String(datos.get("forma", "puno"))
+	var tipo: String = "filo" if forma in ["cuchillo", "katana"] else "contundente"
+	var dano: float = float(datos["dano"]) * _mult_dano() * _mult_fuerza() * mult
+	var r: Dictionary = Cuerpo.impactar(cosa, _origen(), _adelante(), dano, tipo, {"punto": choque["position"], "distancia": 1.0})
+	if r.is_empty():
+		EfectosArma.impacto(_escena(), choque, _adelante())   # Golpe contra una pared o un coche.
+	elif r.get("persona", false):
+		EfectosArma.marcador(get_tree(), "muerte" if r.get("mato", false) else "toque")
 
 
 func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
@@ -435,32 +456,77 @@ func _disparar(casilla: Dictionary, datos: Dictionary) -> void:
 		Juego.avisar("Sin balas en el cargador. Pulsa R para recargar.")
 		return
 	casilla["balas"] -= 1
-	Sonido.tocar(self, "disparo")
 	var forma: String = datos["forma"]
+	EfectosArma.sonido_disparo(self, forma)
 	var pausa: Dictionary = {"pistola": 0.28, "escopeta": 0.9, "rifle": 0.11, "francotirador": 1.4,
 			"lanzagranadas": 1.0}
 	_enfriamiento = pausa.get(forma, 0.4)
 	_animar_mano(0.12)
-	_fogonazo()
-	_inclinacion = clampf(_inclinacion + 0.015, -1.3, 1.0)   # Retroceso.
+	_fogonazo(forma)
+	_retroceso(forma)
 	if forma == "lanzagranadas":
-		Combate.lanzar(_escena(), _origen() + _adelante() * 0.8, _adelante() * 26.0, 4.0, true,
+		Combate.lanzar(_escena(), _boca(), _adelante() * 26.0, 4.0, true,
 				6.0, float(datos["dano"]), Color(0.3, 0.35, 0.25), 0.1)
 	else:
+		# Precisión: base del arma + lo que hayas disparado seguido + moverte o saltar.
+		var ahora: int = Time.get_ticks_msec()
+		_bloom *= exp(-float(ahora - _ms_ultimo_disparo) / 350.0)
+		_ms_ultimo_disparo = ahora
 		var perdigones: int = int(datos.get("perdigones", 1))
-		var dispersion: float = 0.07 if perdigones > 1 else (0.002 if _zoom else 0.008)
+		var dispersion: float = 0.06 if perdigones > 1 else (0.0015 if _zoom else 0.007)
+		if perdigones == 1:
+			dispersion += _bloom
+			var horizontal: float = Vector2(velocity.x, velocity.z).length()
+			dispersion += clampf(horizontal / 60.0, 0.0, 0.05) + (0.03 if not is_on_floor() else 0.0)
+			if agachado:
+				dispersion *= 0.6
+			_bloom = minf(_bloom + {"rifle": 0.006, "pistola": 0.01}.get(forma, 0.004), 0.05)
+		var mejor: String = ""
 		for i in perdigones:
-			var dir: Vector3 = _adelante() + _camara.global_basis.x * randf_range(-dispersion, dispersion) \
-					+ _camara.global_basis.y * randf_range(-dispersion, dispersion)
-			var choque: Dictionary = Combate.rayo(get_world_3d(), _origen(), dir, 150.0, [get_rid()])
-			if choque.is_empty():
-				continue
-			var cosa = choque["collider"]
-			if cosa != null and cosa.has_method("recibir_dano"):
-				cosa.recibir_dano(float(datos["dano"]) * _mult_dano())
-			else:
-				Combate.marca_bala(_escena(), choque["position"], choque["normal"])
+			var ang: float = randf() * TAU
+			var radio: float = sqrt(randf()) * dispersion   # Reparto redondo, más denso en el centro.
+			var dir: Vector3 = (_adelante() + _camara.global_basis.x * cos(ang) * radio \
+					+ _camara.global_basis.y * sin(ang) * radio).normalized()
+			var r: String = _bala(dir, float(datos["dano"]) * _mult_dano(), "perdigon" if perdigones > 1 else "bala",
+					i == 0 or i % 3 == 0)
+			if r == "cabeza" or (r == "muerte" and mejor != "cabeza") or (r == "toque" and mejor == ""):
+				mejor = r
+		if mejor != "":
+			EfectosArma.marcador(get_tree(), mejor)
 	Juego.cambio.emit()
+
+
+# Una bala: si pasa rozando entre el brazo y el cuerpo de alguien, sigue su camino.
+# Devuelve "" (nada), "toque", "muerte" o "cabeza".
+func _bala(dir: Vector3, dano: float, tipo: String, con_trazadora: bool) -> String:
+	var excluir: Array = [get_rid()]
+	var desde: Vector3 = _origen()
+	for intento in 3:
+		var choque: Dictionary = Combate.rayo(get_world_3d(), desde, dir, 150.0, excluir)
+		if choque.is_empty():
+			if con_trazadora:
+				EfectosArma.trazadora(_escena(), _boca(), desde + dir * 150.0)
+			return ""
+		var cosa = choque["collider"]
+		var pos: Vector3 = choque["position"]
+		var r: Dictionary = Cuerpo.impactar(cosa, desde, dir, dano, tipo,
+				{"punto": pos, "distancia": desde.distance_to(pos)})
+		if r.get("fallo", false) and cosa is CollisionObject3D:
+			excluir.append((cosa as CollisionObject3D).get_rid())
+			continue
+		if con_trazadora:
+			EfectosArma.trazadora(_escena(), _boca(), r.get("punto", pos))
+		if r.is_empty() or not r.get("persona", false):
+			EfectosArma.impacto(_escena(), choque, dir)
+			if not (cosa is RigidBody3D or cosa is CharacterBody3D or cosa is AnimatableBody3D or cosa is Vehiculo):
+				Combate.marca_bala(_escena(), pos, choque["normal"])
+			if cosa is RigidBody3D:
+				(cosa as RigidBody3D).apply_impulse(dir * clampf(dano / 10.0, 0.5, 6.0), pos - (cosa as RigidBody3D).global_position)
+			return ""
+		if r.get("mato", false):
+			return "cabeza" if r.get("zona", "") == "cabeza" else "muerte"
+		return "toque"
+	return ""
 
 
 # R: llena el cargador con la munición que lleves encima.

@@ -182,6 +182,10 @@ func _morir() -> void:
 	Juego.avisar("%s ha muerto. La cosa se ha puesto muy fea." % rol.get("nombre", "Alguien"))
 	if casa != null and casa.has_method("hubo_violencia"):
 		casa.hubo_violencia()
+	# Cae con física (ragdoll si tiene modelo con huesos; si no, el muñeco entero).
+	var m: Node3D = Cuerpo.modelo_de(self)
+	if Cuerpo.al_morir(self, m if m != null else _cuerpo, Vector3.ZERO, 2.5):
+		return
 	var anim: Tween = create_tween()
 	anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.3)
 	anim.parallel().tween_property(_cuerpo, "position:y", 0.3, 0.3)

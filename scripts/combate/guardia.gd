@@ -382,7 +382,8 @@ func recibir_dano(cantidad: float) -> void:
 		_ultima_pos = jug.global_position
 	var centro: Vector3 = global_position + Vector3(0, 1.2, 0)
 	var dir: Vector3 = (global_position - jug.global_position).normalized() if jug != null else Vector3.UP
-	Gore.salpicar(self, centro, dir, clampf(cantidad / 12.0, 0.5, 2.0))
+	if not Cuerpo.reciente(self):   # Si viene de un arma, Cuerpo ya ha puesto la sangre donde toca.
+		Gore.salpicar(self, centro, dir, clampf(cantidad / 12.0, 0.5, 2.0))
 	Gore.grito(self, centro, 1)
 	Sonido.tocar(self, "golpe", -4.0)
 	_material.emission_enabled = true
@@ -422,6 +423,10 @@ func _esquivar() -> void:
 func _derribar(segundos: float) -> void:
 	_t_aturdido = segundos
 	_t_captura = 0.0
+	if _modelo != null:
+		collision_layer = 0   # Su cápsula no debe chocar con su propio cuerpo al caer.
+		if Cuerpo.derribo(self, _modelo, _impulso * 0.6 + Vector3.UP):
+			return
 	var anim: Tween = create_tween()
 	anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.25)
 	anim.parallel().tween_property(_cuerpo, "position:y", 0.25, 0.25)
@@ -430,6 +435,9 @@ func _derribar(segundos: float) -> void:
 
 
 func _levantarse() -> void:
+	if _modelo != null and not _muerto:
+		Cuerpo.levantar(self, _modelo, "Run")
+		collision_layer = 1 if visible else 0
 	var anim: Tween = create_tween()
 	anim.tween_property(_cuerpo, "rotation:x", 0.0, 0.4)
 	anim.parallel().tween_property(_cuerpo, "position:y", 0.0, 0.4)
@@ -440,7 +448,8 @@ func _caer(dir: Vector3 = Vector3.UP) -> void:
 	collision_layer = 0
 	collision_mask = 0
 	_material.emission_enabled = false
-	if _modelo == null or AnimCombate.una_vez(_modelo, "Death") <= 0.0:
+	# Cae con física (ragdoll) empujado por el último golpe; sin modelo, el muñeco se tumba.
+	if _modelo == null or not Cuerpo.al_morir(self, _modelo, dir, 2.5):
 		var anim: Tween = create_tween()
 		anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.3)
 		anim.parallel().tween_property(_cuerpo, "position:y", 0.25, 0.3)
@@ -454,8 +463,10 @@ func _caer(dir: Vector3 = Vector3.UP) -> void:
 	if refuerzo:
 		queue_free()
 		return
+	await get_tree().create_timer(12.0).timeout   # El cadáver se queda un rato en el suelo.
 	_poner_activo(false)
-	await get_tree().create_timer(87.0).timeout
+	await get_tree().create_timer(75.0).timeout
+	Cuerpo.recomponer(self, _modelo)   # Reaparece entero.
 	_cuerpo.rotation.x = 0.0
 	_cuerpo.position.y = 0.0
 	_t_aturdido = 0.0
