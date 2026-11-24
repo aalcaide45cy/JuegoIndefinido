@@ -134,7 +134,18 @@ func _montar_interior(k: Vector2i, c: Dictionary) -> void:
 	var mb: ConstructorMalla = ConstructorMalla.new()
 	var cuerpo: StaticBody3D = StaticBody3D.new()
 	raiz.add_child(cuerpo)
+	# Muebles pequeños sueltos (sillas, cajas, barriles, macetas...): van aparte, con física.
+	var sueltos: Dictionary = _sueltos(datos)
+	var usados: Dictionary = {}
+	for i in sueltos:
+		for j in sueltos[i]:
+			usados[j] = true
+		raiz.add_child(_mueble_fisico(datos["cajas"], sueltos[i]))
+	var indice: int = -1
 	for cj in datos["cajas"]:
+		indice += 1
+		if usados.has(indice):
+			continue
 		var pos: Vector3 = cj[0]
 		var tam: Vector3 = cj[1]
 		mb.caja(pos, tam, cj[2])
@@ -160,6 +171,82 @@ func _montar_interior(k: Vector2i, c: Dictionary) -> void:
 	_interiores[k] = raiz
 	if _puertas.has(k):
 		(_puertas[k] as PuertaMundo).con_choque(true)
+
+
+# Elige las cajas del reparto que son muebles pequeños apoyados en el suelo (ni muy finos ni muy
+# grandes), sin contar camas y muebles con botín (los asaltos los usan) ni los sanitarios blancos.
+# Devuelve {índice de la caja principal: [índices de todas sus cajas, adornos incluidos]}.
+const BLANCO_SANITARIO: Color = Color(0.9, 0.9, 0.88)
+
+
+func _sueltos(datos: Dictionary) -> Dictionary:
+	var cajas: Array = datos["cajas"]
+	var fijos: Array = []
+	for m in datos.get("muebles", []):
+		fijos.append(m["pos"])
+	for cm in datos.get("camas", []):
+		fijos.append(cm["pos"])
+	var principal: Dictionary = {}
+	for i in cajas.size():
+		var cj: Array = cajas[i]
+		if not bool(cj[3]):
+			continue
+		var t: Vector3 = cj[1]
+		var pos: Vector3 = cj[0]
+		if minf(t.x, minf(t.y, t.z)) < 0.3 or maxf(t.x, maxf(t.y, t.z)) > 1.0 or t.x * t.y * t.z > 0.45:
+			continue
+		if (cj[2] as Color).is_equal_approx(BLANCO_SANITARIO):
+			continue
+		if _apoyado_en_otra(cajas, i):
+			continue   # Encima de una mesa o un mueble: se queda fijo (no flota si quitas el de abajo).
+		var es_fijo: bool = false
+		for f in fijos:
+			if (f as Vector3).distance_to(pos) < 0.05:
+				es_fijo = true
+				break
+		if not es_fijo:
+			principal[i] = [i]
+	# Los adornos sin choque que tiene encima (la planta de la maceta, el aro del barril...) van con él.
+	for j in cajas.size():
+		if bool(cajas[j][3]):
+			continue
+		var pj: Vector3 = cajas[j][0]
+		for i in principal:
+			var pi_: Vector3 = cajas[i][0]
+			var ti: Vector3 = cajas[i][1]
+			if absf(pj.x - pi_.x) < ti.x / 2.0 and absf(pj.z - pi_.z) < ti.z / 2.0 and pj.y > pi_.y and pj.y < pi_.y + ti.y / 2.0 + 1.0:
+				principal[i].append(j)
+				break
+	return principal
+
+
+func _apoyado_en_otra(cajas: Array, i: int) -> bool:
+	var p: Vector3 = cajas[i][0]
+	var t: Vector3 = cajas[i][1]
+	var abajo: float = p.y - t.y / 2.0
+	for j in cajas.size():
+		if j == i or not bool(cajas[j][3]):
+			continue
+		var q: Vector3 = cajas[j][0]
+		var u: Vector3 = cajas[j][1]
+		if absf(q.y + u.y / 2.0 - abajo) < 0.06 and absf(q.x - p.x) < (u.x + t.x) / 2.0 \
+				and absf(q.z - p.z) < (u.z + t.z) / 2.0 and u.x * u.z > 0.3 and u.x * u.z < 3.0 and u.y < 1.5:
+			return true
+	return false
+
+
+func _mueble_fisico(cajas: Array, indices: Array) -> ObjetoFisico:
+	var cj0: Array = cajas[indices[0]]
+	var p0: Vector3 = cj0[0]
+	var t0: Vector3 = cj0[1]
+	var base: Vector3 = Vector3(p0.x, p0.y - t0.y / 2.0, p0.z)
+	var locales: Array = []
+	for j in indices:
+		locales.append([(cajas[j][0] as Vector3) - base, cajas[j][1], cajas[j][2]])
+	var mat: String = "ceramica" if indices.size() > 1 and (cj0[2] as Color).r > 0.6 and (cj0[2] as Color).g < 0.4 else "madera"
+	var o: ObjetoFisico = ObjetoFisico.desde_cajas(locales, mat)
+	o.position = base
+	return o
 
 
 func _quitar_interior(k: Vector2i) -> void:

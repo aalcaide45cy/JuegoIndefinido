@@ -141,8 +141,30 @@ func tejado(casa: Node3D, ancho: float, fondo: float, alto: float) -> void:
 
 # Pone un objeto del paquete "Fantasy Props" (barril, cofre, vela...). Si el
 # modelo no está, no pasa nada. "solido" = el jugador choca con él.
+# Props del kit que, si son sólidos, se ponen con física (se empujan, vuelcan y rompen).
+# nombre -> [masa kg, material, color de los trozos, anclado]
+const PROPS_FISICOS: Dictionary = {
+	"Barrel": [35.0, "madera", Color(0.42, 0.28, 0.15), false],
+	"Barrel_Apples": [40.0, "madera", Color(0.42, 0.28, 0.15), false],
+	"Crate_Wooden": [15.0, "madera", Color(0.6, 0.46, 0.28), false],
+	"Bench": [45.0, "madera", Color(0.42, 0.29, 0.18), true],
+	"Chest_Wood": [40.0, "madera", Color(0.45, 0.3, 0.18), false],
+	"Dummy": [30.0, "madera", Color(0.55, 0.45, 0.3), true],
+}
+
+
 func prop(padre: Node3D, nombre: String, pos: Vector3, giro: float = 0.0, escala: float = 1.0,
 		solido: bool = false) -> Node3D:
+	if solido and PROPS_FISICOS.has(nombre):
+		var modelo: Node3D = Assets.modelo(PROPS + nombre)
+		if modelo != null:
+			var d: Array = PROPS_FISICOS[nombre]
+			modelo.scale = Vector3.ONE * escala
+			var o: ObjetoFisico = ObjetoFisico.desde_modelo(modelo, float(d[0]) * escala, d[1], d[2], d[3])
+			o.position = pos
+			o.rotation.y = giro
+			padre.add_child(o)
+			return o
 	return Assets.colocar_solido(padre, PROPS + nombre, pos, giro, Vector3.ONE * escala, solido)
 
 
@@ -353,15 +375,17 @@ func fila_edificios(origen: Vector3, angulo: float, desde: float, hasta: float,
 
 # Una farola: poste, farol que brilla y luz cálida.
 func farola(pos: Vector3) -> void:
-	# Si hay un modelo descargado (assets/modelos/farola.glb), se usa ese.
-	var modelo_farola: bool = Assets.colocar(self, "farola", pos)
-	if not modelo_farola:
-		Construir.cilindro(self, pos + Vector3(0, 1.6, 0), 0.08, 3.2, Color(0.1, 0.1, 0.1), true)
-		Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.35, 0.45, 0.35), Color(0.12, 0.1, 0.08), false)
-		var brillo_f: Node3D = Construir.caja(self, pos + Vector3(0, 3.3, 0), Vector3(0.28, 0.38, 0.28), Color(1.0, 0.75, 0.4), false, 3.0)
-		brillo_f.visible = false
-		brillo_f.add_to_group("ventanas_noche")
-	Construir.luz_noche(self, pos + Vector3(0, 3.2, 0), Color(1.0, 0.7, 0.4), 1.6, 11.0)
+	# Es un objeto con física (ObjetoFisico): se le puede romper el farol de un tiro, un coche la
+	# tumba y una explosión la lanza. Si hay un modelo descargado (assets/modelos/farola.glb), se usa ese.
+	var f: ObjetoFisico
+	var modelo: Node3D = Assets.modelo("farola")
+	if modelo != null:
+		f = ObjetoFisico.desde_modelo(modelo, 150.0, "metal", Color(0.12, 0.12, 0.13), true)
+		Construir.luz_noche(f, Vector3(0, 3.2, 0), Color(1.0, 0.7, 0.4), 1.6, 11.0)
+	else:
+		f = ObjetoFisico.crear("farol_casco", true)
+	f.position = pos
+	add_child(f)
 
 
 # ------------------------------ Suelo y calles --------------------------------

@@ -342,7 +342,14 @@ func _montar_cerca(c: Vector2i, d: Dictionary) -> void:
 				troncos2.add_child(cs2)
 			raiz.add_child(troncos2)
 	for pr in d["props"]:
-		if pr["tipo"] == "servicio":
+		if pr["tipo"] == "fisico":
+			# Farolas, bancos, papeleras, señales... con física (ObjetoFisico): nacen congelados y se
+			# despiertan al golpearlos. Se van con el trozo (y vuelven nuevos si regresas).
+			var obj: ObjetoFisico = ObjetoFisico.crear(pr["obj"])
+			obj.position = pr["pos"]
+			obj.rotation.y = float(pr.get("giro", 0.0))
+			raiz.add_child(obj)
+		elif pr["tipo"] == "servicio":
 			var serv: ServicioMundo = ServicioMundo.new()
 			serv.servicio = pr["serv"]
 			serv.position = pr["pos"]

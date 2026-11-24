@@ -617,8 +617,7 @@ static func _quitamiedos(mb: ConstructorMalla, rect: Rect2, lista: Array) -> voi
 
 # Carreteras de montaña: señales de curva y de velocidad, puentes (donde el terreno cae a los dos
 # lados) y bocas de túnel (donde la carretera va encajonada entre dos laderas). Todo con cajas.
-static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array) -> void:
-	var poste: Color = Color(0.35, 0.36, 0.38)
+static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array, props: Array = []) -> void:
 	var piedra: Color = Color(0.5, 0.49, 0.47)
 	var hormigon: Color = Color(0.62, 0.62, 0.6)
 	for c in lista:
@@ -642,15 +641,19 @@ static func _senales_y_obras(mb: ConstructorMalla, rect: Rect2, lista: Array) ->
 				var lado: float = -signf(giro)
 				obras_vistas.append(["curva", Vector3(a.x, ya, a.y), d1])
 				var q: Vector2 = a + nor * lado * (medio + 1.2)
-				mb.caja(Vector3(q.x, ya + 1.1, q.y), Vector3(0.1, 2.2, 0.1), poste)
-				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.9, 0.9, 0.08), Color(1.0, 0.8, 0.1))
-				mb.caja(Vector3(q.x, ya + 2.4, q.y), Vector3(0.5, 0.5, 0.1), Color(0.1, 0.1, 0.1))
+				# Señal con física (un coche la arranca), de cara a quien llega.
+				props.append({"tipo": "fisico", "obj": "senal_curva", "giro": atan2(-d1.x, -d1.y), "pos": Vector3(q.x, ya, q.y)})
 			# Límite de velocidad cada ~250 m, a la derecha según se avanza.
 			elif i % 25 == 0:
 				var q2: Vector2 = a - nor * (medio + 1.2)
-				mb.caja(Vector3(q2.x, ya + 1.1, q2.y), Vector3(0.1, 2.2, 0.1), poste)
-				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.85, 0.85, 0.08), Color(0.85, 0.1, 0.1))
-				mb.caja(Vector3(q2.x, ya + 2.4, q2.y), Vector3(0.6, 0.6, 0.1), Color(0.95, 0.95, 0.95))
+				props.append({"tipo": "fisico", "obj": "senal_velocidad", "giro": atan2(-d1.x, -d1.y), "pos": Vector3(q2.x, ya, q2.y)})
+			# Obras en el arcén de vez en cuando: conos y una valla.
+			elif i % 37 == 11 and absf(giro) < 0.15:
+				for j in 4:
+					var qc: Vector2 = a - nor * (medio + 0.6) + d1 * (float(j) * 2.5 - 3.75)
+					props.append({"tipo": "fisico", "obj": "cono", "giro": 0.0, "pos": Vector3(qc.x, altura_lista(qc.x, qc.y, lista), qc.y)})
+				var qv: Vector2 = a - nor * (medio + 1.6)
+				props.append({"tipo": "fisico", "obj": "valla_obra", "giro": atan2(-d1.y, d1.x), "pos": Vector3(qv.x, altura_lista(qv.x, qv.y, lista), qv.y)})
 			var izq: Vector2 = a + nor * 8.0
 			var der: Vector2 = a - nor * 8.0
 			var hi: float = altura_lista(izq.x, izq.y, lista)
@@ -1696,7 +1699,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 				var cara: float = casa_d["puerta"]
 				props.append({"id": casa_d["id"], "tipo": "casa",
 						"pos": Vector3(casa_d["x"], casa_d["y"] + 1.0, float(casa_d["z"]) + cara * (float(casa_d["d"]) / 2.0 + 0.3))})
-		_decorar_asentamiento(objetos, s, rect)
+		_decorar_asentamiento(objetos, s, rect, props)
 		for h in huertos_de(s):
 			var hc: Vector2 = h["ctr"]
 			if not rect.has_point(hc):
@@ -1707,7 +1710,7 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 					"centro": Vector3(hc.x, h["y"], hc.y), "tam": Vector2(float(h["ex"]) - 3.0, float(h["ez"]) - 3.0),
 					"m2": h["m2"]})
 	_quitamiedos(objetos, rect, lista_t)
-	_senales_y_obras(objetos, rect, lista_t)
+	_senales_y_obras(objetos, rect, lista_t, props)
 	for est in _gasolineras_de_carretera(rect, segs):
 		_edificio(objetos, est, true)
 		var base_y: float = est["y"]
@@ -1723,17 +1726,18 @@ static func generar_cercano(c: Vector2i) -> Dictionary:
 
 
 # Parques (bloques sin casas) y farolas en los cruces de pueblos y ciudades.
-static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+# "props": aquí se apuntan los objetos con física (farolas, bancos, papeleras...: ObjetoFisico) que
+# GestorTrozos crea al montar el trozo. Ya no van fundidos en la malla: se pueden tumbar y romper.
+static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rect2, props: Array = []) -> void:
 	var tipo: int = s["tipo"]
 	if tipo == 0:
-		_decorar_aldea(mb, s, rect)
+		_decorar_aldea(mb, s, rect, props)
 		return
 	var n: int = s["n"]
 	var p: Vector2 = s["pos"]
 	var y: float = s["base"]
 	var sid: int = int(s["ci"]) * 1009 + int(s["cj"])
-	var poste: Color = Color(0.14, 0.14, 0.16)
-	_aceras(mb, s, rect)
+	_aceras(mb, s, rect, props)
 	for k in range(-n, n + 1):
 		for l in range(-n, n + 1):
 			var cx: float = p.x + k * BLOQUE
@@ -1741,8 +1745,12 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 			if rect.has_point(Vector2(cx, cz)) and _f(sid, k * 101 + l, 90) < 0.75:
 				var sx: float = 1.0 if _f(sid, k * 101 + l, 91) < 0.5 else -1.0
 				var sz: float = 1.0 if _f(sid, k * 101 + l, 92) < 0.5 else -1.0
-				mb.caja(Vector3(cx + sx * 5.0, y + 2.3, cz + sz * 5.0), Vector3(0.18, 4.6, 0.18), poste)
-				mb.caja(Vector3(cx + sx * 4.6, y + 4.6, cz + sz * 5.0), Vector3(0.9, 0.18, 0.35), Color(1.0, 0.9, 0.6))
+				# Farola con física, con el brazo hacia el centro del cruce. Sobre la acera si la hay.
+				var bk: int = k if sx > 0.0 else k - 1
+				var bl: int = l if sz > 0.0 else l - 1
+				var en_acera: bool = bk >= -n and bk < n and bl >= -n and bl < n
+				props.append({"tipo": "fisico", "obj": "farola", "giro": atan2(sz, -sx),
+						"pos": Vector3(cx + sx * 5.0, y + (0.3 if en_acera else 0.0), cz + sz * 5.0)})
 			if k < n and l < n and es_parque(s, k, l):
 				var bx: float = cx + CALLE_ANCHO / 2.0 + 18.0
 				var bz: float = cz + CALLE_ANCHO / 2.0 + 18.0
@@ -1766,13 +1774,18 @@ static func _decorar_asentamiento(mb: ConstructorMalla, s: Dictionary, rect: Rec
 							Color(0.18, 0.4, 0.15).lerp(Color(0.4, 0.45, 0.15), _f(sid, cid, 120 + i)))
 				for i in 4:
 					var ang: float = TAU * float(i) / 4.0 + 0.4
-					mb.caja(Vector3(bx + cos(ang) * 7.5, y + 0.5, bz + sin(ang) * 7.5), Vector3(2.0, 0.5, 0.6), Color(0.4, 0.28, 0.18))
+					# Banco con física mirando al centro del parque.
+					props.append({"tipo": "fisico", "obj": "banco", "giro": atan2(cos(ang), sin(ang)),
+							"pos": Vector3(bx + cos(ang) * 7.5, y + 0.13, bz + sin(ang) * 7.5)})
+					if _f(sid, cid, 130 + i) < 0.5:
+						props.append({"tipo": "fisico", "obj": "papelera", "giro": 0.0,
+								"pos": Vector3(bx + cos(ang + 0.25) * 7.5, y + 0.13, bz + sin(ang + 0.25) * 7.5)})
 
 
 # Aceras de pueblos y ciudades: bordillo claro + baldosa de 2,2 m de ancho alrededor de cada manzana, con
 # un árbol cada pocos metros pegado al bordillo (la franja del peatón, a 6 m del eje, queda libre).
 # Además: los callejones empedrados del casco antiguo y los paseos peatonales donde falta una calle.
-static func _aceras(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+static func _aceras(mb: ConstructorMalla, s: Dictionary, rect: Rect2, props: Array = []) -> void:
 	var n: int = s["n"]
 	var p: Vector2 = s["pos"]
 	var y: float = s["base"]
@@ -1830,14 +1843,15 @@ static func _aceras(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
 					mb.caja(Vector3(tx, y + alto + alt / 2.0, tz), Vector3(0.28, alt, 0.28), Color(0.3, 0.2, 0.12))
 					mb.cono(Vector3(tx, y + alto + alt - 0.5, tz), 1.5 + 0.4 * _f(sid, cid * 8 + lado, 190 + i), 3.0, 8,
 							Color(0.2, 0.42, 0.16).lerp(Color(0.45, 0.45, 0.15), _f(sid, cid * 8 + lado, 200 + i)))
+				# Mobiliario urbano con física entre los árboles, pegado al bordillo (la franja del peatón queda libre).
+				_mobiliario_acera(s, k, l, sid, cid * 8 + lado, o, vertical, lejos, y + alto, props)
 			# Casco antiguo: callejones empedrados en cruz por el medio de la manzana, con un farol en el cruce.
 			if bloque_casco(s, k, l) and not es_parque(s, k, l) and servicio_de(s, k, l) == "":
 				var c: Vector2 = o + Vector2(18.0, 18.0)
 				var largo: float = 36.0 - 2.0 * ac
 				mb.caja(Vector3(c.x, y + 0.05, c.y), Vector3(largo, 0.1, 3.0), adoquin)
 				mb.caja(Vector3(c.x, y + 0.05, c.y), Vector3(3.0, 0.1, largo), adoquin)
-				mb.caja(Vector3(c.x + 1.4, y + 1.9, c.y + 1.4), Vector3(0.16, 3.8, 0.16), Color(0.14, 0.14, 0.16))
-				mb.caja(Vector3(c.x + 1.0, y + 3.8, c.y + 1.4), Vector3(0.8, 0.16, 0.3), Color(1.0, 0.9, 0.6))
+				props.append({"tipo": "fisico", "obj": "farol_casco", "giro": 0.0, "pos": Vector3(c.x + 1.4, y + 0.1, c.y + 1.4)})
 	# Paseos peatonales: donde falta una calle (trazado irregular) queda un paseo empedrado con árboles.
 	if int(s.get("trazado", 0)) != TRAZADO_IRREGULAR:
 		return
@@ -1859,17 +1873,97 @@ static func _aceras(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
 					mb.caja(Vector3(tp.x, y + 1.3, tp.y), Vector3(0.26, 2.2, 0.26), Color(0.3, 0.2, 0.12))
 					mb.cono(Vector3(tp.x, y + 2.7, tp.y), 1.7, 3.0, 8, Color(0.2, 0.42, 0.16).lerp(Color(0.5, 0.4, 0.15), _f(sid, cid2, 210 + i)))
 				# Banco central.
-				mb.caja(Vector3(centro.x, y + 0.5, centro.y + (2.2 if horizontal else 0.0)), Vector3(1.8 if horizontal else 0.6, 0.45, 0.6 if horizontal else 1.8), Color(0.4, 0.28, 0.18))
+				props.append({"tipo": "fisico", "obj": "banco", "giro": 0.0 if horizontal else PI / 2.0,
+						"pos": Vector3(centro.x, y + 0.19, centro.y + (2.2 if horizontal else 0.0))})
 				# Nodos de la esquina: plaza empedrada para que el paseo no acabe en tierra.
 			var nodo: Vector2 = Vector2(p.x + k * BLOQUE, p.y + l * BLOQUE)
 			if rect.has_point(nodo) and absi(k) < n and absi(l) < n and (not arista_existe(s, k, l, true) or not arista_existe(s, k - 1, l, true) 					or not arista_existe(s, k, l, false) or not arista_existe(s, k, l - 1, false)):
 				mb.caja(Vector3(nodo.x, y + 0.165, nodo.y), Vector3(CALLE_ANCHO, 0.03, CALLE_ANCHO), adoquin.lightened(0.12))
 
 
+# Mobiliario urbano de un lado de manzana: papeleras, bancos, bolardos, bocas de riego, buzones,
+# macetas, contenedores... según el tipo de asentamiento y el distrito. Va pegado al bordillo, entre
+# los árboles (que están en 8, 18 y 28 m), así que la franja por la que andan los peatones queda libre.
+# "o" = esquina de la manzana (junto a la calzada); "y_acera" = altura de la acera.
+static func _mobiliario_acera(s: Dictionary, k: int, l: int, sid: int, clave: int, o: Vector2,
+		vertical: bool, lejos: bool, y_acera: float, props: Array) -> void:
+	var tipo: int = s["tipo"]
+	var distrito: String = distrito_de(s, k, l)
+	var giro_banco: float   # El banco mira a la calzada.
+	if not vertical:
+		giro_banco = PI if lejos else 0.0
+	else:
+		giro_banco = -PI / 2.0 if lejos else PI / 2.0
+	for i in 4:
+		var t: float = 3.0 + i * 10.0
+		var r: float = _f(sid, clave, 230 + i)
+		var obj: String = ""
+		if distrito == "industrial":
+			if r < 0.12:
+				obj = "contenedor"
+			elif r < 0.19:
+				obj = "bidon_rojo"
+			elif r < 0.27:
+				obj = "caja"
+			elif r < 0.31:
+				obj = "valla_obra"
+			elif r < 0.34:
+				obj = "boca_riego"
+		elif tipo == 2:
+			if r < 0.1:
+				obj = "papelera"
+			elif r < 0.16:
+				obj = "banco"
+			elif r < 0.21 and (i == 0 or i == 3):
+				obj = "bolardo"
+			elif r < 0.25:
+				obj = "contenedor" if distrito == "residencial" else "maceta"
+			elif r < 0.28:
+				obj = "boca_riego"
+			elif r < 0.30:
+				obj = "buzon"
+			elif r < 0.34 and distrito == "centro":
+				obj = "mesa_terraza"
+		else:
+			if r < 0.08:
+				obj = "papelera"
+			elif r < 0.14:
+				obj = "banco"
+			elif r < 0.18:
+				obj = "maceta"
+			elif r < 0.2:
+				obj = "buzon"
+		# Farolas a media manzana, al tresbolillo (unas en un lado de la calle y otras en el de enfrente).
+		var hay_farola: bool = tipo == 2 or _f(sid, clave, 250) < 0.5
+		if hay_farola and i == (1 if not lejos else 2):
+			obj = "farola"
+		if obj == "":
+			continue
+		var sep: float = 0.65 if obj != "contenedor" else 0.95   # Del bordillo hacia dentro.
+		var pos: Vector2
+		if not vertical:
+			pos = Vector2(o.x + t, o.y + (36.0 - sep if lejos else sep))
+		else:
+			pos = Vector2(o.x + (36.0 - sep if lejos else sep), o.y + t)
+		var giro: float = giro_banco if obj == "banco" or obj == "contenedor" else _f(sid, clave, 240 + i) * TAU
+		if obj == "farola":
+			giro = giro_banco + PI / 2.0   # El brazo (eje X del modelo) sale hacia la calzada.
+		props.append({"tipo": "fisico", "obj": obj, "giro": giro, "pos": Vector3(pos.x, y_acera, pos.y)})
+		# Bolardos de dos en dos; terrazas con sus sillas.
+		if obj == "bolardo":
+			var d: Vector2 = Vector2(1.4, 0.0) if not vertical else Vector2(0.0, 1.4)
+			props.append({"tipo": "fisico", "obj": "bolardo", "giro": 0.0, "pos": Vector3(pos.x + d.x, y_acera, pos.y + d.y)})
+		elif obj == "mesa_terraza":
+			for sj in 2:
+				var ds: Vector2 = (Vector2(0.75, 0.0) if not vertical else Vector2(0.0, 0.75)) * (1.0 if sj == 0 else -1.0)
+				props.append({"tipo": "fisico", "obj": "silla", "giro": giro_banco + (PI / 2.0 if sj == 0 else -PI / 2.0),
+						"pos": Vector3(pos.x + ds.x, y_acera, pos.y + ds.y)})
+
+
 # Aldeas: pozo en el cruce, farolillos, y en cada solar algo de vida de pueblo (huertecillo, pajar,
 # leña, corral con valla, frutal) y junto a cada casa leña, barriles o una valla. Todo a pie de solar:
 # nada a menos de 6 m del eje de las calles.
-static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> void:
+static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2, props: Array = []) -> void:
 	var n: int = s["n"]
 	var p: Vector2 = s["pos"]
 	var y: float = s["base"]
@@ -1889,8 +1983,7 @@ static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> 
 			var clave: int = k * 101 + l
 			# Farolillo en una esquina de cada bloque.
 			if rect.has_point(Vector2(cx + 5.0, cz + 5.0)):
-				mb.caja(Vector3(cx + 5.0, y + 1.6, cz + 5.0), Vector3(0.14, 3.2, 0.14), madera)
-				mb.caja(Vector3(cx + 5.0, y + 3.3, cz + 5.0), Vector3(0.4, 0.4, 0.4), Color(1.0, 0.85, 0.45))
+				props.append({"tipo": "fisico", "obj": "farolillo", "giro": 0.0, "pos": Vector3(cx + 5.0, y, cz + 5.0)})
 			for sub in 4:
 				var a: int = sub % 2
 				var b: int = sub / 2
@@ -1902,7 +1995,7 @@ static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> 
 				var r: float = _f(sid, clave, 200 + sub)
 				var r2: float = _f(sid, clave, 210 + sub)
 				if casa_d.is_empty():
-					_solar_de_aldea(mb, Vector3(lx, y, lz), r, r2)
+					_solar_de_aldea(mb, Vector3(lx, y, lz), r, r2, props)
 				else:
 					# Junto a la casa, por el lado contrario a la calle: leña, barriles o un trozo de valla.
 					var cara: float = float(casa_d["puerta"])
@@ -1911,18 +2004,19 @@ static func _decorar_aldea(mb: ConstructorMalla, s: Dictionary, rect: Rect2) -> 
 					var ex: float = float(casa_d["x"]) + lado_int * (float(casa_d["w"]) / 2.0 + 1.1)
 					var ez: float = float(casa_d["z"]) - cara * (float(casa_d["d"]) / 2.0 - 1.5)
 					if r < 0.35:
-						for i in 3:
-							mb.caja(Vector3(ex, y + 0.2 + i * 0.4, ez), Vector3(0.7, 0.4, 2.0 - i * 0.3), Color(0.5, 0.36, 0.2))   # Pila de leña.
+						props.append({"tipo": "fisico", "obj": "lena", "giro": 0.0, "pos": Vector3(ex, y, ez)})   # Pila de leña.
 					elif r < 0.6:
-						mb.cono(Vector3(ex, y, ez), 0.4, 0.9, 8, Color(0.4, 0.27, 0.15), 0.35)   # Barril.
-						mb.cono(Vector3(ex, y, ez + 1.0), 0.4, 0.9, 8, Color(0.36, 0.24, 0.14), 0.35)
+						props.append({"tipo": "fisico", "obj": "barril", "giro": r * 7.0, "pos": Vector3(ex, y, ez)})
+						props.append({"tipo": "fisico", "obj": "barril", "giro": r2 * 7.0, "pos": Vector3(ex, y, ez + 1.0)})
+						if r2 < 0.4:
+							props.append({"tipo": "fisico", "obj": "caja", "giro": r2 * 9.0, "pos": Vector3(ex, y, ez - 1.0)})
 					elif r < 0.8:
 						for i in 4:
 							mb.caja(Vector3(ex, y + 0.45, ez - 2.0 + i * 1.3), Vector3(0.12, 0.9, 0.12), madera)
 						mb.caja(Vector3(ex, y + 0.7, ez), Vector3(0.08, 0.1, 4.0), madera)
 
 
-static func _solar_de_aldea(mb: ConstructorMalla, c: Vector3, r: float, r2: float) -> void:
+static func _solar_de_aldea(mb: ConstructorMalla, c: Vector3, r: float, r2: float, props: Array = []) -> void:
 	var madera: Color = Color(0.4, 0.28, 0.17)
 	if r < 0.28:   # Huertecillo con surcos.
 		mb.caja(Vector3(c.x, c.y + 0.05, c.z), Vector3(12.0, 0.1, 12.0), Color(0.34, 0.24, 0.15))
@@ -1943,7 +2037,7 @@ static func _solar_de_aldea(mb: ConstructorMalla, c: Vector3, r: float, r2: floa
 	else:   # Frutal con un banco debajo.
 		mb.caja(Vector3(c.x, c.y + 1.2, c.z), Vector3(0.45, 2.4, 0.45), Color(0.3, 0.2, 0.12))
 		mb.cono(Vector3(c.x, c.y + 2.0, c.z), 2.6 + r2, 2.6, 8, Color(0.2, 0.42, 0.16), 0.6)
-		mb.caja(Vector3(c.x + 2.8, c.y + 0.45, c.z), Vector3(0.6, 0.12, 2.0), madera)
+		props.append({"tipo": "fisico", "obj": "banco_rustico", "giro": 0.0, "pos": Vector3(c.x + 2.8, c.y, c.z)})
 
 
 # Gasolineras sueltas junto a las carreteras largas (cada ~600 m). Devuelve edificios de servicio
