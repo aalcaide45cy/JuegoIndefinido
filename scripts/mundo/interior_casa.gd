@@ -147,9 +147,20 @@ static func generar(c: Dictionary) -> Dictionary:
 		for i in 10:
 			pocas.append(luces[int(i * paso)])
 		luces = pocas
+	# Puertas entre habitaciones de la planta baja (mundo): para que la gente de dentro sepa ir de
+	# una habitación a otra (PersonaIA / CasaAsaltable.ruta_mundo).
+	var puertas_int: Array = []
+	for pw in P.paredes_info:
+		if int(pw["nivel"]) != 0:
+			continue
+		for hc in pw["puertas"]:
+			if str(pw["eje"]) == "x":
+				puertas_int.append(P.punto(float(hc), float(pw["fijo"]), P.y + 0.1))
+			else:
+				puertas_int.append(P.punto(float(pw["fijo"]), float(hc), P.y + 0.1))
 	return {"cajas": P.cajas, "luces": luces, "habitaciones": P.habitaciones, "tipo": est["tipo"],
 			"camas": P.camas, "muebles": P.muebles, "salas": P.salas, "paredes": P.paredes_info, "estilo": est, "escalera": e,
-			"entrada": P.punto(0.0, 0.6, P.y + 0.1)}
+			"entrada": P.punto(0.0, 0.6, P.y + 0.1), "puertas_int": puertas_int}
 
 
 # ---------------------------------- una planta ----------------------------------
@@ -288,10 +299,10 @@ static func _roles(P: PlanoInterior, est: Dictionary, tipo: String, prog: Dictio
 	var entrada: String = "salon"
 	if tipo == "servicio":
 		if n == 0:
-			entrada = prog["entrada"]
-			pool = (prog["resto"] as Array).duplicate()
+			entrada = str(prog.get("entrada", "salon"))   # Los negocios de Locales no están en SERV (tienen su propio interior).
+			pool = (prog.get("resto", []) as Array).duplicate()
 		else:
-			var alto: Array = prog["alto"]
+			var alto: Array = prog.get("alto", [])
 			entrada = "pasillo" if hojas.size() > 0 else (alto[(n - 1) % alto.size()] if alto.size() > 0 else "oficina")
 			pool = alto.duplicate()
 	elif n > 0:

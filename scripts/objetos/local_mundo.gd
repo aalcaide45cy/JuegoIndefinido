@@ -599,13 +599,17 @@ func _poner_mostrador() -> void:
 	_mostrador = Node3D.new()
 	_mostrador.position = p(_uc, ivm - 1.1, 0.0)
 	add_child(_mostrador)
-	# Quien atiende: detrás del mostrador, mirando a la puerta.
-	var ruta: String = "quaternius/toon-shooter-game-kit/Characters/" + str(PERSONAJES[semilla % PERSONAJES.size()])
-	_npc = Assets.personaje(ruta, "", "Idle")
-	if _npc != null:
-		_npc.position = p(_uc, D - 0.85, 0.0)
-		_npc.rotation.y = 0.0
-		add_child(_npc)
+	# Quien atiende: una persona con IA (Ocupante) detrás del mostrador, mirando a la puerta.
+	# Uno de cada tres tiene una escopeta debajo del mostrador y la saca si hay jaleo.
+	var emp: Ocupante = Ocupante.new()
+	emp.semilla = semilla * 13 + 1
+	emp.puesto = p(_uc, D - 0.85, 0.0)
+	emp.zona = Rect2(-W / 2.0, -D / 2.0, W, D)
+	emp.salida_local = p(0.0, 0.0, 0.0)
+	emp.armado = semilla % 3 == 0
+	emp.position = emp.puesto
+	add_child(emp)
+	_npc = emp
 	var cartel: Label3D = Construir.texto(self, p(_uc, D - 0.85, 2.35), "%s" % str(datos["npc"]), 22, Color(1, 0.95, 0.75))
 	cartel.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	cartel.name = "CartelPersonal"
@@ -659,14 +663,39 @@ func _actualizar_abierto(forzar: bool) -> void:
 	if abierto == _abierto and not forzar:
 		return
 	_abierto = abierto
-	if _npc != null:
+	if _npc is Ocupante:
+		(_npc as Ocupante).activar(abierto)
+	elif _npc != null:
 		_npc.visible = abierto
+	_poblar(abierto)
 	var cartel: Node = get_node_or_null("CartelPersonal")
 	if cartel is Node3D:
 		(cartel as Node3D).visible = abierto
 	for l in _luces_nodos:
 		if is_instance_valid(l):
 			(l as OmniLight3D).light_energy = 0.9 if abierto else 0.0
+
+
+# Clientes (Ocupante sin puesto): 1-3 mientras está abierto; se van al cerrar.
+var _clientes: Array = []
+
+
+func _poblar(abierto: bool) -> void:
+	for cl in _clientes:
+		if is_instance_valid(cl):
+			(cl as Node).queue_free()
+	_clientes.clear()
+	if not abierto or not is_inside_tree():
+		return
+	var n: int = 1 + (semilla + int(Juego.hora)) % 3
+	for i in n:
+		var cl: Ocupante = Ocupante.new()
+		cl.semilla = semilla * 31 + i * 7 + int(Juego.dia)
+		cl.zona = Rect2(-W / 2.0, -D / 2.0 + 0.6, W, D - 3.2)   # Sin meterse tras el mostrador.
+		cl.salida_local = p(0.0, 0.0, 0.0)
+		cl.position = p(_rng.randf_range(-W / 2.0 + 1.0, W / 2.0 - 1.0), _rng.randf_range(1.2, maxf(1.3, D - 3.5)), 0.0)
+		add_child(cl)
+		_clientes.append(cl)
 
 
 func esta_abierto() -> bool:

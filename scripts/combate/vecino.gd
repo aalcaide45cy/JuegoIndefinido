@@ -1,9 +1,17 @@
 # vecino.gd
 # -----------------------------------------------------------------------------
-# Una persona que duerme en una casa que asaltas. Se despierta por el ruido, la luz de la
-# linterna o si le tocas, y entonces reacciona: huye, llama a la policía, se enfrenta con
-# los puños, con un objeto (sartén, bate...) o con una pistola si va armada.
-# Lo crea casa_asaltable.gd. Las reglas y números están en datos/asaltos.gd.
+# Una persona que vive en una casa. De noche duerme; al anochecer, por la mañana o si está en
+# casa de día, va de una habitación a otra (cocina, salón, dormitorio...) y se queda un rato.
+# Se despierta (o se entera de que hay alguien) por el ruido, la linterna, si te ve o si le tocas.
+#
+# Desde noviembre de 2026 piensa con el mismo cerebro que los peatones (PersonaIA, árbol
+# "vecino" en ia/arboles_ia.gd): según su carácter y la situación puede huir por la puerta,
+# esconderse en otra habitación y llamar a la policía, pelear a puñetazos esquivando tus golpes,
+# coger un objeto (pala, cuchillo), sacar una pistola y disparar moviéndose, suplicar si le
+# apuntas, cubrirse si hay tiros, o socorrer a un familiar herido. La reacción inicial sale de
+# Asaltos.elegir_reaccion (huir, llamar, punos, objeto, arma) y se traduce en su carácter, pero
+# luego cambia sola: si le das una paliza al valiente, huirá; si hieres a su familia, se enfada.
+# Se mueve por la casa pasando por las puertas (CasaAsaltable.ruta_mundo) y esquiva muebles.
 #
 # Si le dejas a cero con un golpe fuerte (arma) muere; con un golpe flojo (puños) queda
 # inconsciente un rato. Hacerle daño o matarle sube las estrellas de la policía.
@@ -32,22 +40,23 @@ var atento: bool = false           # Despierto en casa (de día o al anochecer):
 var testigo: bool = false          # Te ha visto la cara.
 var herido_por_jugador: bool = false
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var cerebro: PersonaIA = null
+var modelo: Node3D = null          # Persona animada (null si faltan los modelos: queda el muñeco _cuerpo).
 
 var _jugador: Node3D = null
 var _t_estado: float = 0.0
-var _t_golpe: float = 0.0
 var _t_denuncia: float = 0.0
-var _t_atasco: float = 0.0
-var _pos_atasco: Vector3 = Vector3.ZERO
 var _llamo: bool = false
 var _cuerpo: Node3D
 var _zzz: Label3D
 var _vel: float = 3.6
+var _reaccion_puesta: String = "#"
 
 
 func _ready() -> void:
 	add_to_group("danable")
 	add_to_group("vecinos")
+	add_to_group("oyentes_ia")
 	collision_layer = 1
 	collision_mask = 1
 	vida_max = float(rol.get("vida", 60.0))
@@ -60,14 +69,34 @@ func _ready() -> void:
 	forma.shape = capsula
 	forma.position.y = 0.85
 	add_child(forma)
+	cerebro = PersonaIA.new(self, "vecino", int(rng.seed) + 77)
+	cerebro.armado = armado
+	cerebro.vel_correr = _vel * 1.25
+	cerebro.vel_andar = clampf(_vel * 0.35, 0.8, 1.4)
 	_cuerpo = Node3D.new()
 	add_child(_cuerpo)
-	var colores: Dictionary = {"padre": Color(0.3, 0.38, 0.55), "madre": Color(0.65, 0.4, 0.5),
-			"abuelo": Color(0.5, 0.5, 0.45), "joven": Color(0.35, 0.55, 0.4)}
-	Construir.cilindro(_cuerpo, Vector3(0, 0.6, 0), 0.3, 1.2, colores.get(str(rol.get("id", "")), Color(0.4, 0.4, 0.5)), false)
-	Construir.esfera(_cuerpo, Vector3(0, 1.42, 0), 0.2, Color(0.78, 0.62, 0.5))
-	if str(rol.get("id", "")) == "abuelo":
-		Construir.esfera(_cuerpo, Vector3(0, 1.5, 0), 0.2, Color(0.85, 0.85, 0.85), Vector3(1.0, 0.5, 1.0))   # Pelo blanco.
+	var id_rol: String = str(rol.get("id", ""))
+	var mujer: bool = id_rol == "madre" or (id_rol == "joven" and rng.randf() < 0.5)
+	modelo = Assets.persona("Superhero_Female_FullBody" if mujer else "Superhero_Male_FullBody",
+			cerebro.arma_modelo if armado else "", "Idle")
+	if modelo != null:
+		PersonaIA._mostrar_arma_en(modelo, "")
+		var prendas: Dictionary = {}
+		if id_rol == "abuelo":
+			prendas = {"color_pelo": Color(0.75, 0.75, 0.74), "manga": 2, "pierna": 0}
+		elif id_rol == "padre" or id_rol == "madre":
+			prendas = {"pierna": 0} if rng.randf() < 0.6 else {}   # En casa, a menudo en pantalón largo.
+		Ropa.vestir(modelo, rng.randi(), prendas)
+		_cuerpo.add_child(modelo)
+		if id_rol == "abuelo":
+			modelo.scale = Vector3.ONE * 0.94
+	else:
+		var colores: Dictionary = {"padre": Color(0.3, 0.38, 0.55), "madre": Color(0.65, 0.4, 0.5),
+				"abuelo": Color(0.5, 0.5, 0.45), "joven": Color(0.35, 0.55, 0.4)}
+		Construir.cilindro(_cuerpo, Vector3(0, 0.6, 0), 0.3, 1.2, colores.get(id_rol, Color(0.4, 0.4, 0.5)), false)
+		Construir.esfera(_cuerpo, Vector3(0, 1.42, 0), 0.2, Color(0.78, 0.62, 0.5))
+		if id_rol == "abuelo":
+			Construir.esfera(_cuerpo, Vector3(0, 1.5, 0), 0.2, Color(0.85, 0.85, 0.85), Vector3(1.0, 0.5, 1.0))   # Pelo blanco.
 	_zzz = Construir.texto(self, Vector3(0, 1.9, 0), "z Z z", 40, Color(0.7, 0.8, 1.0))
 	_zzz.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	if atento:
@@ -82,6 +111,8 @@ func _ready() -> void:
 func _tumbar() -> void:
 	_cuerpo.rotation.x = -PI / 2.0
 	_cuerpo.position = Vector3(0, 0.3, 0)
+	if modelo != null:
+		Assets.poner_animacion(modelo, "Idle", 0.4)
 
 
 func esta_vivo() -> bool:
@@ -94,6 +125,109 @@ func despierto() -> bool:
 
 func esta_durmiendo() -> bool:
 	return estado == Estado.DORMIDO
+
+
+# --------------------------- Lo que pide el cerebro ---------------------------
+
+func ia_vida() -> float:
+	return clampf(vida / maxf(vida_max, 1.0), 0.0, 1.0)
+
+
+func ia_dentro() -> bool:
+	return casa != null and casa.has_method("esta_dentro") and casa.esta_dentro(global_position)
+
+
+func ia_salida() -> Vector3:
+	return salida
+
+
+func ia_ruta(destino: Vector3) -> Array:
+	if casa != null and casa.has_method("ruta_mundo"):
+		return casa.ruta_mundo(global_position, destino)
+	return [destino]
+
+
+func ia_punto_rutina() -> Vector3:
+	if casa != null and casa.has_method("punto_en_sala"):
+		return casa.punto_en_sala(rng.randi() % maxi(1, casa.num_salas()))
+	return global_position + Vector3(rng.randf_range(-2, 2), 0, rng.randf_range(-2, 2))
+
+
+# Para esconderse: la habitación más lejos del intruso.
+func ia_escondite() -> Vector3:
+	if casa == null or not casa.has_method("punto_en_sala"):
+		return cama + Vector3(0.9, 0, 0)
+	var j: Node3D = _jugador
+	var mejor: Vector3 = cama
+	var mejor_d: float = -1.0
+	for i in casa.num_salas():
+		var p: Vector3 = casa.punto_en_sala(i)
+		var d: float = p.distance_to(j.global_position) if j != null else rng.randf()
+		if d > mejor_d:
+			mejor_d = d
+			mejor = p
+	return mejor
+
+
+func ia_denunciar() -> void:
+	_denunciar()
+
+
+# Cada disparo suyo se oye en el barrio: la policía se entera.
+func ia_disparo_hecho() -> void:
+	Juego.exigir_estrellas(Asaltos.ESTRELLAS_ALLANAMIENTO + 1, "Tiroteo en una casa")
+
+
+func percibir(tipo: String, pos: Vector3, intensidad: float, autor: Object) -> void:
+	if estado == Estado.MUERTO or estado == Estado.INCONSCIENTE:
+		return
+	if estado == Estado.DORMIDO or estado == Estado.ATENTO:
+		# Un disparo o una explosión despiertan a cualquiera; los gritos, según lo cerca.
+		if tipo in ["disparo", "explosion"] or (tipo in ["grito", "violencia"] and intensidad > 0.4):
+			oir(clampf(intensidad * 1.5, 0.0, 1.0), pos, not ia_dentro())
+	if cerebro != null:
+		cerebro.percibir(tipo, pos, intensidad, autor)
+
+
+# La reacción de Asaltos se convierte en carácter (luego el cerebro decide momento a momento).
+func _aplicar_reaccion() -> void:
+	_reaccion_puesta = reaccion
+	if cerebro == null:
+		return
+	var mult: float = float(Asaltos.MULT_DANO[clampi(Asaltos.dificultad, 0, 3)])
+	var armas: Dictionary = Asaltos.ARMAS_OCUPANTE
+	cerebro.dano_puno = float(armas["punos"]["dano"]) * mult
+	cerebro.dano_mano = float(armas["objeto"]["dano"]) * mult
+	cerebro.dano_bala = float(armas["arma"]["dano"]) * mult
+	cerebro.arma_mano = ""
+	match reaccion:
+		"huir":
+			cerebro.ajustar({"valentia": 0.12, "agresividad": 0.05, "civismo": 0.4})
+			cerebro.miedo = 1.0
+			cerebro.ira = 0.0
+		"llamar":
+			cerebro.ajustar({"valentia": 0.15, "agresividad": 0.05, "civismo": 1.0})
+			cerebro.miedo = maxf(cerebro.miedo, 0.7)
+			cerebro.ira = 0.0
+		"punos":
+			cerebro.ajustar({"valentia": 0.9, "agresividad": 0.9, "agilidad": rng.randf_range(0.4, 0.9)})
+			cerebro.ira = 1.0
+			cerebro.miedo = 0.0
+		"objeto":
+			cerebro.ajustar({"valentia": 0.9, "agresividad": 0.85})
+			cerebro.arma_mano = ["Shovel", "Knife"][rng.randi() % 2]
+			cerebro._mostrar_arma(cerebro.arma_mano)
+			cerebro.ira = 1.0
+			cerebro.miedo = 0.0
+		"arma":
+			cerebro.armado = true
+			cerebro.ajustar({"valentia": 0.9, "agresividad": 0.7})
+			cerebro.ira = 1.0
+			cerebro.miedo = 0.0
+	cerebro.amenaza = _jugador
+	if _jugador != null:
+		cerebro.amenaza_pos = _jugador.global_position
+	cerebro.t_amenaza = cerebro.reloj
 
 
 # ------------------------------- Despertar -----------------------------------
@@ -133,6 +267,8 @@ func despertar(motivo: String = "") -> void:
 		var anim: Tween = create_tween()
 		anim.tween_property(_cuerpo, "rotation:x", 0.0, TIEMPO_LEVANTARSE)
 		anim.parallel().tween_property(_cuerpo, "position:y", 0.0, TIEMPO_LEVANTARSE)
+	if cerebro != null:
+		cerebro.decir("intruso", 0.8)
 
 
 # ------------------------------- Daño ----------------------------------------
@@ -153,6 +289,12 @@ func recibir_dano(cantidad: float) -> void:
 	# Al que le pegan y no huye, se enfada: se enfrenta.
 	if reaccion in ["huir", "llamar"] and vida > 0.0 and rng.randf() < 0.35:
 		reaccion = "arma" if armado else "objeto"
+	if cerebro != null:
+		cerebro.me_hirieron(_jugador, cantidad)
+		if vida > 0.0 and modelo != null:
+			cerebro.una_vez("HitReact")
+	# Su familia lo ve: se asusta o se enfada.
+	EstimulosIA.emitir(get_tree(), "violencia", global_position, 14.0, _jugador)
 	if vida <= 0.0:
 		if cantidad >= Asaltos.DANO_MORTAL:
 			_morir()
@@ -166,7 +308,10 @@ func _quedar_inconsciente() -> void:
 	vida = vida_max * 0.2
 	velocity = Vector3.ZERO
 	_zzz.visible = false
+	set_meta("muerto", true)   # Para los demás cuenta como "caído" (le socorren); se quita al despertar.
 	Juego.avisar("%s queda inconsciente." % rol.get("nombre", "Alguien"))
+	if cerebro != null:
+		cerebro.guardar_arma()
 	var anim: Tween = create_tween()
 	anim.tween_property(_cuerpo, "rotation:x", -PI / 2.0, 0.3)
 	anim.parallel().tween_property(_cuerpo, "position:y", 0.3, 0.3)
@@ -175,6 +320,8 @@ func _quedar_inconsciente() -> void:
 func _morir() -> void:
 	estado = Estado.MUERTO
 	remove_from_group("danable")
+	remove_from_group("oyentes_ia")
+	set_meta("muerto", true)
 	collision_layer = 0
 	_zzz.visible = false
 	Juego.exigir_estrellas(Asaltos.ESTRELLAS_MUERTE, "Homicidio en una casa")
@@ -182,6 +329,7 @@ func _morir() -> void:
 	Juego.avisar("%s ha muerto. La cosa se ha puesto muy fea." % rol.get("nombre", "Alguien"))
 	if casa != null and casa.has_method("hubo_violencia"):
 		casa.hubo_violencia()
+	EstimulosIA.emitir(get_tree(), "muerte", global_position, 20.0, _jugador)
 	# Cae con física (ragdoll si tiene modelo con huesos; si no, el muñeco entero).
 	var m: Node3D = Cuerpo.modelo_de(self)
 	if Cuerpo.al_morir(self, m if m != null else _cuerpo, Vector3.ZERO, 2.5):
@@ -205,6 +353,9 @@ func _physics_process(delta: float) -> void:
 			if _ve_al_jugador():
 				testigo = true
 				despertar("vista")
+			else:
+				_mover_con_cerebro(delta)   # Hace su vida por la casa.
+				return
 		Estado.LEVANTANDOSE:
 			_mirar_jugador(delta)
 			if _t_estado >= TIEMPO_LEVANTARSE:
@@ -216,22 +367,25 @@ func _physics_process(delta: float) -> void:
 					Juego.avisar("¡%s sale corriendo gritando!" % rol.get("nombre", "Alguien"))
 		Estado.REACCIONANDO:
 			_reaccionar(delta)
+			return
 		Estado.INCONSCIENTE:
 			if _t_estado >= SEGUNDOS_INCONSCIENTE:
 				estado = Estado.REACCIONANDO
 				_t_estado = 0.0
 				reaccion = "huir"
 				_t_denuncia = 0.0
+				remove_meta("muerto")
 				var anim: Tween = create_tween()
 				anim.tween_property(_cuerpo, "rotation:x", 0.0, 0.6)
 				anim.parallel().tween_property(_cuerpo, "position:y", 0.0, 0.6)
 	if estado == Estado.MUERTO or estado == Estado.DORMIDO or estado == Estado.INCONSCIENTE:
 		return   # Tumbados: no se mueven ni chocan.
 	velocity.y -= 20.0 * delta
-	if estado == Estado.LEVANTANDOSE or estado == Estado.ATENTO:
-		velocity.x = 0.0
-		velocity.z = 0.0
+	velocity.x = 0.0
+	velocity.z = 0.0
 	move_and_slide()
+	if modelo != null:
+		Assets.animar_por_velocidad(modelo, 0.0)
 
 
 func _ve_al_jugador() -> bool:
@@ -241,6 +395,10 @@ func _ve_al_jugador() -> bool:
 	var objetivo: Vector3 = _jugador.global_position + Vector3(0, 1.1, 0)
 	var d: float = ojos.distance_to(objetivo)
 	if d > VISTA:
+		return false
+	# Solo ve lo que tiene delante (un campo de visión de ~220º) salvo si estás pegado.
+	var al: Vector3 = (objetivo - ojos).normalized()
+	if d > 2.0 and (-global_basis.z).dot(al) < -0.35:
 		return false
 	var choque: Dictionary = Combate.rayo(get_world_3d(), ojos, objetivo - ojos, d + 0.4, [get_rid()])
 	if choque.is_empty():
@@ -256,141 +414,70 @@ func _mirar_jugador(delta: float) -> void:
 	rotation.y = lerp_angle(rotation.y, atan2(-al.x, -al.z), minf(1.0, delta * 8.0))
 
 
-func _ir_a(destino: Vector3, velocidad: float, delta: float) -> float:
-	var al: Vector3 = destino - global_position
-	al.y = 0.0
-	var dist: float = al.length()
-	if dist > 0.2:
-		var dir: Vector3 = al / dist
-		velocity.x = dir.x * velocidad
-		velocity.z = dir.z * velocidad
-		rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), minf(1.0, delta * 10.0))
-	else:
-		velocity.x = 0.0
-		velocity.z = 0.0
-	return dist
+# Aplica lo que decide el cerebro: velocidad (con choques reales) y hacia dónde mira.
+func _mover_con_cerebro(delta: float) -> void:
+	if cerebro == null:
+		return
+	collision_mask = 1   # Despierto choca con todo (dormido no, para no pelearse con la cama).
+	cerebro.pensar(delta)
+	var v: Vector2 = cerebro.vel if cerebro.libre else Vector2.ZERO
+	velocity.x = v.x
+	velocity.z = v.y
+	velocity.y -= 20.0 * delta
+	if is_on_floor() and velocity.y < 0.0:
+		velocity.y = -0.5
+	move_and_slide()
+	var m: Vector2 = cerebro.mirar
+	if m == Vector2.ZERO and v.length() > 0.2:
+		m = v.normalized()
+	if m != Vector2.ZERO:
+		rotation.y = lerp_angle(rotation.y, atan2(-m.x, -m.y), minf(1.0, delta * 9.0))
+	if modelo != null:
+		cerebro.animar(modelo)
 
 
 func _reaccionar(delta: float) -> void:
+	if reaccion != _reaccion_puesta:
+		_aplicar_reaccion()
 	var vio: bool = _ve_al_jugador()
 	if vio and not testigo:
 		testigo = true
 		if casa != null and casa.has_method("testigo_te_vio"):
 			casa.testigo_te_vio(self)
-	_t_golpe -= delta
-	# Si lleva un rato intentando andar sin avanzar, se acobarda en el sitio.
-	if velocity.length() > 0.5:
-		_t_atasco += delta
-		if _t_atasco > 1.6:
-			if global_position.distance_to(_pos_atasco) < 0.25 and reaccion != "llamar":
-				reaccion = "llamar"
-			_t_atasco = 0.0
-			_pos_atasco = global_position
-	match reaccion:
-		"huir":
-			_huir(delta)
-		"llamar":
-			_llamar(delta)
-		_:
-			_pelear(delta, vio)
+	# Mientras sigas cerca (o dentro de su casa) no se olvida de ti.
+	if cerebro != null and _jugador != null:
+		var cerca: bool = global_position.distance_to(_jugador.global_position) < 25.0
+		if cerca or vio:
+			cerebro.amenaza = _jugador
+			cerebro.amenaza_pos = _jugador.global_position
+			if vio:
+				cerebro.t_amenaza = cerebro.reloj
+			match reaccion:
+				"huir", "llamar":
+					cerebro.miedo = maxf(cerebro.miedo, 0.45)
+				_:
+					if cerebro.vida() > 0.3:
+						cerebro.ira = maxf(cerebro.ira, 0.5)
+	_mover_con_cerebro(delta)
+	# El que llama a la policía lo consigue si no estás a su lado.
+	var a_su_lado: bool = _jugador != null and global_position.distance_to(_jugador.global_position) < 3.0
+	if reaccion == "llamar" and not a_su_lado:
+		_t_denuncia += delta
+		if _t_denuncia >= Asaltos.SEGUNDOS_HASTA_DENUNCIA:
+			_denunciar()
 	# Un testigo que no acaba de ser atendido termina avisando a la policía.
-	if testigo and not _llamo and reaccion != "llamar":
+	elif testigo and not _llamo:
 		_t_denuncia += delta
 		var espera: float = Asaltos.SEGUNDOS_HASTA_DENUNCIA * (0.7 if reaccion == "huir" else 3.0)
 		if _t_denuncia >= espera:
 			_denunciar()
 
 
-func _huir(delta: float) -> void:
-	var fuera: bool = casa != null and casa.has_method("esta_fuera") and casa.esta_fuera(global_position)
-	if not fuera:
-		_ir_a(salida, _vel * 1.25, delta)
-	else:
-		# Ya en la calle: sigue corriendo lejos de ti.
-		var lejos: Vector3 = global_position + (global_position - (_jugador.global_position if _jugador != null else salida))
-		_ir_a(lejos, _vel * 1.25, delta)
-		if _jugador != null and global_position.distance_to(_jugador.global_position) > 30.0:
-			_denunciar()
-			velocity.x = 0.0
-			velocity.z = 0.0
-
-
-func _llamar(delta: float) -> void:
-	# Se encoge junto a la cama y marca. Si estás cerca, no le dejas.
-	_cuerpo.scale.y = lerpf(_cuerpo.scale.y, 0.7, minf(1.0, delta * 6.0))
-	if global_position.distance_to(cama + Vector3(0.9, 0, 0)) > 2.5:
-		_ir_a(cama + Vector3(0.9, 0, 0.0), _vel * 0.6, delta)
-	else:
-		_mirar_jugador(delta)
-	var cerca: bool = _jugador != null and global_position.distance_to(_jugador.global_position) < 3.0
-	if not cerca:
-		_t_denuncia += delta
-		if _t_denuncia >= Asaltos.SEGUNDOS_HASTA_DENUNCIA:
-			_denunciar()
-
-
-func _pelear(delta: float, vio: bool) -> void:
-	if _jugador == null:
-		return
-	var arma: Dictionary = Asaltos.ARMAS_OCUPANTE.get(reaccion, Asaltos.ARMAS_OCUPANTE["punos"])
-	var al: Vector3 = _jugador.global_position - global_position
-	var plano: float = Vector2(al.x, al.z).length()
-	_mirar_jugador(delta)
-	var alcance: float = float(arma["alcance"])
-	# Los que tienen pistola mantienen distancia; los demás se acercan.
-	var ideal: float = 6.0 if reaccion == "arma" else alcance * 0.8
-	if plano > ideal + 0.5 and (vio or plano < 25.0):
-		_ir_a(_jugador.global_position, _vel, delta)
-	elif reaccion == "arma" and plano < 3.0:
-		_ir_a(global_position - al, _vel * 0.7, delta)
-	else:
-		velocity.x = 0.0
-		velocity.z = 0.0
-	if _t_golpe > 0.0 or absf(al.y) > 2.2:
-		return
-	if reaccion == "arma":
-		if vio and plano <= alcance:
-			_t_golpe = float(arma["pausa"])
-			_disparar(plano)
-	elif plano <= alcance:
-		_t_golpe = float(arma["pausa"])
-		_golpear(arma)
-
-
-func _golpear(arma: Dictionary) -> void:
-	var dano: float = float(arma["dano"]) * float(Asaltos.MULT_DANO[clampi(Asaltos.dificultad, 0, 3)])
-	if dano <= 0.0:
-		return
-	Juego.cambiar_vida(-dano)   # Si estás esquivando (X) no te toca.
-	if Juego.invulnerable <= 0.0:
-		Juego.avisar("¡%s te pega con %s!" % [rol.get("nombre", "Alguien"), arma["nombre"]])
-
-
-func _disparar(distancia: float) -> void:
-	Sonido.tocar(self, "disparo")
-	var destello: OmniLight3D = Construir.luz(self, Vector3(0, 1.3, -0.5), Color(1.0, 0.8, 0.4), 3.0, 4.0)
-	get_tree().create_timer(0.08).timeout.connect(destello.queue_free)
-	# Probabilidad de acertar: baja con la distancia, y si vas agachado o a oscuras.
-	var p: float = clampf(0.7 - distancia * 0.025, 0.15, 0.7)
-	if _jugador != null and _jugador.get("agachado") == true:
-		p *= 0.7
-	if _jugador != null and _jugador.get("en_sombra") == true:
-		p *= 0.8
-	if Juego.invulnerable > 0.0:
-		p = 0.0
-	var dano: float = float(Asaltos.ARMAS_OCUPANTE["arma"]["dano"]) * float(Asaltos.MULT_DANO[clampi(Asaltos.dificultad, 0, 3)])
-	if rng.randf() < p:
-		Juego.cambiar_vida(-dano)
-		Juego.avisar("¡%s te dispara y te da!" % rol.get("nombre", "Alguien"))
-	else:
-		Juego.avisar("¡Un disparo pasa muy cerca!")
-	# Los tiros se oyen: la policía se entera.
-	Juego.exigir_estrellas(Asaltos.ESTRELLAS_ALLANAMIENTO + 1, "Tiroteo en una casa")
-
-
 func _denunciar() -> void:
 	if _llamo:
 		return
 	_llamo = true
+	if cerebro != null:
+		cerebro.llamo_policia = true
 	if casa != null and casa.has_method("denunciar"):
 		casa.denunciar(self)

@@ -119,7 +119,9 @@ static func _npcs() -> Array:
 			["maton", "Matón", "Un matón de banda. Te ataca cuerpo a cuerpo."],
 			["jefe", "Jefe de barrio", "Más vida y más daño."],
 			["recluta", "Recluta (aliado)", "Te sigue y pelea a tu lado."],
-			["vecino", "Vecino", "Un vecino que reacciona a lo que pase."]]:
+			["vecino", "Vecino", "Un vecino que reacciona a lo que pase."],
+			["civil", "Civil con IA", "Persona con carácter al azar: pasea; si hay jaleo huye, pelea o llama a la policía."],
+			["civil_armado", "Civil armado", "Como el civil, pero lleva pistola y la saca si le provocas."]]:
 		lista.append({"clave": "n:" + par[0], "id": par[0], "nombre": par[1], "categoria": CAT_NPC,
 				"descripcion": par[2], "tipo": "npc"})
 	return lista
@@ -290,6 +292,14 @@ static func dar_npc(tipo_n: String, cantidad: int, jugador: Node3D) -> String:
 			"vecino":
 				n = Vecino.new()
 				n.atento = true
+			"civil", "civil_armado":
+				var o: Ocupante = Ocupante.new()
+				o.semilla = randi()
+				o.zona = Rect2(p.x - 8.0, p.z - 8.0, 16.0, 16.0)
+				o.salida_local = p + Vector3(0, 0, 12.0)
+				o.armado = tipo_n == "civil_armado"
+				o.arma = "Pistol"
+				n = o
 		if n == null:
 			return "No sé crear ese PNJ."
 		padre.add_child(n)

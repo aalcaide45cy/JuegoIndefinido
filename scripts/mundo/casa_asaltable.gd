@@ -85,11 +85,14 @@ static func desde_interior(c: Dictionary, datos: Dictionary, pu: PuertaMundo) ->
 	for r in datos.get("habitaciones", []):
 		var rr: Rect2 = r
 		habitaciones.append(Rect2(rr.position.x - centro.x, rr.position.y - centro.z, rr.size.x, rr.size.y))
+	var puertas: Array = []
+	for q in datos.get("puertas_int", []):
+		puertas.append((q as Vector3) - centro)
 	var w: float = float(c["w"])
 	var e: Dictionary = {"id": Asaltos.id_de_casa(c), "distrito": str(c.get("distrito", "")), "ancho": w, "fondo": float(c["d"]),
 			"cara": float(c["puerta"]), "semilla": int(float(c["x"]) * 31.0 + float(c["z"]) * 17.0),
 			"camas": camas, "muebles": muebles, "habitaciones": habitaciones, "ventanas_x": GeneradorMundo.ventanas_x(w),
-			"puerta_mundo": pu, "pequena": w - 0.6 < 8.5 or float(c["d"]) - 0.6 < 7.5}
+			"puerta_mundo": pu, "puertas_int": puertas, "pequena": w - 0.6 < 8.5 or float(c["d"]) - 0.6 < 7.5}
 	var casa: CasaAsaltable = CasaAsaltable.new().configurar(e)
 	casa.position = centro
 	return casa
@@ -436,3 +439,102 @@ func _revisar_propiedad() -> void:
 			if is_instance_valid(v):
 				(v as Node).queue_free()
 		vecinos.clear()
+
+
+
+# ------------------------- Moverse por dentro (IA) ---------------------------
+# Las habitaciones (Rect2 locales x/z) se unen por sus puertas: así la gente de la casa va de
+# una habitación a otra pasando por las puertas, y sale a la calle por la de entrada.
+
+func _salas_local() -> Array:
+	var r: Array = espec.get("habitaciones", [])
+	if r.is_empty():
+		r = [Rect2(-ancho / 2.0 + G, -fondo / 2.0 + G, ancho - 2.0 * G, fondo - 2.0 * G)]
+	return r
+
+
+func sala_de(local: Vector3) -> int:
+	var salas: Array = _salas_local()
+	for i in salas.size():
+		if (salas[i] as Rect2).grow(0.05).has_point(Vector2(local.x, local.z)):
+			return i
+	return -1
+
+
+# Puertas que unen salas: [punto local, sala_a, sala_b]. La de la calle une con la sala -2.
+func _puertas_grafo() -> Array:
+	if has_meta("grafo"):
+		return get_meta("grafo")
+	var salas: Array = _salas_local()
+	var res: Array = []
+	for q in espec.get("puertas_int", []):
+		var p: Vector3 = q
+		var unidas: Array = []
+		for i in salas.size():
+			if (salas[i] as Rect2).grow(0.35).has_point(Vector2(p.x, p.z)):
+				unidas.append(i)
+		if unidas.size() >= 2:
+			res.append([Vector3(p.x, 0.1, p.z), int(unidas[0]), int(unidas[1])])
+	var calle: Vector3 = Vector3(0, 0.1, cara * (fondo / 2.0 - 0.6))
+	var s_calle: int = sala_de(calle)
+	if s_calle >= 0:
+		res.append([Vector3(0, 0.1, cara * (fondo / 2.0 + 0.3)), s_calle, -2])
+	set_meta("grafo", res)
+	return res
+
+
+# Ruta (puntos del mundo) de "desde" a "hasta" pasando por las puertas.
+func ruta_mundo(desde: Vector3, hasta: Vector3) -> Array:
+	var a: Vector3 = to_local(desde)
+	var b: Vector3 = to_local(hasta)
+	var sa: int = sala_de(a)
+	var sb: int = sala_de(b)
+	if esta_fuera(desde):
+		sa = -2
+	if esta_fuera(hasta):
+		sb = -2
+	if sa == sb or sa == -1 or sb == -1:
+		return [hasta]
+	var grafo: Array = _puertas_grafo()
+	# Búsqueda en anchura por salas.
+	var previo: Dictionary = {sa: null}
+	var cola: Array = [sa]
+	while not cola.is_empty():
+		var s: int = cola.pop_front()
+		if s == sb:
+			break
+		for p in grafo:
+			var otra: int = -99
+			if int(p[1]) == s:
+				otra = int(p[2])
+			elif int(p[2]) == s:
+				otra = int(p[1])
+			if otra != -99 and not previo.has(otra):
+				previo[otra] = [s, p[0]]
+				cola.append(otra)
+	if not previo.has(sb):
+		return [hasta]
+	var puntos: Array = [hasta]
+	var cur: int = sb
+	while previo[cur] != null:
+		var paso: Array = previo[cur]
+		var dentro: Vector3 = paso[1]
+		puntos.push_front(to_global(dentro))
+		cur = int(paso[0])
+	return puntos
+
+
+# Un sitio al azar dentro de una sala (para ir y quedarse un rato).
+func punto_en_sala(i: int) -> Vector3:
+	var salas: Array = _salas_local()
+	if salas.is_empty():
+		return global_position
+	var r: Rect2 = salas[clampi(i, 0, salas.size() - 1)]
+	var m: float = 0.7
+	var x: float = _rng.randf_range(r.position.x + m, maxf(r.position.x + m, r.end.x - m))
+	var z: float = _rng.randf_range(r.position.y + m, maxf(r.position.y + m, r.end.y - m))
+	return to_global(Vector3(x, 0.1, z))
+
+
+func num_salas() -> int:
+	return _salas_local().size()

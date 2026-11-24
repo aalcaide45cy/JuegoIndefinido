@@ -30,6 +30,11 @@ const P_ESPERA: int = 1
 const P_CRUZA: int = 2
 const P_HERIDO: int = 3
 const P_LIBRE: int = 4   # Cruza por donde no debe (sin paso de cebra).
+const P_IA: int = 5      # Fuera de su ruta: lo mueve su cerebro (huir, pelear, mirar, charlar...).
+const LAT_ACERA: float = 0.9   # Lo que se puede apartar como mucho de su línea de acera (m).
+# La línea del peatón va a 6 m del eje; la acera va de 4 m (bordillo, con árboles a 4,9 m) a 6,5 m.
+const LAT_HACIA_CALLE: float = 0.6
+const LAT_HACIA_CASAS: float = 0.1
 const CICLO_SEMAFORO: float = 24.0
 const VERDE: float = 10.0
 const AMBAR: float = 12.0
@@ -162,6 +167,8 @@ class Agente extends AnimatableBody3D:
 	var largo: float = 4.4
 	var lado: float = 2.0         # Desplazamiento a la derecha del eje de la calle (negativo = izquierda).
 	var pausa: float = 0.0
+	var telefono: bool = false    # En esta parada habla por el móvil.
+	var corredor: bool = false    # Sale a correr (de día).
 	var alegre: bool = false      # Peatón de noche que va zigzagueando.
 	var huyendo: bool = false
 	var vida: float = 30.0
@@ -205,6 +212,32 @@ class Agente extends AnimatableBody3D:
 	var herido_t: float = 0.0
 	var t_reaccion: float = 0.0        # Mientras es > 0 está en una animación de golpe (no se pisa con andar).
 	var dir_golpe: Vector3 = Vector3.UP
+	# --- IA (scripts/ia/persona_ia.gd): carácter, emociones, árbol de comportamiento y esquivar ---
+	var cerebro: PersonaIA = null
+	var lat_ia: float = 0.0            # Se aparta a un lado de la acera para no chocar (m, + = a su derecha).
+	var vel_mult: float = 1.0          # Frena si alguien lento le tapa el paso.
+
+	# Lo que oye o ve (disparos, peleas, gritos...): se lo pasa al cerebro.
+	func percibir(tipo: String, pos: Vector3, intensidad: float, autor: Object) -> void:
+		if cerebro != null and not has_meta("muerto") and estado != VidaUrbana.P_HERIDO:
+			cerebro.percibir(tipo, pos, intensidad, autor)
+
+	func ia_vida() -> float:
+		return clampf(vida / maxf(vida_max, 1.0), 0.0, 1.0)
+
+	func ia_punto_acera():
+		var vu: VidaUrbana = get_parent() as VidaUrbana
+		return vu._punto_acera_cercano(self) if vu != null else null
+
+	# Sitio donde ponerse al lado de "lider" (pareja) sin salirse de la acera.
+	func ia_sitio_junto_a(lider: Node3D):
+		var vu: VidaUrbana = get_parent() as VidaUrbana
+		return vu._sitio_acompanante(lider as Agente) if vu != null and lider is Agente else null
+
+	func ia_reenganchar() -> void:
+		var vu: VidaUrbana = get_parent() as VidaUrbana
+		if vu != null:
+			vu._reenganchar(self)
 
 	# Golpe, disparo o explosión del jugador: sangre, grito, reacción y, si es fuerte, derribo.
 	func recibir_dano(cantidad: float) -> void:
@@ -311,24 +344,20 @@ class Agente extends AnimatableBody3D:
 				modelo.rotation.x = -PI / 2.0
 				modelo.position.y = 0.25
 
-	# La gente de alrededor huye gritando; con culpa del jugador, alguno llama a la policía.
+	# Avisa a la gente de alrededor de que ha pasado algo violento: cada uno decide según su
+	# carácter (huir gritando, socorrer, encararse con el agresor, llamar a la policía, mirar...).
+	# Antes esto buscaba el grupo "peatones", que nadie usaba, y no asustaba a nadie.
+	# radio 22 = atropello (lo llama derribar); 16 = golpe o disparo (recibir_dano).
 	func asustar_testigos(radio: float, culpa_jugador: bool) -> void:
-		var llamo: bool = false
-		for n in get_tree().get_nodes_in_group("peatones"):
-			if n == self or not is_instance_valid(n) or n.has_meta("muerto"):
-				continue
-			if n.global_position.distance_to(global_position) > radio:
-				continue
-			n.huyendo = true
-			if randf() < 0.5:
-				Gore.grito(n, n.global_position + Vector3.UP * 1.5)
-			if culpa_jugador and not llamo and randf() < 0.3:
-				llamo = true
-				var ahora: int = Time.get_ticks_msec()
-				if ahora - int(get_tree().root.get_meta("llamada_ms", -100000)) > 20000:
-					get_tree().root.set_meta("llamada_ms", ahora)
-					get_tree().create_timer(5.0).timeout.connect(func() -> void:
-						Juego.exigir_estrellas(1, "Un testigo ha llamado a la policía"))
+		var jug: Node3D = get_tree().get_first_node_in_group("jugador") as Node3D
+		var autor: Node3D = jug if culpa_jugador else null
+		if cerebro != null and radio < 20.0:
+			cerebro.me_hirieron(autor, vida_max - vida)
+		var tipo: String = "atropello" if radio >= 20.0 else "violencia"
+		if has_meta("muerto") or vida <= 0.0:
+			tipo = "muerte"
+		EstimulosIA.emitir(get_tree(), tipo, global_position, radio * 1.6, autor if autor != null else self)
+		EstimulosIA.emitir(get_tree(), "grito", global_position, 24.0, self)
 
 
 class Semaforo extends Node3D:
@@ -443,6 +472,12 @@ func _gestionar() -> void:
 		var a: Agente = _nuevo_agente(red, false)
 		if a != null:
 			_peatones.append(a)
+			# Parejas y grupos de amigos que pasean juntos (más de día).
+			var p_grupo: float = 0.22 if Juego.hora >= 9.0 and Juego.hora < 22.0 else 0.1
+			if randf() < p_grupo:
+				var b: Agente = _acompanante(a)
+				if b != null:
+					_peatones.append(b)
 	creados = 0
 	while _coches.size() < int(roundf(MAX_COCHES * Graficos.factor_trafico())) and creados < 2:
 		creados += 1
@@ -506,6 +541,7 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 			a.lado = float(red["ancho"]) * 0.25
 			a.atento = randf() > 0.06
 		else:
+			a.cerebro = PersonaIA.new(a, "peaton")
 			_vestir_peaton(a)
 			a.vmax = 1.3
 			a.s = 1 if randf() < 0.5 else -1
@@ -517,6 +553,17 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 			a.cuidadoso = randf() < 0.6
 			_planear_imprudencia(a)
 			a.add_to_group("danable")
+			a.add_to_group("peatones")
+			a.add_to_group("oyentes_ia")
+			a.vmax = a.cerebro.vel_andar
+			if not a.alegre and h_dia(Juego.hora) and randf() < 0.07:
+				a.corredor = true   # Gente que sale a correr: más rápida, se para menos.
+				a.vmax = randf_range(2.8, 3.4)
+				a.cerebro.agilidad = maxf(a.cerebro.agilidad, 0.75)
+			if a.alegre:
+				a.cerebro.agilidad *= 0.5         # Ha bebido: torpe...
+				a.cerebro.valentia = minf(1.0, a.cerebro.valentia + 0.25)   # ...y valiente.
+				a.cerebro.agresividad = minf(1.0, a.cerebro.agresividad + 0.2)
 		add_child(a)
 		_colocar(a, true)
 		return a
@@ -574,9 +621,18 @@ func _vestir_peaton(a: Agente) -> void:
 	forma.shape = capsula
 	forma.position.y = 0.85
 	a.add_child(forma)
-	var nombre: String = "quaternius/toon-shooter-game-kit/Characters/" + str(PERSONAJES[randi() % PERSONAJES.size()])
-	var persona: Node3D = Assets.personaje(nombre, "", "Walk")
+	# Personas de proporciones humanas con las animaciones de la Universal Animation Library;
+	# si no están, los muñecos del kit de Quaternius de antes. Los que van armados llevan la
+	# pistola en la mano (escondida hasta que la sacan: PersonaIA.sacar_arma).
+	var arma: String = a.cerebro.arma_modelo if a.cerebro != null and a.cerebro.armado else ""
+	var persona: Node3D = Assets.persona("", arma, "Walk")
+	if persona == null:
+		var nombre: String = "quaternius/toon-shooter-game-kit/Characters/" + str(PERSONAJES[randi() % PERSONAJES.size()])
+		persona = Assets.personaje(nombre, "", "Walk")
 	if persona != null:
+		if arma != "":
+			PersonaIA._mostrar_arma_en(persona, "")
+		Ropa.vestir(persona, randi())   # Ropa y pelo variados (el modelo base viene en ropa interior).
 		a.add_child(persona)
 		a.modelo = persona
 	else:
@@ -598,9 +654,9 @@ func _punto_tramo(a: Agente) -> Vector2:
 	var derecha: Vector2 = Vector2(-dir.y, dir.x)
 	if a.es_coche:
 		return pa + dir * a.d + derecha * (a.lado - a.desvio)
-	var lat: float = float(a.s) * _hs(a.red)
+	var lat: float = float(a.s) * _hs(a.red) + a.lat_ia
 	if a.alegre:
-		lat += sin(a.fase) * 0.7
+		lat += sin(a.fase) * 0.45
 	return pa + dir * a.d + derecha * lat
 
 
@@ -633,17 +689,59 @@ func _colocar(a: Agente, ya: bool = false, delta: float = 0.0) -> void:
 			punto = _punto_tramo(a)
 			a.p2 = punto
 			yaw = atan2(-dir.x, -dir.y)
+			if a.pausa > 0.0 and a.vel < 0.3:
+				var escaparate: Vector2 = Vector2(-dir.y, dir.x) * float(a.s)   # Mira hacia las casas.
+				yaw = atan2(-escaparate.x, -escaparate.y)
 	var y: float = _altura(a.red, punto.x, punto.y)
 	if a.es_coche and a.red["id"] != "ciudad":
 		y += 0.17   # Las calzadas de los pueblos van 0,15 m por encima del suelo.
 	elif a.es_coche:
 		y += 0.05
+	else:
+		y = _suelo_peaton(a, punto, y, ya, delta)
 	a.global_position = Vector3(punto.x, y, punto.y)
 	if ya:
 		a.rotation.y = yaw
 	else:
 		var rapidez: float = 22.0 if (a.es_coche and a.en_giro) else 9.0
 		a.rotation.y = lerp_angle(a.rotation.y, yaw, 1.0 - exp(-rapidez * delta))
+
+
+# Altura de los pies de un peatón. En pueblos y ciudades la acera está 0,3 m por encima del suelo
+# del pueblo y la calzada 0,15 m (antes andaban con los pies hundidos en la acera). Libre (huyendo,
+# peleando...) puede ir por cualquier sitio: mira el suelo con un rayo hacia abajo de vez en cuando.
+func _suelo_peaton(a: Agente, punto: Vector2, base: float, ya: bool, delta: float) -> float:
+	var objetivo: float = base
+	var con_acera: bool = a.red["id"] != "ciudad" and int(a.red.get("tipo", 0)) >= 1
+	if a.estado == P_ACERA or a.estado == P_ESPERA:
+		objetivo = base + (0.3 if con_acera else 0.0)
+	else:
+		var t: float = float(a.get_meta("t_suelo", 0.0)) - delta
+		if t <= 0.0 or not a.has_meta("suelo_y"):
+			t = 0.15
+			var desde: Vector3 = Vector3(punto.x, base + 2.5, punto.y)
+			var cons: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, desde + Vector3.DOWN * 3.0)
+			cons.exclude = [a.get_rid()]
+			var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(cons)
+			var sy: float = float(a.get_meta("suelo_y", a.global_position.y))
+			if not choque.is_empty() and not (choque["collider"] is AnimatableBody3D or choque["collider"] is CharacterBody3D or choque["collider"] is RigidBody3D):
+				var hy: float = (choque["position"] as Vector3).y
+				if hy < base + 1.2:
+					sy = hy   # Más alto sería un tejado o un muro: no se sube.
+			elif choque.is_empty():
+				# Nada debajo: el rayo empezó bajo tierra (borde del pueblo donde el monte queda más
+				# alto que la calle). Se busca el terreno desde más arriba.
+				cons.from = Vector3(punto.x, base + 9.0, punto.y)
+				cons.to = Vector3(punto.x, base - 1.0, punto.y)
+				var c2: Dictionary = get_world_3d().direct_space_state.intersect_ray(cons)
+				if not c2.is_empty() and (c2["collider"] as Node).get_parent() != null and str((c2["collider"] as Node).get_parent().name).begins_with("Trozo"):
+					sy = (c2["position"] as Vector3).y
+			a.set_meta("suelo_y", sy)
+		a.set_meta("t_suelo", t)
+		objetivo = float(a.get_meta("suelo_y", base))
+	if ya:
+		return objetivo
+	return lerpf(a.global_position.y, objetivo, 1.0 - exp(-14.0 * delta))
 
 
 # --------------------------------- Movimiento ----------------------------------
@@ -1061,10 +1159,14 @@ func _decidir_esquina(a: Agente) -> void:
 			_entrar_tramo(a, [nodo, a.desde, -a.s])
 	a.t_espera = 0.0
 	if a.estado == P_ESPERA:
-		a.p2 = k0
+		# Cada uno espera en un sitio algo distinto de la esquina (no todos en el mismo punto).
+		a.p2 = k0 + Vector2(randf_range(-0.7, 0.7), randf_range(-0.7, 0.7))
+	if a.estado == P_ESPERA or a.estado == P_CRUZA:
+		a.destino += Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5))
 
 
 func _entrar_tramo(a: Agente, nuevo: Array) -> void:
+	var antes: Vector2 = a.p2
 	a.desde = nuevo[0]
 	a.hacia = nuevo[1]
 	a.s = int(nuevo[2])
@@ -1072,8 +1174,16 @@ func _entrar_tramo(a: Agente, nuevo: Array) -> void:
 	a.estado = P_ACERA
 	a.cruce_nodo = Vector2i(-9999, -9999)
 	a.cruce_brazo = Vector2i(-9999, -9999)
-	if randf() < 0.3:
-		a.pausa = 3.0 + randf() * 6.0   # Se para a charlar o a mirar escaparates.
+	# Sin saltos: conserva lo apartado que venía respecto a la línea de la acera nueva.
+	var pa: Vector2 = a.red["pos"][a.desde]
+	var pb: Vector2 = a.red["pos"][a.hacia]
+	var dir: Vector2 = (pb - pa).normalized()
+	var rel: Vector2 = antes - pa
+	a.lat_ia = clampf(rel.dot(Vector2(-dir.y, dir.x)) - float(a.s) * _hs(a.red), -LAT_ACERA, LAT_ACERA)
+	a.d = clampf(rel.dot(dir), _hs(a.red), maxf(_hs(a.red), pa.distance_to(pb) - _hs(a.red)))
+	if randf() < (0.03 if a.corredor else 0.15):
+		a.pausa = 2.0 + randf() * 5.0   # Se para a mirar un escaparate (las charlas las decide su cerebro).
+		a.telefono = randf() < 0.3      # ...o a hablar por el móvil.
 	_planear_imprudencia(a)
 
 
@@ -1098,46 +1208,62 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 	if not is_instance_valid(a) or a.has_meta("muerto"):
 		return
 	a.t_reaccion -= delta
-	var yo: Vector3 = _jugador.global_position
-	var cerca: float = a.global_position.distance_to(yo)
 	if a.estado == P_HERIDO:
 		a.herido_t -= delta
 		if a.herido_t <= 0.0:
-			# Se levanta y se aleja cojeando.
-			if a.modelo != null:
-				a.modelo.rotation.x = 0.0
-				a.modelo.position.y = 0.0
-			a.estado = P_ACERA
-			a.huyendo = true
-			var pa: Vector2 = a.red["pos"][a.desde]
-			var pb: Vector2 = a.red["pos"][a.hacia]
-			var dir: Vector2 = (pb - pa).normalized()
-			var rel: Vector2 = a.p2 - pa
-			a.d = clampf(rel.dot(dir), _hs(a.red), maxf(_hs(a.red), pa.distance_to(pb) - _hs(a.red)))
-			var lat: float = rel.dot(Vector2(-dir.y, dir.x))
-			a.s = 1 if lat >= 0.0 else -1
+			# Se levanta (Cuerpo.levantar, desde tumbar) y su cerebro decide: normalmente huir
+			# del que le hizo daño. Un segundo quieto mientras se incorpora.
+			a.estado = P_IA
+			a.t_reaccion = 1.0
+			if a.cerebro != null:
+				a.cerebro.miedo = maxf(a.cerebro.miedo, 0.6)
+				a.cerebro.libre = true
 		_colocar(a, false, delta)
 		return
-	if Juego.estrellas > 0 and cerca < 30.0:
-		a.huyendo = true
-	elif cerca > 40.0:
-		a.huyendo = false
-	var objetivo: float = a.vmax
-	if a.huyendo:
-		objetivo = 4.5
-	elif a.alegre:
-		objetivo = 0.9
+	var cer: PersonaIA = a.cerebro
+	if cer != null:
+		cer.pensar(delta)
+		if cer.libre:
+			# Su cerebro manda: se mueve libre por donde haga falta, esquivando a todos.
+			if a.estado != P_IA:
+				a.p2 = Vector2(a.global_position.x, a.global_position.z)
+				a.estado = P_IA
+				a.pausa = 0.0
+			if a.t_reaccion > 0.0 and a.collision_layer == 0:
+				_colocar(a, false, delta)   # Aún incorporándose del suelo.
+				return
+			a.p2 += cer.vel * delta
+			a.vel = cer.vel.length()
+			var m: Vector2 = cer.mirar
+			if m == Vector2.ZERO and cer.vel.length() > 0.15:
+				m = cer.vel.normalized()
+			a.destino = a.p2 + m
+			_colocar(a, false, delta)
+			if a.modelo != null and a.t_reaccion <= 0.0:
+				cer.animar(a.modelo)
+			return
+		elif a.estado == P_IA:
+			_reenganchar(a)
+	var objetivo: float = a.vmax * a.vel_mult
+	if a.alegre:
+		objetivo = 0.9 * a.vel_mult
+	# Nadie anda a velocidad de robot: el paso oscila un poco.
+	objetivo *= 1.0 + 0.06 * sin(a.fase * 0.37)
 	match a.estado:
 		P_ACERA:
 			if a.pausa > 0.0:
 				a.pausa -= delta
 				objetivo = 0.0
-				if a.huyendo:
-					a.pausa = 0.0
-			a.vel = move_toward(a.vel, objetivo, 4.0 * delta)
 			var pa2: Vector2 = a.red["pos"][a.desde]
 			var pb2: Vector2 = a.red["pos"][a.hacia]
 			var largo_tramo: float = pa2.distance_to(pb2)
+			# Esquivar en la acera: se aparta a un lado y ajusta el paso según quién venga.
+			if cer != null:
+				var lims: Vector2 = _lims_lat(a)
+				var esq: Array = cer.esquiva_acera(a.lat_ia, (pb2 - pa2).normalized(), a.vel, lims.x, lims.y, delta)
+				a.lat_ia = float(esq[0])
+				a.vel_mult = move_toward(a.vel_mult, float(esq[1]), delta * 2.5)
+			a.vel = move_toward(a.vel, objetivo, 4.0 * delta)
 			a.d += a.vel * delta
 			a.fase += delta * 2.0
 			if a.d_libre > 0.0 and a.d >= a.d_libre:
@@ -1158,23 +1284,134 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 				if _calle_libre(a) or not a.cuidadoso or a.t_espera > 10.0:
 					a.t_espera = -1.0
 			else:
-				var v_cruce: float = 4.0 if a.huyendo else 1.7
+				var v_cruce: float = maxf(1.6, a.vmax * 1.25)
 				a.vel = move_toward(a.vel, v_cruce, 6.0 * delta)
 				var falta: Vector2 = a.destino - a.p2
 				var paso: float = a.vel * delta
-				if falta.length() <= paso:
+				if falta.length() <= paso + 0.05:
 					a.p2 = a.destino
 					if a.estado == P_LIBRE:
 						a.s = -a.s
-						a.estado = P_ACERA
+						_entrar_tramo(a, [a.desde, a.hacia, a.s])
 						a.d_libre = -1.0
 					else:
 						_entrar_tramo(a, a.nuevo)
 				else:
-					a.p2 += falta.normalized() * paso
+					var deseo: Vector2 = falta.normalized() * a.vel
+					if cer != null:
+						deseo = cer.esquivar_paso(deseo, delta)   # En el paso de cebra también se esquivan.
+					a.p2 += deseo * delta
 	_colocar(a, false, delta)
 	if a.modelo != null and a.estado != P_HERIDO and a.t_reaccion <= 0.0:
-		Assets.animar_por_velocidad(a.modelo, a.vel)
+		if a.pausa > 0.0 and a.vel < 0.3 and a.telefono:
+			Assets.poner_animacion(a.modelo, "Talk")
+		else:
+			Assets.animar_por_velocidad(a.modelo, a.vel)
+
+
+# Límites de lo que se aparta en la acera, en el sentido "a su derecha" (+): depende de en qué
+# lado de la calle vaya (s = +1: las casas quedan a su derecha).
+func _lims_lat(a: Agente) -> Vector2:
+	if a.s >= 0:
+		return Vector2(-LAT_HACIA_CALLE, LAT_HACIA_CASAS)
+	return Vector2(-LAT_HACIA_CASAS, LAT_HACIA_CALLE)
+
+
+# Crea a alguien que pasea junto a "lider" (pareja o amigo), justo a su lado.
+func _acompanante(lider: Agente) -> Agente:
+	var b: Agente = Agente.new()
+	b.red = lider.red
+	b.desde = lider.desde
+	b.hacia = lider.hacia
+	b.d = maxf(_hs(lider.red), lider.d - 0.4)
+	b.s = lider.s
+	b.lat_ia = clampf(lider.lat_ia - 0.8, -LAT_ACERA, LAT_ACERA)
+	b.collision_layer = 1
+	b.collision_mask = 0
+	b.sync_to_physics = false
+	b.cerebro = PersonaIA.new(b, "peaton")
+	_vestir_peaton(b)
+	b.add_to_group("danable")
+	b.add_to_group("peatones")
+	b.add_to_group("oyentes_ia")
+	b.cerebro.lider = lider
+	if lider.cerebro != null:
+		lider.cerebro._lat_pref = 0.1 if lider.s >= 0 else -0.1   # El líder va hacia las casas; su pareja, al lado de la calle.
+	b.cerebro.libre = true
+	b.vmax = lider.vmax
+	b.alegre = false
+	add_child(b)
+	_colocar(b, true)
+	b.p2 = Vector2(b.global_position.x, b.global_position.z)
+	b.estado = P_IA
+	return b
+
+
+# Al lado del líder, hacia la calle, en su misma acera (null si el líder no va por la acera).
+func _sitio_acompanante(l: Agente):
+	if l == null or not is_instance_valid(l) or l.estado != P_ACERA:
+		return null
+	var pa: Vector2 = l.red["pos"][l.desde]
+	var pb: Vector2 = l.red["pos"][l.hacia]
+	var dir: Vector2 = (pb - pa).normalized()
+	var lat: float = float(l.s) * _hs(l.red) + l.lat_ia - float(l.s) * 0.72
+	return pa + dir * (l.d - 0.2) + Vector2(-dir.y, dir.x) * lat
+
+
+# Punto de acera más cercano a un peatón que anda libre (para que vuelva a su ruta).
+# Guarda en el peatón el tramo elegido (meta "acera") para _reenganchar.
+func _punto_acera_cercano(a: Agente):
+	if a.red.is_empty():
+		return null
+	var yo: Vector2 = Vector2(a.global_position.x, a.global_position.z)
+	var hs: float = _hs(a.red)
+	var mejor: float = 1.0e9
+	var res = null
+	var frente3: Vector3 = -a.global_basis.z
+	var frente: Vector2 = Vector2(frente3.x, frente3.z)
+	for k in a.red["vec"]:
+		var pk: Vector2 = a.red["pos"][k]
+		if pk.distance_to(yo) > GeneradorMundo.BLOQUE * 1.6:
+			continue
+		for v in a.red["vec"][k]:
+			var pv: Vector2 = a.red["pos"][v]
+			var largo: float = pk.distance_to(pv)
+			if largo < hs * 2.0 + 1.0:
+				continue
+			var dir: Vector2 = (pv - pk) / largo
+			var der: Vector2 = Vector2(-dir.y, dir.x)
+			var rel: Vector2 = yo - pk
+			var d: float = clampf(rel.dot(dir), hs, largo - hs)
+			var lado: int = 1 if rel.dot(der) >= 0.0 else -1
+			var punto: Vector2 = pk + dir * d + der * float(lado) * hs
+			var dist: float = punto.distance_to(yo)
+			# Entre los dos sentidos del mismo tramo, el que va hacia donde ya mira.
+			if dir.dot(frente) < 0.0:
+				dist += 0.01
+			if dist < mejor:
+				mejor = dist
+				res = punto
+				a.set_meta("acera", [k, v, d, lado])
+	return res
+
+
+# Vuelve a su ruta normal por la acera más cercana.
+func _reenganchar(a: Agente) -> void:
+	if not a.has_meta("acera"):
+		_punto_acera_cercano(a)
+	if not a.has_meta("acera"):
+		return
+	var t: Array = a.get_meta("acera")
+	a.remove_meta("acera")
+	a.desde = t[0]
+	a.hacia = t[1]
+	a.s = int(t[3])
+	a.p2 = Vector2(a.global_position.x, a.global_position.z)
+	_entrar_tramo(a, [a.desde, a.hacia, a.s])
+	a.pausa = 0.0
+	a.vel_mult = 1.0
+	if a.cerebro != null:
+		a.cerebro.libre = false
 
 
 func _empezar_cruce_libre(a: Agente) -> void:
@@ -1324,3 +1561,7 @@ func _actualizar_semaforos() -> void:
 			var enciende: int = 2 if e == 0 else (1 if e == 1 else 0)
 			for i in 3:
 				(sem.lamparas[eje][i] as StandardMaterial3D).emission_energy_multiplier = 4.0 if i == enciende else 0.1
+
+
+static func h_dia(hora: float) -> bool:
+	return hora >= 7.0 and hora < 20.0
