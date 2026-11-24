@@ -284,7 +284,7 @@ func _percibir() -> void:
 	apuntado = false
 	jugador_armado = 0
 	empujado = false
-	if j != null and not bool(j.get("_muerto")):
+	if j != null and not (j.get("_muerto") == true):
 		var al: Vector3 = j.global_position - cuerpo.global_position
 		var d: float = al.length()
 		var en_coche: bool = j.get("vehiculo") != null
@@ -717,6 +717,8 @@ func disparar(objetivo: Node3D) -> void:
 	if objetivo == null or not is_instance_valid(objetivo):
 		return
 	Sonido.tocar(cuerpo, "disparo", -3.0)
+	if cuerpo.has_method("ia_disparo_hecho"):
+		cuerpo.ia_disparo_hecho()
 	var boca: Vector3 = cuerpo.global_position + Vector3(0, 1.35, 0) + Vector3(frente().x, 0, frente().y) * 0.5
 	var destello: OmniLight3D = OmniLight3D.new()
 	destello.light_color = Color(1.0, 0.8, 0.4)
@@ -789,7 +791,7 @@ func hay_coche_encima() -> bool:
 func hay_amenaza() -> bool:
 	if amenaza == null or not is_instance_valid(amenaza) or amenaza.has_meta("muerto"):
 		return false
-	if bool(amenaza.get("_muerto")):
+	if amenaza.get("_muerto") == true:
 		return false
 	var reciente: bool = reloj - t_amenaza < 25.0
 	return (miedo > 0.22 or ira > 0.3) and (reciente or dist_amenaza() < 12.0)

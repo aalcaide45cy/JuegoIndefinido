@@ -539,6 +539,7 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 			a.lado = float(red["ancho"]) * 0.25
 			a.atento = randf() > 0.06
 		else:
+			a.cerebro = PersonaIA.new(a, "peaton")
 			_vestir_peaton(a)
 			a.vmax = 1.3
 			a.s = 1 if randf() < 0.5 else -1
@@ -552,7 +553,6 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 			a.add_to_group("danable")
 			a.add_to_group("peatones")
 			a.add_to_group("oyentes_ia")
-			a.cerebro = PersonaIA.new(a, "peaton")
 			a.vmax = a.cerebro.vel_andar
 			if a.alegre:
 				a.cerebro.agilidad *= 0.5         # Ha bebido: torpe...
@@ -615,9 +615,17 @@ func _vestir_peaton(a: Agente) -> void:
 	forma.shape = capsula
 	forma.position.y = 0.85
 	a.add_child(forma)
-	var nombre: String = "quaternius/toon-shooter-game-kit/Characters/" + str(PERSONAJES[randi() % PERSONAJES.size()])
-	var persona: Node3D = Assets.personaje(nombre, "", "Walk")
+	# Personas de proporciones humanas con las animaciones de la Universal Animation Library;
+	# si no están, los muñecos del kit de Quaternius de antes. Los que van armados llevan la
+	# pistola en la mano (escondida hasta que la sacan: PersonaIA.sacar_arma).
+	var arma: String = a.cerebro.arma_modelo if a.cerebro != null and a.cerebro.armado else ""
+	var persona: Node3D = Assets.persona("", arma, "Walk")
+	if persona == null:
+		var nombre: String = "quaternius/toon-shooter-game-kit/Characters/" + str(PERSONAJES[randi() % PERSONAJES.size()])
+		persona = Assets.personaje(nombre, "", "Walk")
 	if persona != null:
+		if arma != "":
+			PersonaIA._mostrar_arma_en(persona, "")
 		a.add_child(persona)
 		a.modelo = persona
 	else:
@@ -1187,11 +1195,10 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 	if a.estado == P_HERIDO:
 		a.herido_t -= delta
 		if a.herido_t <= 0.0:
-			# Se levanta; su cerebro decide (normalmente huir del que le hizo daño o pedir ayuda).
-			if a.modelo != null:
-				a.modelo.rotation.x = 0.0
-				a.modelo.position.y = 0.0
+			# Se levanta (Cuerpo.levantar, desde tumbar) y su cerebro decide: normalmente huir
+			# del que le hizo daño. Un segundo quieto mientras se incorpora.
 			a.estado = P_IA
+			a.t_reaccion = 1.0
 			if a.cerebro != null:
 				a.cerebro.miedo = maxf(a.cerebro.miedo, 0.6)
 				a.cerebro.libre = true
@@ -1206,6 +1213,9 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 				a.p2 = Vector2(a.global_position.x, a.global_position.z)
 				a.estado = P_IA
 				a.pausa = 0.0
+			if a.t_reaccion > 0.0 and a.collision_layer == 0:
+				_colocar(a, false, delta)   # Aún incorporándose del suelo.
+				return
 			a.p2 += cer.vel * delta
 			a.vel = cer.vel.length()
 			var m: Vector2 = cer.mirar
@@ -1300,11 +1310,11 @@ func _acompanante(lider: Agente) -> Agente:
 	b.collision_layer = 1
 	b.collision_mask = 0
 	b.sync_to_physics = false
+	b.cerebro = PersonaIA.new(b, "peaton")
 	_vestir_peaton(b)
 	b.add_to_group("danable")
 	b.add_to_group("peatones")
 	b.add_to_group("oyentes_ia")
-	b.cerebro = PersonaIA.new(b, "peaton")
 	b.cerebro.lider = lider
 	if lider.cerebro != null:
 		lider.cerebro._lat_pref = 0.1 if lider.s >= 0 else -0.1   # El líder va hacia las casas; su pareja, al lado de la calle.
