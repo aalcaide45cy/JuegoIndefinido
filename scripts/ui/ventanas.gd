@@ -106,7 +106,7 @@ class Inicio extends Ventana:
 		get_tree().paused = true
 		var caja: VBoxContainer = panel_centrado(Vector2(420, 620))
 		var titulo: Label = Hud.crear_label(36, Color(0.6, 0.9, 0.6))
-		titulo.text = "Elixir Clandestino"
+		titulo.text = "Juego Indefinido"
 		titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caja.add_child(titulo)
 		var lema: Label = Hud.crear_label(15, Color(0.75, 0.8, 0.72))

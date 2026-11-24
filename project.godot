@@ -10,17 +10,19 @@ config_version=5
 
 [application]
 
-config/name="Elixir Clandestino"
-config/description="Prototipo 3D: pasea por la ciudad, cultiva hierbas, mezcla pociones prohibidas y véndelas."
+config/name="Juego Indefinido"
+config/description="Juego Indefinido: vive la vida que quieras en un mundo low poly con magia prohibida."
 run/main_scene="res://scenes/mundo.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
+CarpetaDatos="*res://scripts/carpeta_datos.gd"
 Juego="*res://scripts/juego.gd"
 Logros="*res://scripts/logros.gd"
 Graficos="*res://scripts/graficos.gd"
+Magia="*res://scripts/magia.gd"
 Controles="*res://scripts/controles.gd"
 Autoguardado="*res://scripts/autoguardado.gd"
 

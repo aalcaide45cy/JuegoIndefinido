@@ -49,15 +49,15 @@ func _probar() -> void:
 	# --- Teclas
 	C.restablecer()
 	comprobar(KEY_E in C.teclas_de("usar"), "usar empieza en E")
-	var quitada: String = C.cambiar_tecla("usar", KEY_F)
-	comprobar(C.teclas_de("usar") == [KEY_F], "usar pasa a F")
-	comprobar(quitada == "", "F no la usaba nadie")
+	var quitada: String = C.cambiar_tecla("usar", KEY_J)
+	comprobar(C.teclas_de("usar") == [KEY_J], "usar pasa a J")
+	comprobar(quitada == "", "J no la usaba nadie")
 	var ev: InputEventKey = InputEventKey.new()
-	ev.physical_keycode = KEY_F
+	ev.physical_keycode = KEY_J
 	ev.pressed = true
-	comprobar(InputMap.event_is_action(ev, "usar"), "pulsar F cuenta como usar")
-	quitada = C.cambiar_tecla("saltar", KEY_F)
-	comprobar(quitada != "" and C.teclas_de("usar").is_empty(), "si otra acción coge F, usar se queda sin tecla")
+	comprobar(InputMap.event_is_action(ev, "usar"), "pulsar J cuenta como usar")
+	quitada = C.cambiar_tecla("saltar", KEY_J)
+	comprobar(quitada != "" and C.teclas_de("usar").is_empty(), "si otra acción coge J, usar se queda sin tecla")
 	C.cambiar_tecla("usar", KEY_Q)
 	C.sensibilidad_raton = 1.7
 	C.invertir_y = true
@@ -65,7 +65,7 @@ func _probar() -> void:
 	C.sensibilidad_raton = 1.0
 	C.invertir_y = false
 	C.cargar()
-	comprobar(C.teclas_de("usar") == [KEY_Q] and C.teclas_de("saltar") == [KEY_F], "las teclas se guardan y se cargan")
+	comprobar(C.teclas_de("usar") == [KEY_Q] and C.teclas_de("saltar") == [KEY_J], "las teclas se guardan y se cargan")
 	comprobar(absf(C.sensibilidad_raton - 1.7) < 0.01 and C.invertir_y, "sensibilidad e invertir se guardan")
 	C.restablecer()
 	comprobar(KEY_E in C.teclas_de("usar") and KEY_SPACE in C.teclas_de("saltar"), "restablecer vuelve a las teclas de siempre")
@@ -95,6 +95,22 @@ func _probar() -> void:
 	Musica.volumen_general = 1.0
 	Musica.volumen_efectos = 0.9
 	Musica.aplicar_buses()
+	# --- Cambio de nombre del juego: se copian las partidas de la carpeta antigua.
+	var viejo: String = ProjectSettings.globalize_path("user://_prueba_viejo")
+	var nuevo: String = ProjectSettings.globalize_path("user://_prueba_nuevo")
+	DirAccess.make_dir_recursive_absolute(viejo)
+	DirAccess.make_dir_recursive_absolute(nuevo)
+	for n in ["partida_1.json", "partida_1.json.bak", "controles.cfg", "otra_cosa.png"]:
+		var fv: FileAccess = FileAccess.open(viejo.path_join(n), FileAccess.WRITE)
+		fv.store_string("x")
+		fv.close()
+	var CD = load("res://scripts/carpeta_datos.gd")
+	comprobar(CD.copiar_de_carpeta_antigua(viejo, nuevo) == 3, "se copian partidas, copias y opciones de la carpeta antigua")
+	comprobar(CD.copiar_de_carpeta_antigua(viejo, nuevo) == 0, "si ya hay partidas en la carpeta nueva no se copia nada")
+	for d in [viejo, nuevo]:
+		for n in DirAccess.get_files_at(d):
+			DirAccess.remove_absolute(d.path_join(n))
+		DirAccess.remove_absolute(d)
 	# --- Mundo, ventanas y guardado
 	var raiz: Node = get_tree().root
 	var escena: Node = load("res://scenes/mundo.tscn").instantiate()

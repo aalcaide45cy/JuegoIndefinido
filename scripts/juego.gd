@@ -204,6 +204,9 @@ func reiniciar() -> void:
 	estanteria.resize(TAM_ESTANTERIA)
 	seleccion = 0
 	cambio.emit()
+	var magia: Node = get_node_or_null("/root/Magia")
+	if magia != null:
+		magia.reiniciar()   # La magia empieza de cero en cada partida nueva.
 
 
 func _process(delta: float) -> void:

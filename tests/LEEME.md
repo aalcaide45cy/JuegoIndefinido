@@ -12,6 +12,8 @@ godot --headless --path . res://tests/prueba_asaltos.tscn   # asaltos a casas: g
 godot --headless --path . res://tests/prueba_carreteras.tscn   # carreteras: sin huecos en los bordes de trozo y pegadas al terreno
 xvfb-run -a godot --path . --rendering-driver opengl3 res://tests/captura_ui.tscn -- /carpeta   # capturas
 godot --headless --path . res://tests/prueba_opciones.tscn   # teclas, mando, volúmenes, autoguardado, copia .bak
+godot --headless --path . res://tests/prueba_magia.tscn   # magia: escuelas, hechizos, maná, riesgo, guardado, grimorio
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_magia.tscn -- /carpeta   # capturas de la magia
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/medir_rendimiento.tscn -- /carpeta   # rendimiento (CSV + capturas)
 xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 res://tests/captura_opciones.tscn -- /carpeta   # capturas de Pausa, Sonido y Controles
 ```

@@ -5,8 +5,8 @@ Ver también la sección 4.14 de [PLAN_MEJORA.md](PLAN_MEJORA.md).
 
 ## 1. Decisiones (las tomas tú)
 
-- [ ] Nombre definitivo. Propuestas: **Indefinido** o **Contrato Indefinido**. Antes de decidir: buscarlo
-  en Steam y en la oficina de marcas (EUIPO) para ver que no está cogido.
+- [x] Nombre definitivo: **Juego Indefinido** (24-11-2026). Conviene buscarlo en Steam y en la oficina
+  de marcas (EUIPO) antes de pagar la página.
 - [ ] Precio orientativo (los juegos de mundo abierto indie en acceso anticipado suelen ir de 15 a 25 €).
 - [ ] Acceso anticipado (recomendado) o lanzamiento completo.
 
@@ -26,8 +26,8 @@ Ver también la sección 4.14 de [PLAN_MEJORA.md](PLAN_MEJORA.md).
   carpeta `exportar/` (no se sube a GitHub).
 - [ ] Instalar las plantillas de exportación de Godot 4.7.1 (Editor > Gestionar plantillas de exportación).
 - [ ] Icono propio (.ico para Windows) y ponerlo en `application/icon`.
-- [ ] Cambiar `config/name` en `project.godot` al nombre definitivo (cambia también la carpeta de
-  partidas guardadas: hacerlo ANTES de publicar, o migrar las partidas).
+- [x] `config/name` = "Juego Indefinido". Las partidas de la carpeta antigua ("Elixir Clandestino") se
+  copian solas al arrancar (`scripts/carpeta_datos.gd`).
 - [ ] Probar la exportación en un PC distinto al tuyo, sin Godot instalado.
 
 ## 4. Integración con Steam

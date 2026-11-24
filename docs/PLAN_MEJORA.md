@@ -1,4 +1,4 @@
-# Plan de mejora general de Indefinido
+# Plan de mejora general de Juego Indefinido
 
 Fecha: 24 de noviembre de 2026. Rama: `claude/project-thread-q6xo1q`.
 
@@ -349,11 +349,11 @@ puedas comprobarlo tú o el siguiente hilo.
 
 | ID | Qué | Por qué | Cómo se comprueba | Prio | Esf. | Estado |
 |---|---|---|---|---|---|---|
-| MAG-1 | Diseño del sistema de magia en `docs/MAGIA.md` (escuelas, maná, aprendizaje, riesgo legal) | Es el pilar que diferencia al juego | Documento aprobado por ti | P0 | S | Pendiente (necesita tu visto bueno) |
-| MAG-2 | 4 escuelas con 3 hechizos cada una: Naturaleza (crecer cultivo, calmar animal, curar), Ilusión (disfraz, invisibilidad corta, distraer), Fuerza (empujar, levantar, escudo), Sombras (abrir cerraduras, apagar luces, miedo) | Magia útil en combate y fuera | 12 hechizos jugables | P1 | L | Pendiente |
+| MAG-1 | Diseño del sistema de magia en `docs/MAGIA.md` (escuelas, maná, aprendizaje, riesgo legal) | Es el pilar que diferencia al juego | Documento aprobado por ti | P0 | S | **HECHO** (aprobado el 24-11: 4 escuelas) |
+| MAG-2 | 4 escuelas con 3 hechizos cada una: Naturaleza (crecer cultivo, calmar animal, curar), Ilusión (disfraz, invisibilidad corta, distraer), Fuerza (empujar, levantar, escudo), Sombras (abrir cerraduras, apagar luces, miedo) | Magia útil en combate y fuera | 12 hechizos jugables | P1 | L | **HECHO EN ESTE PR** (F lanzar, Q cambiar, K grimorio) |
 | MAG-3 | Magia en los oficios (tinte mágico en la peluquería, desatasco mágico, curación mágica) | Une los dos pilares | 1 uso mágico por oficio | P2 | M | Pendiente |
-| MAG-4 | Riesgo: lanzar en público con testigos sube la sospecha y las estrellas | Tono del juego (la magia es ilegal) | Testigos → policía | P1 | S | Pendiente |
-| MAG-5 | Efectos visuales mágicos low poly (partículas de colores, runas en el suelo) | Que se vea espectacular | Capturas | P1 | M | Pendiente |
+| MAG-4 | Riesgo: lanzar en público con testigos sube la sospecha y las estrellas | Tono del juego (la magia es ilegal) | Testigos → policía | P1 | S | **HECHO EN ESTE PR** |
+| MAG-5 | Efectos visuales mágicos low poly (partículas de colores, runas en el suelo) | Que se vea espectacular | Capturas | P1 | M | Parte (estallido de cubitos de luz del color de la escuela; falta uno propio por hechizo) |
 
 ### 4.9 Interfaz
 
@@ -406,7 +406,7 @@ puedas comprobarlo tú o el siguiente hilo.
 
 | ID | Qué | Por qué | Cómo se comprueba | Prio | Esf. | Estado |
 |---|---|---|---|---|---|---|
-| STE-1 | Nombre definitivo (propuesta: **Indefinido** o **Contrato Indefinido**) | Hoy el proyecto aún se llama "Elixir Clandestino" | Búsqueda de marca y en Steam | P0 | S | Necesita tu decisión |
+| STE-1 | Nombre definitivo: **Juego Indefinido** | Antes se llamaba "Elixir Clandestino" | Nombre en el juego, ventana y exportación | P0 | S | **HECHO** (decidido el 24-11; las partidas de la carpeta antigua se copian solas) |
 | STE-2 | Icono y cápsulas (imágenes de la tienda) propias | El icono actual es el de Godot | Imágenes en los tamaños de Steam | P1 | M | Pendiente |
 | STE-3 | Configuración de exportación para Windows (y Linux para Steam Deck) | Sin esto no hay ejecutable | `export_presets.cfg` y prueba de exportar | P0 | S | **HECHO EN ESTE PR** (plantilla) |
 | STE-4 | GodotSteam para logros, nube y estadísticas | Integración | Logros que saltan en Steam | P2 | M | Parte (código preparado) |
@@ -461,8 +461,7 @@ prueba de 30 minutos en tu PC y las pruebas automáticas en verde.
 1. **Revisar y unir el PR de esta rama** (`claude/project-thread-q6xo1q`) en GitHub. Contiene todo lo
    de los PR 26 a 38 más lo de este plan.
 2. Cuando los 4 hilos en curso terminen, **unir sus PR** (irán contra esta misma rama o contra `main`).
-3. Decidir el **nombre definitivo** (STE-1) y si quieres el **diseño de magia** (MAG-1) tal como se
-   propone en 4.8.
+3. ~~Decidir el nombre y la magia~~: hecho (Juego Indefinido, magia de 4 escuelas ya jugable).
 4. Después, los PR viejos (1 a 39) se pueden **cerrar sin unir**: su contenido ya está dentro.
 
 ---

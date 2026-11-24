@@ -30,6 +30,7 @@ const ACCIONES: Array = [
 	["enganchar", "Enganchar remolque"], ["cambiar_camara", "Cambiar cámara"],
 	["inventario", "Inventario"], ["telefono", "Móvil"], ["mapa_grande", "Mapa grande"],
 	["mapa", "Zoom del minimapa"], ["aspecto", "Aspecto (ropa y peinado)"], ["logros", "Logros"],
+	["lanzar_hechizo", "Lanzar hechizo"], ["siguiente_hechizo", "Cambiar de hechizo"], ["grimorio", "Grimorio (magia)"],
 ]
 
 const ZONA_MUERTA: float = 0.18

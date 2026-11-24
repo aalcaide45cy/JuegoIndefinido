@@ -1,7 +1,8 @@
 # guardado.gd
 # -----------------------------------------------------------------------------
 # Guardar y cargar la partida en un archivo. Hay 5 ranuras (user://partida_1.json
-# ... partida_5.json; en Windows quedan en %APPDATA%\Godot\app_userdata\Elixir Clandestino).
+# ... partida_5.json; en Windows quedan en %APPDATA%\Godot\app_userdata\Juego Indefinido;
+# las partidas de cuando el juego se llamaba "Elixir Clandestino" se copian solas: ver carpeta_datos.gd).
 # Los logros NO van aquí: son de toda la cuenta (ver logros.gd).
 #
 # Se guarda: dinero, vida, nivel, habilidades, hora y día, inventario,
@@ -174,6 +175,7 @@ static func guardar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		"estanteria": Juego.estanteria,
 		"macetas": macetas,
 		"colocables": _exportar_colocables(arbol),
+		"magia": _magia(arbol).exportar() if _magia(arbol) != null else {},
 		"jugador": [pos.x, pos.y, pos.z],
 	}
 	# Se escribe primero en un archivo temporal: si algo falla a medias, la partida buena sigue ahí.
@@ -233,6 +235,10 @@ static func _migrar_mundo(datos: Dictionary) -> void:
 
 
 # Carga la partida. Devuelve true si salió bien.
+static func _magia(arbol: SceneTree) -> Node:
+	return arbol.root.get_node_or_null("Magia")
+
+
 static func _leer_json(r: String) -> Variant:
 	if not FileAccess.file_exists(r):
 		return null
@@ -402,6 +408,10 @@ static func cargar(arbol: SceneTree, jugador: Node3D, n: int = 0) -> bool:
 		var pc: Array = c.get("pos", []) if c is Dictionary else []
 		if pc.size() == 3 and Colocable.TIPOS.has(str(c.get("tipo", ""))):
 			Colocable.crear(arbol.current_scene, str(c["tipo"]), int(c.get("nivel", 1)), Vector3(pc[0], pc[1], pc[2]))
+
+	if _magia(arbol) != null:
+		var dm = datos.get("magia", {})
+		_magia(arbol).importar(dm if dm is Dictionary else {})
 
 	var p: Array = datos.get("jugador", [])
 	if p.size() == 3:
