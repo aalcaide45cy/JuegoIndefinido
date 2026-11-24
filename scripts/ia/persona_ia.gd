@@ -746,17 +746,25 @@ func disparar(objetivo: Node3D) -> void:
 		excluir.append((cuerpo as CollisionObject3D).get_rid())
 	var choque: Dictionary = Combate.rayo(cuerpo.get_world_3d(), boca, dir, 80.0, excluir)
 	var fin: Vector3 = boca + dir * 60.0
+	var col = null
+	var d_choque: float = INF
 	if not choque.is_empty():
+		col = choque["collider"]
+		d_choque = boca.distance_to(choque["position"])
+	# Le da si el rayo llega hasta el objetivo sin tropezar antes con nada (aunque el objetivo no
+	# tenga colisión en ese momento, como el jugador en un vehículo o volando).
+	var al_objetivo: bool = col == objetivo or (col is Node and (col as Node).is_in_group("jugador") and objetivo.is_in_group("jugador")) or d_choque >= d - 0.4
+	if acierta and al_objetivo:
+		fin = blanco
+		if objetivo.is_in_group("jugador"):
+			Juego.cambiar_vida(-dano_bala)
+			if Juego.invulnerable <= 0.0:
+				Juego.avisar("¡Te han disparado!")
+		elif objetivo.has_method("recibir_dano"):
+			objetivo.recibir_dano(dano_bala)
+	elif col != null:
 		fin = choque["position"]
-		var col = choque["collider"]
-		if acierta and col is Node and ((col as Node).is_in_group("jugador") or col == objetivo):
-			if objetivo.is_in_group("jugador"):
-				Juego.cambiar_vida(-dano_bala)
-				if Juego.invulnerable <= 0.0:
-					Juego.avisar("¡Te han disparado!")
-			elif objetivo.has_method("recibir_dano"):
-				objetivo.recibir_dano(dano_bala)
-		elif col != null and col.has_method("recibir_dano") and col != objetivo and not ((col as Node).is_in_group("jugador")):
+		if col != objetivo and (col as Object).has_method("recibir_dano") and not (col is Node and (col as Node).is_in_group("jugador")):
 			col.recibir_dano(dano_bala * 0.8)   # Bala perdida: le da a otro.
 		else:
 			Combate.marca_bala(cuerpo.get_tree().current_scene if cuerpo.get_tree().current_scene != null else cuerpo, fin, choque["normal"])
@@ -828,13 +836,16 @@ func p_pelear() -> float:
 	# Ir a puñetazos contra alguien con pistola es de muy valientes (o muy tontos).
 	if (jugador_armado == 2 or amenaza_dispara) and not armado:
 		v *= 0.25 if valentia < 0.85 else 0.6
+	# Quien lleva un arma la usa: solo se lía a golpes si el otro está pegado a él.
+	if armado and vida() >= 0.15 and d > 2.0:
+		v *= 0.3
 	return v
 
 
 func p_disparar() -> float:
 	if not armado or vida() < 0.15:
 		return 0.0
-	var v: float = ira * 0.9 + valentia * 0.45 + (0.4 if amenaza_dispara or jugador_armado == 2 else 0.0)
+	var v: float = 0.2 + ira * 1.1 + valentia * 0.5 + (0.4 if amenaza_dispara or jugador_armado == 2 else 0.0)
 	return v * (1.0 if dist_amenaza() < 35.0 else 0.2)
 
 
