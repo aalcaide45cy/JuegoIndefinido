@@ -144,7 +144,7 @@ func _probar() -> void:
 	var textos: Array = []
 	for b in pausa.find_children("*", "Button", true, false):
 		textos.append(b.text)
-	comprobar("Sonido y juego…" in textos and "Controles…" in textos, "el menú de pausa tiene Sonido y Controles")
+	comprobar("Ajustes…" in textos, "el menú de pausa tiene Ajustes (Gráficos, Sonido y Controles dentro)")
 	pausa.cerrar()
 	await get_tree().process_frame
 	# Copia de seguridad: se guarda dos veces, se rompe la buena y se carga la .bak.

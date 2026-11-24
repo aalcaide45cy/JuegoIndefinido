@@ -19,14 +19,12 @@ var _acabado: bool = false
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(480, 300))
-	cabecera(caja, "Mortero")
-	subtitulo(caja, "Machaca 2 %s: ¡pulsa Espacio lo más rápido que puedas!" % DatosObjetos.nombre(hierba))
-	_etiqueta = Hud.crear_label(32, Color(1.0, 0.85, 0.5))
+	var caja: VBoxContainer = marco("Mortero", "Machaca 2 %s: ¡pulsa Espacio lo más rápido que puedas!" % DatosObjetos.nombre(hierba), Vector2(520, 320))
+	_etiqueta = UI.etiqueta("", "Titulo", Tema.ACENTO, 32)
 	caja.add_child(_etiqueta)
 	var b: Button = Ventanas.boton_grande("¡Machacar!", _golpe)
 	caja.add_child(b)
-	_fin = Hud.crear_label(18, Color(0.7, 1.0, 0.7))
+	_fin = UI.etiqueta("", "", Tema.BRUMA, 18)
 	_fin.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	caja.add_child(_fin)
 	_actualizar()

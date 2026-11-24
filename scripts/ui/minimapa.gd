@@ -148,7 +148,7 @@ func _dibujar_marcas() -> void:
 	var giro: float = _jugador._giro
 	var derecha: Vector3 = Vector3(cos(giro), 0.0, -sin(giro))
 	var delante: Vector3 = Vector3(-sin(giro), 0.0, -cos(giro))
-	var fuente: Font = ThemeDB.fallback_font
+	var fuente: Font = Tema.fuente("semibold")
 
 	# Aro dorado con borde oscuro.
 	_marcas.draw_arc(centro, radio + 1.5, 0.0, TAU, 72, Color(0, 0, 0, 0.75), 3.0, true)

@@ -20,15 +20,14 @@ var _filas: Array = []   # [{"item", "boton", "precio"}]
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(820, 640))
 	var datos: Dictionary = Locales.LOCALES[local_mundo.local]
-	cabecera(caja, "%s  (Esc para cerrar)" % local_mundo.nombre)
-	subtitulo(caja, "%s  ·  abierto %s  ·  %s" % [str(datos["nombre"]), Locales.texto_horario(local_mundo.local), str(datos["fantasia"])])
+	var caja: VBoxContainer = marco(local_mundo.nombre, "%s  ·  abierto %s" % [str(datos["nombre"]), Locales.texto_horario(local_mundo.local)], Vector2(820, 640))
+	caja.add_child(UI.nota(str(datos["fantasia"])))
 	_estado = Hud.crear_label(17, Color(1, 0.92, 0.6))
 	caja.add_child(_estado)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 360)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	caja.add_child(scroll)
 	_lista = VBoxContainer.new()
 	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL

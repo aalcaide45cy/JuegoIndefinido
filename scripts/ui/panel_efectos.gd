@@ -26,7 +26,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	var fuente: Font = ThemeDB.fallback_font
+	var fuente: Font = Tema.fuente("semibold")
 	var y: float = 0.0
 	for id in Juego.efectos_activos:
 		var e: Dictionary = Juego.efectos_activos[id]

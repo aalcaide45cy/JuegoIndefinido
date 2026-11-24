@@ -16,8 +16,7 @@ var giro: float = 0.0
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(860, 680))
-	cabecera(caja, titulo)
+	var caja: VBoxContainer = marco(titulo, "", Vector2(860, 680))
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

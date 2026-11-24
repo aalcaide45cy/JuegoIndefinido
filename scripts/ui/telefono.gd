@@ -59,10 +59,25 @@ func construir() -> void:
 	pantalla.add_child(caja)
 
 	# Barra de estado: hora a la izquierda, dinero y reputación a la derecha.
-	_cabecera_info = Hud.crear_label(15, Color(0.85, 0.92, 1.0))
-	caja.add_child(_cabecera_info)
-	_titulo = Hud.crear_label(26, Color(1, 1, 1))
+	var barra_estado: HBoxContainer = HBoxContainer.new()
+	caja.add_child(barra_estado)
+	_hora = UI.etiqueta("", "Nota", Tema.TEXTO_SUAVE)
+	barra_estado.add_child(_hora)
+	barra_estado.add_child(UI.espaciador())
+	_cabecera_info = UI.etiqueta("", "Dinero")
+	barra_estado.add_child(_cabecera_info)
+	_titulo = UI.etiqueta("", "Titulo", Tema.AZUL, 28)
 	caja.add_child(_titulo)
+	_buscar = UI.buscador("Buscar…", func(t: String) -> void:
+		_texto_buscar = t.strip_edges().to_lower()
+		_reconstruir())
+	caja.add_child(_buscar)
+	_chips_metas = UI.Filtros.new()
+	_chips_metas.anadir("todas", "Todas")
+	_chips_metas.anadir("pendientes", "Pendientes")
+	_chips_metas.anadir("hechas", "Hechas")
+	_chips_metas.cambiado.connect(func(_c: String) -> void: _reconstruir())
+	caja.add_child(_chips_metas)
 
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -79,7 +94,9 @@ func construir() -> void:
 	caja.add_child(apps)
 	var datos: Array = [["Encargos", "phone"], ["Pedidos", "shoppingCart"], ["Avisos", "exclamation"], ["Negocios", "home"], ["Metas", "trophy"], ["Taxi", "fastForward"]]
 	for i in 6:
-		var b: Button = Hud.crear_boton(datos[i][0], _cambiar_pestana.bind(i))
+		var b: Button = UI.boton(datos[i][0], _cambiar_pestana.bind(i), "BotonSuave")
+		b.toggle_mode = true
+		_botones_apps.append(b)
 		b.icon = _icono(datos[i][1])
 		b.expand_icon = true
 		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -87,21 +104,34 @@ func construir() -> void:
 		b.custom_minimum_size = Vector2(0, 62)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		apps.add_child(b)
-	var cerrar_b: Button = Hud.crear_boton("Guardar el móvil (P / Esc)", cerrar)
+	var cerrar_b: Button = UI.boton("Guardar el móvil (P / Esc)", cerrar)
 	caja.add_child(cerrar_b)
 	_reconstruir()
 
 
 var _titulo: Label
+var _hora: Label
+var _buscar: LineEdit
+var _chips_metas: UI.Filtros
+var _texto_buscar: String = ""
+var _botones_apps: Array[Button] = []
 
 
 func _cambiar_pestana(i: int) -> void:
 	_pestana = i
+	_texto_buscar = ""
+	_buscar.text = ""
 	_reconstruir()
 
 
 func _process(_delta: float) -> void:
-	_cabecera_info.text = "%s     %d $     Rep. %d" % [Juego.texto_hora(), Juego.dinero, Juego.reputacion]
+	_hora.text = Juego.texto_hora()
+	_cabecera_info.text = "%s   ·   Rep. %d" % [UI.dinero(Juego.dinero), Juego.reputacion]
+	_buscar.visible = _pestana == 1 or _pestana == 5
+	_buscar.placeholder_text = "Buscar material…" if _pestana == 1 else "Buscar destino…"
+	_chips_metas.visible = _pestana == 4
+	for k in _botones_apps.size():
+		_botones_apps[k].set_pressed_no_signal(k == _pestana)
 	_titulo.text = ["Encargos", "Pedidos", "Avisos", "Negocios", "Metas", "Taxi"][_pestana]
 	# Solo se reconstruye si cambia la estructura (no cada vez que baja un contador).
 	var firma: String = _calcular_firma()
@@ -148,12 +178,20 @@ func _calcular_firma() -> String:
 
 
 func _pintar_metas() -> void:
+	var n: int = 0
 	for m in Juego.DatosMetas.LISTA:
-		var v: VBoxContainer = _tarjeta()
 		var hecha: bool = Juego.metas_cobradas.has(m["id"])
+		if _chips_metas.clave == "pendientes" and hecha:
+			continue
+		if _chips_metas.clave == "hechas" and not hecha:
+			continue
+		n += 1
+		var v: VBoxContainer = _tarjeta()
 		_texto(v, ("✔ " if hecha else "○ ") + str(m["texto"]), 15,
 				Color(0.55, 0.9, 0.55) if hecha else Color(0.9, 0.92, 0.95))
-		_texto(v, "Premio: %d $" % int(m["premio"]), 13, Color(1.0, 0.85, 0.4))
+		_texto(v, "Premio: %d $" % int(m["premio"]), 13, Tema.ACENTO)
+	if n == 0:
+		_vacio("No hay metas en esta lista.")
 
 
 func _pintar_taxi() -> void:
@@ -166,6 +204,8 @@ func _pintar_taxi() -> void:
 	if jugador == null:
 		return
 	for d in Taxi.destinos(jugador.global_position):
+		if _texto_buscar != "" and not str(d["nombre"]).to_lower().contains(_texto_buscar):
+			continue
 		var v: VBoxContainer = _tarjeta()
 		_texto(v, str(d["nombre"]), 15)
 		_texto(v, "%.1f km  ·  %d $  ·  %s" % [float(d["dist"]) / 1000.0, int(d["precio"]), _texto_duracion(float(d["horas"]))], 13,
@@ -199,10 +239,10 @@ func _pintar_negocios() -> void:
 func _tarjeta() -> VBoxContainer:
 	var panel: PanelContainer = PanelContainer.new()
 	var est: StyleBoxFlat = StyleBoxFlat.new()
-	est.bg_color = Color(0.1, 0.13, 0.19)
-	est.border_color = ACENTO
-	est.border_width_left = 5
-	est.set_corner_radius_all(16)
+	est.bg_color = Tema.TARJETA
+	est.border_color = Tema.AZUL
+	est.border_width_left = 4
+	est.set_corner_radius_all(12)
 	est.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", est)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -211,6 +251,15 @@ func _tarjeta() -> VBoxContainer:
 	v.add_theme_constant_override("separation", 4)
 	panel.add_child(v)
 	return v
+
+
+func _vacio(mensaje: String) -> void:
+	var l: Label = UI.etiqueta(mensaje, "Nota", Tema.TEXTO_TENUE, 15)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.custom_minimum_size = Vector2(330, 120)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_contenido.add_child(l)
 
 
 func _texto(v: Container, texto: String, tam: int = 15, color: Color = Color(0.9, 0.92, 0.95)) -> Label:
@@ -257,7 +306,7 @@ func _pintar_encargos() -> void:
 			_temporizadores.append([t2, int(e["id"]), "Se va en: "])
 			v.add_child(Hud.crear_boton("Cancelar (pierdes reputación)", _cancelar.bind(int(e["id"]))))
 	if not hay:
-		_texto(_contenido, "No hay encargos. Cuando alguien quiera comprar, te llegará un mensaje.", 15, Color(0.7, 0.75, 0.8))
+		_vacio("No hay encargos.\nCuando alguien quiera comprar, te llegará un mensaje.")
 
 
 func _aceptar(id: int) -> void:
@@ -293,6 +342,8 @@ func _pintar_pedidos() -> void:
 			continue
 		if d["tipo"] != "semilla" and d["tipo"] != "material":
 			continue
+		if _texto_buscar != "" and not str(d["nombre"]).to_lower().contains(_texto_buscar):
+			continue
 		var cant: int = int(_cantidades.get(id, 5))
 		var v: VBoxContainer = _tarjeta()
 		_texto(v, "%s  (%d $ c/u)" % [d["nombre"], d["precio"]], 15)
@@ -327,7 +378,7 @@ func _pedir(id: String) -> void:
 
 func _pintar_avisos() -> void:
 	if Juego.avisos.is_empty():
-		_texto(_contenido, "Sin avisos todavía.", 15, Color(0.7, 0.75, 0.8))
+		_vacio("Sin avisos todavía.")
 	for a in Juego.avisos:
 		var v: VBoxContainer = _tarjeta()
 		_texto(v, str(a), 14)

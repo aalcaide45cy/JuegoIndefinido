@@ -72,7 +72,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	# El aviso se escala igual que el resto de la interfaz (pensada para 720 de alto):
 	# sin esto, en 4K salía con letra diminuta.
-	var factor: float = maxf(0.5, get_viewport().get_visible_rect().size.y / Hud.ALTO_DISENO)
+	var factor: float = 1.0   # Con el tamaño de contenido 1280x720 de la ventana ya no hace falta escalar la capa.
 	_capa.scale = Vector2(factor, factor)
 	# La barra lateral va pegada al borde derecho, debajo del minimapa. Se coloca a
 	# mano porque, con la capa escalada, los anclajes la mandaban fuera de la pantalla.

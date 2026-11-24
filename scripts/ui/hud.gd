@@ -35,6 +35,7 @@ var _mira: ColorRect
 var _negro: ColorRect
 var _menu = null   # La ventana abierta ahora mismo (o null).
 var _tiempo_mensaje: float = 0.0
+var _ayuda: Label   # La línea de teclas de abajo del todo.
 
 
 func _ready() -> void:
@@ -44,6 +45,7 @@ func _ready() -> void:
 	_raiz.theme = crear_tema()
 	add_child(_raiz)
 	get_viewport().size_changed.connect(_ajustar_escala)
+	Controles.escala_cambiada.connect(_ajustar_escala)
 	_ajustar_escala()
 
 	# Arriba a la izquierda: dinero y lo que llevas en la mano.
@@ -170,11 +172,13 @@ func _ready() -> void:
 		var casilla: CasillaUI = CasillaUI.new(Juego.inventario, i, 48.0)
 		casilla.numero = str(i + 1)
 		casilla.arrastrable = false
+		casilla.focus_mode = Control.FOCUS_NONE
 		casilla.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_barra_rapida.add_child(casilla)
 
 	# Abajo: ayuda de controles.
-	var ayuda: Label = crear_label(14, Color(0.7, 0.7, 0.7))
+	_ayuda = crear_label(14, Color(0.7, 0.7, 0.7))
+	var ayuda: Label = _ayuda
 	ayuda.text = "WASD moverse · Ratón mirar · Shift correr · Espacio saltar · E usar · C agacharse · 1-9 barra · M zoom minimapa · N mapa grande · P móvil · G montar objeto · O aspecto · TAB inventario · F1 admin · V cámara · Esc pausa"
 	_colocar_abajo(ayuda, 22)
 
@@ -196,10 +200,16 @@ func _ready() -> void:
 
 
 func _ajustar_escala() -> void:
-	var tam: Vector2 = get_viewport().get_visible_rect().size
-	var factor: float = maxf(0.5, tam.y / ALTO_DISENO)
-	_raiz.scale = Vector2(factor, factor)
-	_raiz.size = tam / factor
+	# La interfaz se diseña para 720 px de alto. En vez de agrandar los nodos (que dejaba el
+	# texto borroso), se le dice a la ventana que su "tamaño de contenido" es 1280x720: Godot
+	# dibuja entonces los textos directamente a la resolución real y salen nítidos.
+	var ventana: Window = get_window()
+	ventana.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	ventana.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	var escala: float = clampf(Controles.escala_interfaz, 0.8, 1.4)
+	ventana.content_scale_size = Vector2i(int(1280.0 / escala), int(ALTO_DISENO / escala))
+	_raiz.scale = Vector2.ONE
+	_raiz.size = get_viewport().get_visible_rect().size
 
 
 # TAB y Esc se miran aquí, antes que nadie, para que funcionen con menús abiertos.
@@ -250,7 +260,10 @@ func _input(evento: InputEvent) -> void:
 			pausa.jugador = jugador
 			_abrir_menu(pausa)
 		elif not _menu is Ventanas.Inicio:
-			_menu.cerrar()
+			if _menu.has_method("cerrar_superior"):
+				_menu.cerrar_superior()
+			else:
+				_menu.cerrar()
 		get_viewport().set_input_as_handled()
 
 
@@ -263,6 +276,7 @@ func _process(delta: float) -> void:
 	else:
 		_label_accion.text = ""
 	_mira.visible = _menu == null
+	_ayuda.visible = Controles.mostrar_ayuda and _menu == null
 	_barra_rapida.visible = _menu == null
 	_panel_estado.visible = _menu == null
 	_brujula.visible = _menu == null
@@ -476,76 +490,41 @@ static func crear_label(tam: int, color: Color = Color(0.9, 0.9, 0.85)) -> Label
 	var label: Label = Label.new()
 	label.add_theme_font_size_override("font_size", tam)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 6)
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.tree_entered.connect(_sin_contorno_en_ventana.bind(label))
 	return label
+
+
+# El contorno negro sirve sobre el mundo 3D, pero dentro de una ventana (fondo liso) sobra.
+static func _sin_contorno_en_ventana(label: Label) -> void:
+	var n: Node = label.get_parent()
+	while n != null:
+		if n is Ventana:
+			label.add_theme_constant_override("outline_size", 0)
+			return
+		n = n.get_parent()
 
 
 static func crear_boton(texto: String, al_pulsar: Callable) -> Button:
 	var boton: Button = Button.new()
 	boton.text = texto
 	boton.add_theme_font_size_override("font_size", 16)
-	boton.focus_mode = Control.FOCUS_NONE  # Así ESPACIO no pulsa botones sin querer.
+	boton.focus_mode = Control.FOCUS_ALL   # Con mando y teclado se navega por los botones.
+	boton.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	boton.pressed.connect(al_pulsar)
 	return boton
 
 
-# El estilo común de toda la interfaz: botones, pestañas y deslizadores con el
-# mismo aspecto oscuro con borde verde que los paneles.
+# El estilo común de toda la interfaz: está en tema.gd (colores, fuente, botones, pestañas...).
 static func crear_tema() -> Theme:
-	var tema: Theme = Theme.new()
-	var estados: Dictionary = {
-		"normal": Color(0.12, 0.16, 0.13), "hover": Color(0.18, 0.28, 0.2),
-		"pressed": Color(0.1, 0.35, 0.2), "disabled": Color(0.1, 0.1, 0.1),
-		"focus": Color(0.12, 0.16, 0.13),
-	}
-	for estado in estados:
-		var caja: StyleBoxFlat = StyleBoxFlat.new()
-		caja.bg_color = estados[estado]
-		caja.border_color = Color(0.3, 0.55, 0.35) if estado != "disabled" else Color(0.22, 0.25, 0.22)
-		caja.set_border_width_all(2)
-		caja.set_corner_radius_all(6)
-		caja.content_margin_left = 12
-		caja.content_margin_right = 12
-		caja.content_margin_top = 6
-		caja.content_margin_bottom = 6
-		tema.set_stylebox(estado, "Button", caja)
-	tema.set_color("font_color", "Button", Color(0.9, 0.95, 0.88))
-	tema.set_color("font_hover_color", "Button", Color(1, 1, 0.9))
-	tema.set_color("font_pressed_color", "Button", Color(0.7, 1, 0.75))
-	tema.set_color("font_disabled_color", "Button", Color(0.45, 0.47, 0.45))
-	# Pestañas de la tienda.
-	for estado in ["tab_selected", "tab_unselected", "tab_hovered"]:
-		var pestana: StyleBoxFlat = StyleBoxFlat.new()
-		pestana.bg_color = {"tab_selected": Color(0.15, 0.3, 0.2), "tab_unselected": Color(0.09, 0.11, 0.1),
-				"tab_hovered": Color(0.14, 0.2, 0.15)}[estado]
-		pestana.border_color = Color(0.3, 0.55, 0.35)
-		pestana.set_border_width_all(1)
-		pestana.corner_radius_top_left = 6
-		pestana.corner_radius_top_right = 6
-		pestana.content_margin_left = 12
-		pestana.content_margin_right = 12
-		pestana.content_margin_top = 5
-		pestana.content_margin_bottom = 5
-		tema.set_stylebox(estado, "TabContainer", pestana)
-	tema.set_color("font_selected_color", "TabContainer", Color(0.75, 1, 0.8))
-	tema.set_color("font_unselected_color", "TabContainer", Color(0.65, 0.7, 0.65))
-	tema.set_color("font_hovered_color", "TabContainer", Color(0.9, 1, 0.9))
-	return tema
+	return Tema.crear()
 
 
-# Panel oscuro con borde verde para las ventanas.
+# Panel de las ventanas (el aspecto lo pone el tema).
 static func crear_panel() -> PanelContainer:
-	var panel: PanelContainer = PanelContainer.new()
-	var estilo: StyleBoxFlat = StyleBoxFlat.new()
-	estilo.bg_color = Color(0.07, 0.08, 0.08, 0.96)
-	estilo.border_color = Color(0.3, 0.55, 0.35)
-	estilo.set_border_width_all(2)
-	estilo.set_corner_radius_all(8)
-	estilo.set_content_margin_all(18)
-	panel.add_theme_stylebox_override("panel", estilo)
-	return panel
+	return PanelContainer.new()
 
 
 # Coloca un texto centrado a lo ancho, a "alto" píxeles del borde de abajo.

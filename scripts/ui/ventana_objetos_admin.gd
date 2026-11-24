@@ -12,95 +12,105 @@ var jugador: Node3D = null
 var categoria_inicial: String = ""
 var _categoria: String = ""
 var _buscador: LineEdit
+var _filtros: UI.Filtros
 var _lista: ItemList
 var _entradas: Array = []
-var _detalle: Label
+var _detalle: DetalleObjeto
+var _ficha_otro: Label
 var _aviso: Label
 var _cantidad: SpinBox
 var _destino: OptionButton
-var _botones_cat: Dictionary = {}
+var _total: Label
 
 
 func construir() -> void:
-	var caja: VBoxContainer = panel_centrado(Vector2(900, 760))
-	cabecera(caja, "Aparecer cualquier cosa")
-	_buscador = LineEdit.new()
-	_buscador.placeholder_text = "Buscar por nombre…"
-	_buscador.clear_button_enabled = true
-	_buscador.text_changed.connect(func(_t: String) -> void: _rellenar())
-	caja.add_child(_buscador)
+	var cuerpo: VBoxContainer
+	if incrustada:
+		cuerpo = VBoxContainer.new()
+		cuerpo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cuerpo.add_theme_constant_override("separation", 8)
+		add_child(cuerpo)
+	else:
+		cuerpo = marco("Aparecer cualquier cosa", "", Vector2(1080, 660))
+	var columnas: HBoxContainer = HBoxContainer.new()
+	columnas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columnas.add_theme_constant_override("separation", 16)
+	cuerpo.add_child(columnas)
 
-	var cats: HFlowContainer = HFlowContainer.new()
-	caja.add_child(cats)
-	var todas: Button = Hud.crear_boton("Todo", _elegir_categoria.bind(""))
-	todas.toggle_mode = true
-	cats.add_child(todas)
-	_botones_cat[""] = todas
+	# Izquierda: buscador, categorías y lista.
+	var izq: VBoxContainer = VBoxContainer.new()
+	izq.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	izq.add_theme_constant_override("separation", 8)
+	columnas.add_child(izq)
+	_buscador = UI.buscador("Buscar por nombre…", func(_t: String) -> void: _rellenar())
+	izq.add_child(_buscador)
+	_filtros = UI.Filtros.new()
+	_filtros.anadir("", "Todo")
 	for c in AdminCatalogo.categorias():
-		var b: Button = Hud.crear_boton(str(c), _elegir_categoria.bind(c))
-		b.toggle_mode = true
-		cats.add_child(b)
-		_botones_cat[c] = b
-
+		_filtros.anadir(str(c), str(c))
+	_filtros.cambiado.connect(func(c: String) -> void:
+		_categoria = c
+		_rellenar())
+	izq.add_child(_filtros)
+	_total = UI.nota("", false)
+	izq.add_child(_total)
 	_lista = ItemList.new()
-	_lista.custom_minimum_size = Vector2(0, 330)
 	_lista.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_lista.add_theme_font_size_override("font_size", 17)
+	_lista.add_theme_font_size_override("font_size", 16)
 	_lista.item_selected.connect(func(_i: int) -> void: _mostrar_detalle())
 	_lista.item_activated.connect(func(_i: int) -> void: _aparecer())
-	caja.add_child(_lista)
-	_detalle = Hud.crear_label(16, Color(0.8, 0.9, 1.0))
-	_detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detalle.custom_minimum_size = Vector2(0, 44)
-	caja.add_child(_detalle)
+	izq.add_child(_lista)
 
+	# Derecha: ficha, cantidad, destino y atajos.
+	var der: VBoxContainer = VBoxContainer.new()
+	der.custom_minimum_size.x = 340
+	der.add_theme_constant_override("separation", 8)
+	columnas.add_child(der)
+	_detalle = DetalleObjeto.new(340.0)
+	der.add_child(_detalle)
+	_ficha_otro = UI.parrafo("", Tema.TEXTO_SUAVE, 15)
+	der.add_child(_ficha_otro)
 	var fila: HBoxContainer = HBoxContainer.new()
 	fila.add_theme_constant_override("separation", 8)
-	caja.add_child(fila)
-	var t: Label = Hud.crear_label(16)
-	t.text = "Cantidad"
-	fila.add_child(t)
+	der.add_child(fila)
+	fila.add_child(UI.etiqueta("Cantidad", "Subtitulo"))
 	_cantidad = SpinBox.new()
 	_cantidad.min_value = 1
 	_cantidad.max_value = 999
 	_cantidad.value = 1
 	fila.add_child(_cantidad)
 	_destino = OptionButton.new()
-	_destino.focus_mode = Control.FOCUS_NONE
 	_destino.add_item("A mi inventario")
 	_destino.add_item("En el suelo, delante de mí")
+	_destino.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	fila.add_child(_destino)
-	fila.add_child(Hud.crear_boton("Aparecer", _aparecer))
-	fila.add_child(Hud.crear_boton("Equipar arma ahora", _equipar))
-
-	var fila2: HBoxContainer = HBoxContainer.new()
-	fila2.add_theme_constant_override("separation", 8)
-	caja.add_child(fila2)
-	fila2.add_child(Hud.crear_boton("Munición (60 de cada)", func() -> void: _decir(AdminCatalogo.dar_municion(60))))
-	fila2.add_child(Hud.crear_boton("Kit de armas y explosivos", _kit))
+	var fila_b: HBoxContainer = HBoxContainer.new()
+	fila_b.add_theme_constant_override("separation", 8)
+	der.add_child(fila_b)
+	var ap: Button = UI.boton("Aparecer", _aparecer, "BotonPrimario")
+	ap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fila_b.add_child(ap)
+	fila_b.add_child(UI.boton("Equipar arma ahora", _equipar))
+	var atajos: HFlowContainer = HFlowContainer.new()
+	atajos.add_theme_constant_override("h_separation", 6)
+	atajos.add_theme_constant_override("v_separation", 6)
+	der.add_child(atajos)
+	atajos.add_child(UI.boton("Munición (60 de cada)", func() -> void: _decir(AdminCatalogo.dar_municion(60))))
+	atajos.add_child(UI.boton("Kit de armas y explosivos", _kit))
 	for cantidad in [1000, 100000]:
-		fila2.add_child(Hud.crear_boton("+%d $" % cantidad, func() -> void:
+		atajos.add_child(UI.boton("+%s" % UI.dinero(cantidad), func() -> void:
 			Juego.dinero += cantidad
 			Juego.cambio.emit()
 			_decir("Te has dado %d $." % cantidad)))
-	_aviso = Hud.crear_label(16, Color(1, 0.92, 0.6))
-	_aviso.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	caja.add_child(_aviso)
-
-	_elegir_categoria(categoria_inicial)
-	_buscador.grab_focus.call_deferred()
-
-
-func _elegir_categoria(c: String) -> void:
-	_categoria = c
-	for k in _botones_cat:
-		(_botones_cat[k] as Button).set_pressed_no_signal(k == c)
-	_rellenar()
+	_aviso = UI.parrafo("", Tema.ACENTO, 15)
+	der.add_child(_aviso)
+	_filtros.elegir(categoria_inicial) if categoria_inicial != "" else _rellenar()
 
 
 func _rellenar() -> void:
 	_entradas = AdminCatalogo.entradas(_categoria, _buscador.text)
 	_lista.clear()
+	_total.text = "%d resultados" % _entradas.size()
 	for e in _entradas:
 		_lista.add_item("%s   ·   %s" % [e["nombre"], e["categoria"]] if _categoria == "" else str(e["nombre"]))
 	if not _entradas.is_empty():
@@ -117,7 +127,13 @@ func _actual() -> Dictionary:
 
 func _mostrar_detalle() -> void:
 	var e: Dictionary = _actual()
-	_detalle.text = "" if e.is_empty() else "%s — %s" % [e["nombre"], e["descripcion"]]
+	if not e.is_empty() and e["tipo"] == "objeto" and AdminCatalogo.DatosObjetos.existe(str(e["id"])):
+		_detalle.visible = true
+		_ficha_otro.text = ""
+		_detalle.mostrar(str(e["id"]), Juego.cuenta(str(e["id"])))
+	else:
+		_detalle.visible = false
+		_ficha_otro.text = "" if e.is_empty() else "%s\n%s" % [e["nombre"], e["descripcion"]]
 
 
 func _decir(texto: String) -> void:
