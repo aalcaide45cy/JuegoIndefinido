@@ -299,10 +299,10 @@ static func _roles(P: PlanoInterior, est: Dictionary, tipo: String, prog: Dictio
 	var entrada: String = "salon"
 	if tipo == "servicio":
 		if n == 0:
-			entrada = prog["entrada"]
-			pool = (prog["resto"] as Array).duplicate()
+			entrada = str(prog.get("entrada", "salon"))   # Los negocios de Locales no están en SERV (tienen su propio interior).
+			pool = (prog.get("resto", []) as Array).duplicate()
 		else:
-			var alto: Array = prog["alto"]
+			var alto: Array = prog.get("alto", [])
 			entrada = "pasillo" if hojas.size() > 0 else (alto[(n - 1) % alto.size()] if alto.size() > 0 else "oficina")
 			pool = alto.duplicate()
 	elif n > 0:
