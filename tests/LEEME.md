@@ -10,6 +10,7 @@ godot --headless --path . res://tests/prueba_ui.tscn     # abre el mundo, calder
 godot --headless --path . res://tests/prueba_partidas.tscn   # ranuras de guardado y logros
 godot --headless --path . res://tests/prueba_asaltos.tscn   # asaltos a casas: ganzúa, ruido, botín, vecinos, estrellas
 godot --headless --path . res://tests/prueba_ia.tscn   # IA de personajes: árbol, esquivarse, huir, pelear, armados, coches, apuntar
+godot --headless --path . res://tests/prueba_caos.tscn   # un minuto de jaleo entre la gente: sin errores, reaccionan y se calman
 godot --headless --path . res://tests/prueba_carreteras.tscn   # carreteras: sin huecos en los bordes de trozo y pegadas al terreno
 xvfb-run -a godot --path . --rendering-driver opengl3 res://tests/captura_ui.tscn -- /carpeta   # capturas
 xvfb-run -a godot --path . --rendering-driver opengl3 res://tests/captura_ia.tscn -- /carpeta   # capturas de la IA de personajes

@@ -112,6 +112,8 @@ func _ready() -> void:
 	await _coche()
 	await _apuntar()
 	await _civil_armado()
+	await _empujones()
+	await _agacharse()
 	if fallos.is_empty():
 		print("RESULTADO: TODO BIEN")
 	else:
@@ -148,6 +150,8 @@ func _cerebros_y_esquivar() -> void:
 					cerca += 1
 					if d < 0.45:
 						cruzan += 1
+						if cruzan <= 6:
+							print("  se atraviesan: %s(%s, corre %s, estado %d) y %s(%s, corre %s, estado %d) d=%.2f" % [a.name, a.cerebro.accion, a.corredor, a.estado, b.name, b.cerebro.accion, b.corredor, b.estado, d])
 	print("Muestras con dos peatones a menos de 3 m: %d; se atraviesan: %d; acciones: %s" % [cerca, cruzan, acciones])
 	comprobar(cerca > 20, "hay cruces entre peatones que medir (%d)" % cerca)
 	comprobar(cruzan <= maxi(3, cerca / 25), "casi nunca se atraviesan (%d de %d)" % [cruzan, cerca])
@@ -294,6 +298,52 @@ func _civil_armado() -> void:
 	print("Civil armado: acción %s, tu vida %.0f" % [o.cerebro.accion, J.vida])
 	comprobar(disparo, "el civil armado al que hieres te dispara")
 	o.queue_free()
+
+
+# Como en GTA: al primer empujón se queja; al segundo, el de genio se encara contigo.
+func _empujones() -> void:
+	_calmar_a_todos()
+	_poner_jugador(Vector3(centro.x + 2.0, h + 30.0, centro.y + 2.0))
+	await esperar(1.0)
+	var q: Node3D = _elegir_peaton()
+	if q == null:
+		comprobar(false, "hay un peatón al que empujar")
+		return
+	q.cerebro.ajustar({"valentia": 0.8, "agresividad": 0.9, "armado": false})
+	_poner_jugador(q.global_position + (-q.global_basis.z) * 1.0 + Vector3(0, 0.05, 0))
+	var acc: Array = []
+	for vez in 2:
+		q.cerebro.percibir("empujon", jugador.global_position, 1.0, jugador)
+		for i in 18:
+			await esperar(0.1)
+			acc.append(q.cerebro.accion)
+	print("Empujones: ", acc, " agresividad %.2f valentía %.2f ira %.2f miedo %.2f" % [q.cerebro.agresividad, q.cerebro.valentia, q.cerebro.ira, q.cerebro.miedo])
+	comprobar("quejarse" in acc, "al empujarle se queja")
+	comprobar("pelear" in acc, "al segundo empujón se encara contigo")
+
+
+# Tiros muy cerca de un miedoso mientras huye: se agacha tapándose un momento.
+func _agacharse() -> void:
+	_calmar_a_todos()
+	_poner_jugador(Vector3(centro.x + 2.0, h + 30.0, centro.y + 2.0))
+	await esperar(1.0)
+	var vistos: int = 0
+	for intento in 3:
+		var q: Node3D = _elegir_peaton()
+		if q == null:
+			break
+		q.cerebro.ajustar({"valentia": 0.05, "agresividad": 0.05, "armado": false, "agilidad": 0.3})
+		_poner_jugador(q.global_position + Vector3(5.0, 0.2, 0.0))
+		for i in 25:
+			if i % 2 == 0:
+				Sonido.tocar(jugador, "disparo")
+			await esperar(0.15)
+			if q.cerebro.accion == "huir" and q.cerebro.anim_fija == "Duck":
+				vistos += 1
+		if vistos > 0:
+			break
+		_calmar_a_todos()
+	comprobar(vistos > 0, "un miedoso se agacha tapándose cuando los tiros siguen cerca")
 
 
 # --- El árbol por sí solo ---

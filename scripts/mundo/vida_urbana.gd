@@ -167,6 +167,8 @@ class Agente extends AnimatableBody3D:
 	var largo: float = 4.4
 	var lado: float = 2.0         # Desplazamiento a la derecha del eje de la calle (negativo = izquierda).
 	var pausa: float = 0.0
+	var telefono: bool = false    # En esta parada habla por el móvil.
+	var corredor: bool = false    # Sale a correr (de día).
 	var alegre: bool = false      # Peatón de noche que va zigzagueando.
 	var huyendo: bool = false
 	var vida: float = 30.0
@@ -554,6 +556,10 @@ func _nuevo_agente(red: Dictionary, coche: bool) -> Agente:
 			a.add_to_group("peatones")
 			a.add_to_group("oyentes_ia")
 			a.vmax = a.cerebro.vel_andar
+			if not a.alegre and h_dia(Juego.hora) and randf() < 0.07:
+				a.corredor = true   # Gente que sale a correr: más rápida, se para menos.
+				a.vmax = randf_range(2.8, 3.4)
+				a.cerebro.agilidad = maxf(a.cerebro.agilidad, 0.75)
 			if a.alegre:
 				a.cerebro.agilidad *= 0.5         # Ha bebido: torpe...
 				a.cerebro.valentia = minf(1.0, a.cerebro.valentia + 0.25)   # ...y valiente.
@@ -1175,8 +1181,9 @@ func _entrar_tramo(a: Agente, nuevo: Array) -> void:
 	var rel: Vector2 = antes - pa
 	a.lat_ia = clampf(rel.dot(Vector2(-dir.y, dir.x)) - float(a.s) * _hs(a.red), -LAT_ACERA, LAT_ACERA)
 	a.d = clampf(rel.dot(dir), _hs(a.red), maxf(_hs(a.red), pa.distance_to(pb) - _hs(a.red)))
-	if randf() < 0.15:
+	if randf() < (0.03 if a.corredor else 0.15):
 		a.pausa = 2.0 + randf() * 5.0   # Se para a mirar un escaparate (las charlas las decide su cerebro).
+		a.telefono = randf() < 0.3      # ...o a hablar por el móvil.
 	_planear_imprudencia(a)
 
 
@@ -1296,7 +1303,10 @@ func _mover_peaton(a: Agente, delta: float) -> void:
 					a.p2 += deseo * delta
 	_colocar(a, false, delta)
 	if a.modelo != null and a.estado != P_HERIDO and a.t_reaccion <= 0.0:
-		Assets.animar_por_velocidad(a.modelo, a.vel)
+		if a.pausa > 0.0 and a.vel < 0.3 and a.telefono:
+			Assets.poner_animacion(a.modelo, "Talk")
+		else:
+			Assets.animar_por_velocidad(a.modelo, a.vel)
 
 
 # Límites de lo que se aparta en la acera, en el sentido "a su derecha" (+): depende de en qué
@@ -1551,3 +1561,7 @@ func _actualizar_semaforos() -> void:
 			var enciende: int = 2 if e == 0 else (1 if e == 1 else 0)
 			for i in 3:
 				(sem.lamparas[eje][i] as StandardMaterial3D).emission_energy_multiplier = 4.0 if i == enciende else 0.1
+
+
+static func h_dia(hora: float) -> bool:
+	return hora >= 7.0 and hora < 20.0

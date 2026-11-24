@@ -150,6 +150,8 @@ func _ready() -> void:
 	await _apuntar()
 	await _disparo()
 	await _civil()
+	await _agachado()
+	await _empujones()
 	get_tree().quit()
 
 
@@ -286,3 +288,43 @@ func _civil() -> void:
 	print("Civil: acción ", o.cerebro.accion, " arma fuera ", o.cerebro.arma_fuera)
 	_encuadrar(o.global_position, jugador.global_position, 5.0, 1.6)
 	await _foto("ia_06_civil_armado_te_encanona")
+
+
+# 7) Tiros muy cerca de un miedoso: se agacha tapándose.
+func _agachado() -> void:
+	_calmar_a_todos()
+	if doble != null:
+		doble.visible = true
+	var q: Node3D = _elegir_peaton()
+	if q == null:
+		return
+	q.cerebro.ajustar({"valentia": 0.05, "agresividad": 0.05, "armado": false, "agilidad": 0.3})
+	_poner_jugador(q.global_position + Vector3(5.0, 0.2, 0.0))
+	for i in 30:
+		if i % 2 == 0:
+			Sonido.tocar(jugador, "disparo")
+		_doble_mira(q.global_position)
+		await esperar(0.15)
+		if q.cerebro.anim_fija == "Duck":
+			await esperar(0.3)
+			break
+	_encuadrar(q.global_position, jugador.global_position, 4.5, 1.5)
+	await _foto("ia_07_tiros_cerca_se_agacha_tapandose")
+
+
+# 8) Le empujas dos veces: a la segunda se encara.
+func _empujones() -> void:
+	_calmar_a_todos()
+	var q: Node3D = _elegir_peaton()
+	if q == null:
+		return
+	q.cerebro.ajustar({"valentia": 0.8, "agresividad": 0.9, "armado": false})
+	J.invulnerable = 999.0
+	_poner_jugador(q.global_position + (-q.global_basis.z) * 1.0 + Vector3(0, 0.05, 0))
+	for vez in 2:
+		q.cerebro.percibir("empujon", jugador.global_position, 1.0, jugador)
+		for i in 16:
+			_doble_mira(q.global_position)
+			await esperar(0.1)
+	_encuadrar(q.global_position, jugador.global_position, 3.5, 1.4)
+	await _foto("ia_08_segundo_empujon_se_encara")

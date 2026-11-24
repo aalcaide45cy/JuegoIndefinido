@@ -21,9 +21,11 @@ const RADIOS: Dictionary = {"disparo": 60.0, "explosion": 90.0, "violencia": 18.
 static var _ultimo: Dictionary = {}   # tipo -> ms (para no saturar con ráfagas: máx. 6 por segundo)
 
 
-static func emitir(arbol: SceneTree, tipo: String, pos: Vector3, radio: float = -1.0, autor: Object = null) -> void:
+static func emitir(arbol: SceneTree, tipo: String, pos: Vector3, radio: float = -1.0, autor_v = null) -> void:
 	if arbol == null:
 		return
+	# Sin tipo en el parámetro: el autor puede haberse borrado ya (un peatón que desaparece).
+	var autor: Object = autor_v if autor_v is Object and is_instance_valid(autor_v) else null
 	var ahora: int = Time.get_ticks_msec()
 	var clave: String = tipo + str(roundi(pos.x / 4.0)) + "_" + str(roundi(pos.z / 4.0))
 	if ahora - int(_ultimo.get(clave, -1000)) < 160:
@@ -44,8 +46,8 @@ static func emitir(arbol: SceneTree, tipo: String, pos: Vector3, radio: float = 
 
 
 # ¿Este autor es el jugador (o su vehículo)?
-static func es_jugador(autor: Object) -> bool:
-	if autor == null or not is_instance_valid(autor) or not (autor is Node):
+static func es_jugador(autor) -> bool:   # Sin tipo: un objeto ya borrado no puede pasar por un parámetro Object.
+	if autor == null or not (autor is Object) or not is_instance_valid(autor) or not (autor is Node):
 		return false
 	var n: Node = autor as Node
 	return n.is_in_group("jugador") or (n.get("conductor") != null and (n.get("conductor") as Object) is Node

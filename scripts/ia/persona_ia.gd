@@ -48,6 +48,7 @@ const FRASES: Dictionary = {
 	"llamar": ["¿Policía? ¡Vengan rápido!", "¡Estoy llamando a la policía!", "¡Ya vienen los guardias!"],
 	"socorrer": ["¿Está bien?", "¡Una ambulancia!", "¡No se mueva!", "Tranquilo, ya viene ayuda."],
 	"mirar": ["Madre mía...", "¿Qué ha pasado?", "Qué barbaridad.", "¿Lo has visto?", "Esto no es normal."],
+	"harto": ["¡Otra vez! ¡Ahora verás!", "¿Buscas pelea? ¡La has encontrado!", "¡Ya está bien!"],
 	"quejarse": ["¡Eh! ¡Mira por dónde vas!", "¡Cuidado, hombre!", "¿Estás ciego?", "¡Oye!"],
 	"coche": ["¡Animal!", "¡Casi me matas!", "¡Mira por dónde conduces!", "¡Loco!"],
 	"saludo": ["¡Buenas!", "Hola.", "¡Buen día!", "¿Qué tal?"],
@@ -283,7 +284,8 @@ func _percibir() -> void:
 	var j: Node3D = jugador()
 	apuntado = false
 	jugador_armado = 0
-	empujado = false
+	if reloj - t_ult_empujon > 1.0:
+		empujado = false   # Dura un segundo: le da tiempo al árbol a verlo.
 	if j != null and not (j.get("_muerto") == true):
 		var al: Vector3 = j.global_position - cuerpo.global_position
 		var d: float = al.length()
@@ -310,7 +312,7 @@ func _percibir() -> void:
 			# Te chocas con él.
 			var vj: Vector3 = j.get("velocity") if j.get("velocity") != null else Vector3.ZERO
 			if d < 0.95 and Vector2(vj.x, vj.z).length() > 1.2:
-				empujado = true
+				empujon(j)
 			# Con estrellas de búsqueda la gente te tiene miedo.
 			if Juego.estrellas > 0 and d < 30.0:
 				miedo = minf(1.0, miedo + 0.05 * Juego.estrellas)
@@ -377,7 +379,30 @@ func percibir(tipo_e: String, pos: Vector3, intensidad: float, autor: Object) ->
 			if autor3 != null:
 				_poner_amenaza(autor3, false)
 		"empujon":
-			empujado = true
+			empujon(autor3)
+
+
+# Le han empujado. Como en GTA: al primero se queja; si le vuelves a empujar en poco tiempo, el que
+# tiene genio se encara contigo y el que no, se asusta y se aparta.
+func empujon(quien: Node3D) -> void:
+	empujado = true
+	if reloj - t_ult_empujon < 1.0:
+		return   # El mismo choque dura varios fotogramas: cuenta como uno.
+	t_ult_empujon = reloj
+	empujones = empujones.filter(func(x): return reloj - float(x) < 15.0)
+	empujones.append(reloj)
+	if empujones.size() >= 2 and quien != null and is_instance_valid(quien):
+		ira = minf(1.0, ira + 0.45)
+		if agresividad + valentia > 0.8:
+			decir("harto", 1.0)
+		else:
+			miedo = minf(1.0, miedo + 0.4)
+			decir("nervioso", 1.0)
+		_poner_amenaza(quien)
+
+
+var t_ult_empujon: float = -99.0
+var empujones: Array = []
 
 
 # Me han hecho daño a mí.
@@ -922,6 +947,13 @@ func a_saltar_aparte(_bb: Dictionary, _d: float) -> int:
 		vel = _deseo   # Salto: sin aceleración progresiva.
 	if t > 0.55:
 		ira = minf(1.0, ira + 0.15 * agresividad)
+		# Si el que casi le atropella eres tú, se gira y te lo dice (con el puño en alto).
+		var j: Node3D = jugador()
+		if not bool(bb.get("clavado", false)) and j != null and is_instance_valid(coche_peligro) \
+				and j.global_position.distance_to(coche_peligro.global_position) < 4.0:
+			mirar_a(coche_peligro.global_position)
+			decir("coche", 1.0)
+			una_vez("No")
 		return R
 	return C
 
@@ -944,6 +976,16 @@ func a_huir(_bb: Dictionary, _d: float) -> int:
 	var desde: Vector3 = amenaza.global_position if amenaza != null and is_instance_valid(amenaza) else amenaza_pos
 	if cuerpo.has_method("ia_salida") and cuerpo.has_method("ia_dentro") and bool(cuerpo.ia_dentro()):
 		ir_por_ruta(cuerpo.ia_salida(), vel_correr)   # Dentro de casa: hacia la puerta.
+	elif reloj < float(bb.get("agachado_hasta", -1.0)):
+		parar()
+		anim_fija = "Duck"   # Agachado con la cabeza tapada hasta que paren los tiros.
+		mirar_a(desde)
+		return C
+	elif reloj - t_disparo < 0.6 and dist_amenaza() < 14.0 and valentia < 0.4 and rng.randf() < 0.5 \
+			and reloj - float(bb.get("agachado_hasta", -99.0)) > 4.0:
+		bb["agachado_hasta"] = reloj + rng.randf_range(1.2, 2.5)
+		decir("huir", 0.8)
+		return C
 	else:
 		huir_de(desde, vel_correr * (0.85 if vida() < 0.4 else 1.0))
 		# A veces mira atrás un momento (frena y se gira).
@@ -1219,8 +1261,8 @@ func a_quejarse(_bb: Dictionary, _d: float) -> int:
 	var t: float = float(bb.get("t_quejarse", 0.0))
 	if t < PERIODO_PENSAR * 1.5:
 		una_vez("No")
-		decir("quejarse", 1.0)
 		ira = minf(1.0, ira + 0.2 + agresividad * 0.25)
+		decir("quejarse", 1.0)
 		# Un empujón de vuelta si es de los agresivos.
 		if j != null and agresividad > 0.6:
 			var emp: Vector3 = (j.global_position - cuerpo.global_position).normalized() * 3.0
@@ -1528,7 +1570,7 @@ func esquiva_acera(lat: float, dir: Vector2, mi_vel: float, lat_min: float, lat_
 		var p3: Vector3 = (n as Node3D).global_position
 		var r: Vector2 = Vector2(p3.x, p3.z) - yo
 		var lon: float = r.dot(dir)
-		if lon < -0.6 or lon > 6.0:
+		if lon < -0.6 or lon > 4.5 + mi_vel * 1.2:
 			continue
 		var lat_rel: float = r.dot(derecha)
 		if absf(lat_rel) > 2.0:
@@ -1555,5 +1597,5 @@ func esquiva_acera(lat: float, dir: Vector2, mi_vel: float, lat_min: float, lat_
 		if absf(lat_rel) < 0.6 and lon < 1.6 and v_lon > -0.2:
 			factor = minf(factor, clampf(v_lon / maxf(mi_vel, 0.1), 0.0, 1.0))
 	objetivo_lat = clampf(objetivo_lat, lat_min, lat_max)
-	var nuevo: float = move_toward(lat, objetivo_lat, delta * 1.1)
+	var nuevo: float = move_toward(lat, objetivo_lat, delta * maxf(1.1, mi_vel * 0.55))   # Quien corre se aparta antes.
 	return [nuevo, factor]

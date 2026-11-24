@@ -101,6 +101,28 @@ pelo, barba y varios tonos de piel. Cuesta muy poco: todos comparten unas pocas 
 | Ropa variada | Sí | Sí, pintada (sin modelos de ropa) |
 | Navegación por todo el mapa | Sí (navmesh) | No: aceras, cruces y, en casas, habitaciones y puertas |
 
+### Segunda revisión: más cerca de GTA 5
+Qué hace GTA 5 con la gente de la calle y cómo queda aquí:
+- **Empujones que escalan**: al primero se queja; si le vuelves a empujar en 15 s, el que tiene genio
+  se encara a puñetazos y el que no, se asusta y se aparta (`PersonaIA.empujon`).
+- **Insultar al conductor**: si casi le atropellas, salta a un lado y luego se gira y te grita.
+- **Agacharse tapándose** (*cower*): mientras huye, si los tiros siguen muy cerca, el miedoso se
+  agacha con la cabeza tapada un par de segundos y luego sigue corriendo.
+- **Vida ambiente**: gente que sale a correr de día (más rápida, se aparta antes) y gente que se para
+  a hablar por el móvil.
+- **Prueba de caos** (`tests/prueba_caos.tscn`): 40 s de disparos, tiros, puñetazos, atropellos,
+  explosiones y apuntar entre la multitud. Comprueba que no hay errores, que nadie acaba en una
+  posición imposible, que casi todos reaccionan, que hay variedad y que 30 s después se calman.
+  Encontró un fallo real (un peatón borrado como autor de un grito) que ya está arreglado.
+- El cuerpo como "trapo" (ragdoll con física al caer o morir) lo lleva el sistema `Cuerpo` del PR de
+  armas; esta IA lo usa para derribos, muertes y levantarse.
+
+**¿Usar un addon de árboles (LimboAI, Beehave)?** No por ahora. El árbol propio ya cubre lo que hace
+falta (incluida la utilidad con histéresis, que Beehave no trae), está probado y no añade binarios:
+LimboAI es una extensión nativa que habría que compilar o bajar para cada versión de Godot y cada
+sistema (Windows, Linux, Steam Deck). Si más adelante se quiere editar los árboles a mano en un
+editor visual, LimboAI es la opción, y `ArbolesIA` es el único sitio que cambiaría.
+
 ## 4. Límites y próximos pasos
 - Fuera de la acera la navegación es local (esquiva y bigotes): quien huye lejos puede quedarse
   atascado contra una esquina hasta que el cerebro elige otra dirección. Un navmesh por manzana lo
@@ -114,6 +136,7 @@ pelo, barba y varios tonos de piel. Cuesta muy poco: todos comparten unas pocas 
 ## 5. Pruebas
 - `tests/prueba_ia.tscn`: árbol, todos con cerebro, esquivarse (cuántas veces se "atraviesan"),
   reacción a un disparo, pelea a puñetazos, armado que dispara y acierta, esquivar un coche, reacción
-  al apuntar y civil armado.
+  al apuntar, civil armado, empujones que escalan y agacharse con tiros cerca.
 - `tests/prueba_peatones.tscn`: que nadie atraviese edificios.
+- `tests/prueba_caos.tscn`: un minuto de jaleo entre la multitud.
 - `tests/captura_ia.tscn`: capturas de cada situación.
