@@ -15,6 +15,9 @@ static var _cache: Dictionary = {}
 static func tocar(origen: Node, nombre: String, volumen_db: float = -6.0) -> void:
 	if origen == null or not origen.is_inside_tree():
 		return
+	# Los personajes con IA oyen los disparos y explosiones (y reaccionan: huir, cubrirse...).
+	if (nombre == "disparo" or nombre == "explosion") and origen is Node3D:
+		EstimulosIA.emitir(origen.get_tree(), nombre, (origen as Node3D).global_position, -1.0, origen)
 	var flujo: AudioStream = _flujo(nombre)
 	if flujo == null:
 		return
