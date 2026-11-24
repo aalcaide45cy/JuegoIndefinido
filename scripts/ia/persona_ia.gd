@@ -535,7 +535,7 @@ func _bigotes(dir: Vector2) -> Vector2:
 	var mundo: World3D = cuerpo.get_world_3d()
 	if mundo == null:
 		return Vector2.ZERO
-	var origen: Vector3 = cuerpo.global_position + Vector3(0, 0.9, 0)
+	var origen: Vector3 = cuerpo.global_position + Vector3(0, 0.55, 0)   # Bajo: ve bancos, vallas y troncos.
 	var excluir: Array = []
 	if cuerpo is CollisionObject3D:
 		excluir.append((cuerpo as CollisionObject3D).get_rid())
@@ -1363,8 +1363,12 @@ func a_acompanar(_bb: Dictionary, _d: float) -> int:
 	var lp: Vector3 = lider.global_position
 	var lv: Vector2 = _vel_de_persona(lider)
 	var dirl: Vector2 = lv.normalized() if lv.length() > 0.2 else Vector2(-lider.global_basis.z.x, -lider.global_basis.z.z).normalized()
-	# A su derecha y un pelín por detrás.
+	# A su lado y un pelín por detrás (en la acera, del lado de la calle, si el dueño lo sabe).
 	var sitio: Vector2 = Vector2(lp.x, lp.z) + Vector2(-dirl.y, dirl.x) * 0.8 - dirl * 0.25
+	if cuerpo.has_method("ia_sitio_junto_a"):
+		var s2 = cuerpo.ia_sitio_junto_a(lider)
+		if s2 != null:
+			sitio = s2
 	var al: Vector2 = sitio - pos2()
 	var d: float = al.length()
 	if d > 0.25:

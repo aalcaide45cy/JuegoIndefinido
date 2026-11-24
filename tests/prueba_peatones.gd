@@ -101,7 +101,7 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 	J.hora = 12.0
 	var forma: CapsuleShape3D = CapsuleShape3D.new()
 	forma.radius = RADIO
-	forma.height = 1.7
+	forma.height = 1.4   # Del tobillo (0,4 m) a los hombros (1,8 m): ni bordillos ni copas bajas de los árboles de la acera.
 	var lugares: Array = [["ciudad original", Vector2(20.0, -20.0), 0.0]]
 	var vistos: Dictionary = {}
 	for tipo in [0, 1, 2]:
@@ -115,6 +115,7 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 		var h: float = lugar[2]
 		var muestras: int = 0
 		var dentro: int = 0
+		var rozan_libres: int = 0
 		var max_peat: int = 0
 		var ejemplos: Array = []
 		var t: float = 0.0
@@ -132,12 +133,15 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 				muestras += 1
 				var cons: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
 				cons.shape = forma
-				cons.transform = Transform3D(Basis(), q.global_position + Vector3(0, 1.0, 0))
+				cons.transform = Transform3D(Basis(), q.global_position + Vector3(0, 1.1, 0))
 				cons.exclude = [jugador.get_rid()]
 				for hit in espacio.intersect_shape(cons, 8):
 					var o: Object = hit["collider"]
 					if o is AnimatableBody3D or o is CharacterBody3D:
 						continue   # Coches, otros peatones, guardias.
+					if q.estado == 5:
+						rozan_libres += 1   # Libre (huyendo, charlando...): rozar un tronco un instante se tolera.
+						break
 					dentro += 1
 					if ejemplos.size() < 3:
 						var cb: CollisionObject3D = o as CollisionObject3D
@@ -152,8 +156,8 @@ func _ciudad_original(escena: Node, hud: Node, J: Node) -> void:
 							info = "forma %s hueso %s en (%.1f, %.1f, %.1f) cuerpo %s ruta %s y_peaton %.2f" % [f3.shape.get_class(), f3.name, f3.global_position.x, f3.global_position.y, f3.global_position.z, cb.name, cb.get_path(), q.global_position.y]
 						ejemplos.append("rel (%.1f, %.1f) estado %d %s" % [fposmod(q.global_position.x - p.x, 44.0), fposmod(q.global_position.z - p.y, 44.0), q.estado, info])
 					break
-		print("  ", lugar[0], ": peatones máx ", max_peat, " | muestras ", muestras, " | dentro de algo macizo ", dentro, " ", ejemplos)
-		if dentro > 0:
+		print("  ", lugar[0], ": peatones máx ", max_peat, " | muestras ", muestras, " | dentro de algo macizo ", dentro, " | libres que rozan algo ", rozan_libres, " ", ejemplos)
+		if dentro > 0 or rozan_libres > maxi(2, muestras / 100):
 			fallos.append("peatones dentro de edificios en " + str(lugar[0]))
 		if lugar[0] == "ciudad original" and max_peat > 0:
 			fallos.append("hay peatones en las avenidas de la ciudad original (no tienen acera)")

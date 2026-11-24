@@ -33,8 +33,8 @@ const P_LIBRE: int = 4   # Cruza por donde no debe (sin paso de cebra).
 const P_IA: int = 5      # Fuera de su ruta: lo mueve su cerebro (huir, pelear, mirar, charlar...).
 const LAT_ACERA: float = 0.9   # Lo que se puede apartar como mucho de su línea de acera (m).
 # La línea del peatón va a 6 m del eje; la acera va de 4 m (bordillo, con árboles a 4,9 m) a 6,5 m.
-const LAT_HACIA_CALLE: float = 0.5
-const LAT_HACIA_CASAS: float = 0.4
+const LAT_HACIA_CALLE: float = 0.6
+const LAT_HACIA_CASAS: float = 0.1
 const CICLO_SEMAFORO: float = 24.0
 const VERDE: float = 10.0
 const AMBAR: float = 12.0
@@ -226,6 +226,11 @@ class Agente extends AnimatableBody3D:
 	func ia_punto_acera():
 		var vu: VidaUrbana = get_parent() as VidaUrbana
 		return vu._punto_acera_cercano(self) if vu != null else null
+
+	# Sitio donde ponerse al lado de "lider" (pareja) sin salirse de la acera.
+	func ia_sitio_junto_a(lider: Node3D):
+		var vu: VidaUrbana = get_parent() as VidaUrbana
+		return vu._sitio_acompanante(lider as Agente) if vu != null and lider is Agente else null
 
 	func ia_reenganchar() -> void:
 		var vu: VidaUrbana = get_parent() as VidaUrbana
@@ -671,13 +676,15 @@ func _suelo_peaton(a: Agente, punto: Vector2, base: float, ya: bool, delta: floa
 		var t: float = float(a.get_meta("t_suelo", 0.0)) - delta
 		if t <= 0.0 or not a.has_meta("suelo_y"):
 			t = 0.15
-			var desde: Vector3 = Vector3(punto.x, base + 1.6, punto.y)
+			var desde: Vector3 = Vector3(punto.x, base + 2.5, punto.y)
 			var cons: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(desde, desde + Vector3.DOWN * 3.0)
 			cons.exclude = [a.get_rid()]
 			var choque: Dictionary = get_world_3d().direct_space_state.intersect_ray(cons)
-			var sy: float = base
+			var sy: float = float(a.get_meta("suelo_y", a.global_position.y))
 			if not choque.is_empty() and not (choque["collider"] is AnimatableBody3D or choque["collider"] is CharacterBody3D or choque["collider"] is RigidBody3D):
-				sy = minf((choque["position"] as Vector3).y, base + 0.6)
+				var hy: float = (choque["position"] as Vector3).y
+				if hy < base + 1.2:
+					sy = hy   # Más alto sería un tejado o un muro: no se sube.
 			a.set_meta("suelo_y", sy)
 		a.set_meta("t_suelo", t)
 		objetivo = float(a.get_meta("suelo_y", base))
@@ -1271,6 +1278,8 @@ func _acompanante(lider: Agente) -> Agente:
 	b.add_to_group("oyentes_ia")
 	b.cerebro = PersonaIA.new(b, "peaton")
 	b.cerebro.lider = lider
+	if lider.cerebro != null:
+		lider.cerebro._lat_pref = 0.1 if lider.s >= 0 else -0.1   # El líder va hacia las casas; su pareja, al lado de la calle.
 	b.cerebro.libre = true
 	b.vmax = lider.vmax
 	b.alegre = false
@@ -1279,6 +1288,17 @@ func _acompanante(lider: Agente) -> Agente:
 	b.p2 = Vector2(b.global_position.x, b.global_position.z)
 	b.estado = P_IA
 	return b
+
+
+# Al lado del líder, hacia la calle, en su misma acera (null si el líder no va por la acera).
+func _sitio_acompanante(l: Agente):
+	if l == null or not is_instance_valid(l) or l.estado != P_ACERA:
+		return null
+	var pa: Vector2 = l.red["pos"][l.desde]
+	var pb: Vector2 = l.red["pos"][l.hacia]
+	var dir: Vector2 = (pb - pa).normalized()
+	var lat: float = float(l.s) * _hs(l.red) + l.lat_ia - float(l.s) * 0.72
+	return pa + dir * (l.d - 0.2) + Vector2(-dir.y, dir.x) * lat
 
 
 # Punto de acera más cercano a un peatón que anda libre (para que vuelva a su ruta).
