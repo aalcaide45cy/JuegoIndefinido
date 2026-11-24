@@ -10,6 +10,7 @@ paquete, autor, web y licencia. Solo licencias aptas para uso comercial
 | Medieval Village MegaKit (versión Standard gratuita) | Quaternius | https://quaternius.com/packs/medievalvillagemegakit.html | CC0 1.0 |
 | Toon Shooter Game Kit | Quaternius | https://quaternius.com/ (https://quaternius.com/packs/toonshootergamekit.html) | CC0 según su web; el zip descargado no trae archivo de licencia |
 | Universal Base Characters (versión Standard gratuita) | Quaternius | https://quaternius.com/packs/universalbasecharacters.html | CC0 1.0 |
+| Universal Animation Library (versión Standard gratuita, 120+ animaciones para el esqueleto de los Universal Base Characters) | Quaternius | https://quaternius.itch.io/universal-animation-library | CC0 1.0, según `LICENSE.txt` del zip |
 | Downtown City MegaKit (versión Standard gratuita, 153 modelos glTF) | Quaternius | https://quaternius.com/packs/downtowncitymegakit.html (descarga: https://quaternius.itch.io/downtown-city-megakit) | CC0 1.0, según `License_Standard.txt` del zip |
 | Game Icons (213 iconos de interfaz, en blanco y en negro) | Kenney | https://kenney.nl/assets/game-icons | CC0 1.0, según `license.txt` del zip |
 | LowPoly Animated Animals (7 animales de granja animados, FBX: vaca, caballo, llama, cerdo, perro, oveja, cebra) | Quaternius | https://quaternius.itch.io/lowpoly-animated-animals | CC0 1.0, según su página (el zip no trae archivo de licencia) |
